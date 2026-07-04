@@ -124,8 +124,8 @@ export function initPortfolioQueueStore(dbPath = resolvePortfolioQueueDbPath()) 
     )
     RETURNING *
   `);
-  const setStatusStatement = db.prepare(
-    "UPDATE miner_portfolio_queue SET status = ? WHERE repo_full_name = ? AND identifier = ?",
+  const markDoneStatement = db.prepare(
+    "UPDATE miner_portfolio_queue SET status = 'done' WHERE repo_full_name = ? AND identifier = ? AND status <> 'done'",
   );
   const listAllStatement = db.prepare(`SELECT * FROM miner_portfolio_queue ${ORDER}`);
   const listRepoStatement = db.prepare(
@@ -155,7 +155,8 @@ export function initPortfolioQueueStore(dbPath = resolvePortfolioQueueDbPath()) 
     markDone(repoFullName, identifier) {
       const normalizedRepo = normalizeRepoFullName(repoFullName);
       const normalizedIdentifier = normalizeIdentifier(identifier);
-      setStatusStatement.run("done", normalizedRepo, normalizedIdentifier);
+      const result = markDoneStatement.run(normalizedRepo, normalizedIdentifier);
+      if (result.changes === 0) return null;
       const row = getStatement.get(normalizedRepo, normalizedIdentifier);
       return row ? rowToEntry(row) : null;
     },

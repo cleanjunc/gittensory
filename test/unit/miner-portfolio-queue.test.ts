@@ -88,6 +88,21 @@ describe("gittensory-miner portfolio/queue store (#2292)", () => {
     expect(store.markDone("o/a", "missing")).toBeNull(); // no such row → null branch
   });
 
+  it("markDone is a no-op when the item is already done", () => {
+    const store = tempStore();
+    store.enqueue({ repoFullName: "o/a", identifier: "x", priority: 1 });
+    expect(store.markDone("o/a", "x")?.status).toBe("done");
+    expect(store.markDone("o/a", "x")).toBeNull();
+  });
+
+  it("markDone transitions in-progress items to done", () => {
+    const store = tempStore();
+    store.enqueue({ repoFullName: "o/a", identifier: "work", priority: 1 });
+    expect(store.dequeueNext()?.status).toBe("in_progress");
+    expect(store.markDone("o/a", "work")?.status).toBe("done");
+    expect(store.markDone("o/a", "work")).toBeNull();
+  });
+
   it("isolates listQueue by repo and lists everything when unfiltered", () => {
     const store = tempStore();
     store.enqueue({ repoFullName: "o/a", identifier: "1", priority: 1 });

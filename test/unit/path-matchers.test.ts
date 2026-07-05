@@ -38,7 +38,7 @@ describe("isGeneratedFile", () => {
     }
   });
 
-  it("matches source maps for every first-class JS/TS and front-end framework extension", () => {
+  it("matches source maps for every first-class JS/TS, MDX, and front-end framework extension", () => {
     // `.mjs`/`.cjs` are recognized code extensions (isCodeFile), so their bundlers' source
     // maps are generated output too — the same as `.js.map` / `.tsx.map`.
     for (const path of [
@@ -50,6 +50,7 @@ describe("isGeneratedFile", () => {
       "dist/App.vue.map",
       "dist/Card.svelte.map",
       "dist/page.astro.map",
+      "dist/page.mdx.map",
       "dist/styles.scss.map",
       "dist/theme.less.map",
     ]) {

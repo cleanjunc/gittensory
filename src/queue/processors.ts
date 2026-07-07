@@ -8164,6 +8164,19 @@ async function maybePublishPrPublicSurface(
           source: decisionResult.source,
         }),
       );
+      await recordAuditEvent(env, {
+        eventType: "github_app.type_label_decision",
+        targetKey: `${repoFullName}#${pr.number}`,
+        outcome: "completed",
+        // `|| "none"` is unreachable: resolvePrTypeLabel's "title" source always resolves a non-empty
+        // label (deriveKindFromTitle only ever returns "bug"/"feature", and parseTypeLabelSet always
+        // falls back a built-in category to its default rather than an empty string), and its
+        // propagation sources only ever use a mapping's `prLabel`, which normalizeMapping drops
+        // entirely when empty -- applyLabels can never be [] here.
+        /* v8 ignore next */
+        detail: `applied labels: ${decisionResult.applyLabels.join(", ") || "none"}`,
+        metadata: { labels: decisionResult.applyLabels, source: decisionResult.source },
+      }).catch(() => undefined);
     } catch (error) {
       console.log(
         JSON.stringify({
@@ -8173,22 +8186,36 @@ async function maybePublishPrPublicSurface(
           message: errorMessage(error).slice(0, 150),
         }),
       );
+      await recordAuditEvent(env, {
+        eventType: "github_app.type_label_decision",
+        targetKey: `${repoFullName}#${pr.number}`,
+        outcome: "error",
+        detail: errorMessage(error).slice(0, 150),
+        metadata: { labels: [], source: null },
+      }).catch(() => undefined);
     }
   } else {
+    const skipReason = settings.agentPaused
+      ? "agent_paused"
+      : decision.skipReason === "miner_detection_unavailable" || decision.skipReason === "not_official_gittensor_miner"
+        ? decision.skipReason
+        : "typeLabelsEnabled_false";
     console.log(
       JSON.stringify({
         event: "type_label_decision",
         repoFullName,
         pull: pr.number,
         applied: false,
-        reason: settings.agentPaused
-          ? "agent_paused"
-          : decision.skipReason === "miner_detection_unavailable" ||
-              decision.skipReason === "not_official_gittensor_miner"
-            ? decision.skipReason
-            : "typeLabelsEnabled_false",
+        reason: skipReason,
       }),
     );
+    await recordAuditEvent(env, {
+      eventType: "github_app.type_label_decision",
+      targetKey: `${repoFullName}#${pr.number}`,
+      outcome: "denied",
+      detail: skipReason,
+      metadata: { labels: [], source: null },
+    }).catch(() => undefined);
   }
 
   // Respect the per-repo agent pause: suppress all public surface mutations (label, comment, context

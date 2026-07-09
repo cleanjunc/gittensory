@@ -147,6 +147,13 @@ export {
   type NormalizedMinerTelemetryEvent,
 } from "./miner-telemetry.js";
 export {
+  MINER_PREDICTIONS_TOTAL,
+  MINER_PREDICTION_CORRECT_TOTAL,
+  MINER_PREDICTION_INCORRECT_TOTAL,
+  renderMinerPredictionMetrics,
+  type MinerPredictionMetricRow,
+} from "./miner-prediction-metrics.js";
+export {
   ATTEMPT_LOG_EVENT_TYPES,
   createAttemptLogBuffer,
   formatAttemptLogJsonl,

@@ -12,6 +12,7 @@ import {
   getRepoAuthorPullRequestHistory,
   getRepository,
   getDecryptedRepositoryAiKey,
+  countByokAiEventsForRepoSince,
   getRepositorySettings,
   listCheckSummaries,
   listAllIssues,
@@ -80,6 +81,7 @@ import {
   terminalizeActiveReviewTracking,
   bumpPullRequestDraftConversionCount,
   recordProductUsageEvent,
+  recordAiUsageEvent,
   persistSignalSnapshot,
   recordWebhookEvent,
   replaceCollisionEdges,
@@ -449,9 +451,13 @@ import { isRepoDocRefreshDue } from "../review/repo-doc-refresh-schedule";
 import type { LocalBranchAnalysisInput } from "../signals/local-branch";
 import {
   callAiProvider,
+  clampNumber,
+  DEFAULT_BYOK_DAILY_REPO_LIMIT,
   hasPublicReviewAssessment,
   isEnabled,
   runGittensoryAiReview,
+  utcDayStartIso,
+  type AiReviewActualUsage,
   type InlineFinding,
 } from "../services/ai-review";
 import {
@@ -8559,6 +8565,31 @@ export async function runVisualVisionForAdvisory(
     // false case: if neither is set here, the gate itself would already have returned run:false above.
     /* v8 ignore next 2 -- see comment above */
     if (!visionProviderKey && !selfHostVisionAvailable) return;
+    // BYOK (a maintainer's own anthropic/openai key) takes priority when both are configured -- matches every
+    // other dual-path AI call site's convention (BYOK bills the maintainer's own account, so it's preferred
+    // over the shared/free local resource when the operator has explicitly set one up). Only the BYOK branch
+    // is metered/capped below -- self-host vision consumes the operator's own resources, already gated
+    // separately by selfHostVisionAllowed above, and was never part of the BYOK daily-spend surface. The cap
+    // check runs BEFORE the shot-fetching loop so a repo that's already over budget never even pays for the
+    // screenshot fetches, not just the provider call.
+    if (visionProviderKey) {
+      const byokDailyLimit = clampNumber(
+        Number(env.AI_BYOK_DAILY_REPO_LIMIT || DEFAULT_BYOK_DAILY_REPO_LIMIT),
+        0,
+        10_000,
+      );
+      const byokUsed = await countByokAiEventsForRepoSince(env, args.repoFullName, utcDayStartIso());
+      if (byokUsed >= byokDailyLimit) {
+        await recordVisualVisionUsage(
+          env,
+          args,
+          visionProviderKey,
+          "quota_exceeded",
+          "BYOK daily repo limit reached",
+        );
+        return;
+      }
+    }
     const images: AiContentBlock[] = [];
     for (const route of visionGate.routes) {
       // Show the model the viewport that actually crossed the pixel-diff threshold — a route can qualify via
@@ -8577,19 +8608,46 @@ export async function runVisualVisionForAdvisory(
       if (afterBlock) images.push(afterBlock);
     }
     if (images.length === 0) return;
-    // BYOK (a maintainer's own anthropic/openai key) takes priority when both are configured -- matches
-    // every other dual-path AI call site's convention (BYOK bills the maintainer's own account, so it's
-    // preferred over the shared/free local resource when the operator has explicitly set one up).
     let visionText: string | null;
+    let visionUsage: AiReviewActualUsage | undefined;
     if (visionProviderKey) {
       const visionResponse = await callAiProvider(visionProviderKey, VISUAL_VISION_SYSTEM_PROMPT, buildVisualVisionUserPrompt(visionGate.routes), 600, images);
       visionText = visionResponse.text;
+      visionUsage = visionResponse.usage;
+      if (!visionText) {
+        // "error" (not "ok") when the provider call itself failed (timeout/http_error/exception) -- matches
+        // runAgentSummary's convention (services/ai-summaries.ts) of a distinct status for a genuine call
+        // failure vs. a call that completed but returned nothing usable. countByokAiEventsForRepoSince
+        // deliberately still counts "error" rows toward the daily cap (it only excludes "quota_exceeded",
+        // not "ok" specifically) -- a repo hitting a flaky/misconfigured provider must not get a free,
+        // uncapped retry budget just because every attempt happens to fail.
+        await recordVisualVisionUsage(
+          env,
+          args,
+          visionProviderKey,
+          visionResponse.failure ? "error" : "ok",
+          visionResponse.failure ? `provider failure: ${String(visionResponse.failure)}` : "no usable output",
+          visionResponse.usage,
+        );
+        return;
+      }
     } else {
       visionText = await runSelfHostVisualVision(env, VISUAL_VISION_SYSTEM_PROMPT, buildVisualVisionUserPrompt(visionGate.routes), images);
     }
     if (!visionText) return;
     const visionFindings = parseVisualVisionResponse(visionText);
-    args.advisory.findings.push(...buildVisualRegressionFindings(visionFindings));
+    const findings = buildVisualRegressionFindings(visionFindings);
+    args.advisory.findings.push(...findings);
+    if (visionProviderKey) {
+      await recordVisualVisionUsage(
+        env,
+        args,
+        visionProviderKey,
+        "ok",
+        findings.length > 0 ? `advisory findings (${findings.length})` : "no usable output",
+        visionUsage,
+      );
+    }
   } catch (error) {
     console.log(
       JSON.stringify({
@@ -8600,6 +8658,32 @@ export async function runVisualVisionForAdvisory(
       }),
     );
   }
+}
+
+async function recordVisualVisionUsage(
+  env: Env,
+  args: { repoFullName: string; pr: { number: number }; author: string | null },
+  providerKey: { provider: string },
+  status: string,
+  detail: string,
+  usage?: AiReviewActualUsage | undefined,
+): Promise<void> {
+  await recordAiUsageEvent(env, {
+    feature: "visual_vision",
+    actor: args.author ?? null,
+    route: "github_app.visual_vision",
+    model: `byok:${providerKey.provider}`,
+    status,
+    estimatedNeurons: 0,
+    provider: usage?.provider,
+    effort: usage?.effort,
+    inputTokens: usage?.inputTokens,
+    outputTokens: usage?.outputTokens,
+    totalTokens: usage?.totalTokens,
+    costUsd: usage?.costUsd,
+    detail,
+    metadata: { repoFullName: args.repoFullName, pullNumber: args.pr.number },
+  });
 }
 
 /**

@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runVisualVisionForAdvisory } from "../../src/queue/processors";
 import * as repositories from "../../src/db/repositories";
-import { upsertRepositoryAiKey } from "../../src/db/repositories";
+import { countByokAiEventsForRepoSince, upsertRepositoryAiKey } from "../../src/db/repositories";
 import * as submitterReputation from "../../src/review/submitter-reputation";
 import type { CaptureRoute } from "../../src/review/visual/capture";
 import type { AdvisoryFinding, RepositorySettings } from "../../src/types";
+import { utcDayStartIso } from "../../src/services/ai-review";
 import { createTestEnv } from "../helpers/d1";
 
 afterEach(() => {
@@ -235,6 +236,83 @@ describe("runVisualVisionForAdvisory", () => {
     expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual(["https://api.gittensor.io/miners"]);
   });
 
+  it("enforces the shared BYOK daily cap before fetching screenshots or calling the vision provider", async () => {
+    const env = createTestEnv({
+      TOKEN_ENCRYPTION_SECRET: "vision-test-encryption-secret-32b",
+      AI_BYOK_DAILY_REPO_LIMIT: "0",
+    });
+    await upsertRepositoryAiKey(env, { repoFullName, provider: "anthropic", key: "sk-ant-vision-key", model: null });
+    // #4513: the reputation/miner-identity check at the top of runVisualVisionForAdvisory runs regardless of
+    // the BYOK cap outcome -- only the shot fetches and the provider call are gated by the cap.
+    const fetchMock = stubMinerCheckOnly();
+    vi.stubGlobal("fetch", fetchMock);
+    const adv = findingsHolder();
+    await runVisualVisionForAdvisory(env, {
+      mode: "live",
+      repoFullName,
+      pr,
+      author: "alice",
+      confirmedContributor: true,
+      settings: byokSettings(),
+      advisory: adv,
+      routes: [
+        route({
+          path: "/app",
+          diffUrl: "https://x/gittensory/shot?key=diff",
+          beforeUrl: "https://x/gittensory/shot?key=before",
+          afterUrl: "https://x/gittensory/shot?key=after",
+        }),
+      ],
+    });
+    expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual(["https://api.gittensor.io/miners"]);
+    expect(adv.findings).toEqual([]);
+    expect(await countByokAiEventsForRepoSince(env, repoFullName, utcDayStartIso())).toBe(0);
+  });
+
+  // REGRESSION guard: `ai_usage_events` is shared with BYOK key-lifecycle audit rows (recordAiKeyChange's
+  // "set"/"replace"/"delete", src/db/repositories.ts) whose `model` is ALSO `byok:<provider>`-prefixed, so
+  // they match this query's model filter too -- only their `status` (never "ok" or "error") keeps them out.
+  // upsertRepositoryAiKey (used by nearly every test in this file to seed a BYOK key) always writes exactly
+  // one such "set" row, so this asserts it alone never counts toward the cap.
+  it("does not count a BYOK key-lifecycle audit event (upsertRepositoryAiKey's own 'set' row) toward the daily cap", async () => {
+    const env = byokEnv();
+    await upsertRepositoryAiKey(env, { repoFullName, provider: "anthropic", key: "sk-ant-vision-key", model: null });
+    const keyChangeEvents = await env.DB.prepare("select status, feature, model from ai_usage_events").all<{ status: string; feature: string; model: string }>();
+    expect(keyChangeEvents.results).toEqual([{ status: "set", feature: "ai_key_change", model: "byok:anthropic" }]);
+    expect(await countByokAiEventsForRepoSince(env, repoFullName, utcDayStartIso())).toBe(0);
+  });
+
+  it("records successful visual BYOK calls so later passes count toward the shared daily cap", async () => {
+    const env = byokEnv();
+    await upsertRepositoryAiKey(env, {
+      repoFullName,
+      provider: "anthropic",
+      key: "sk-ant-vision-key",
+      model: null,
+    });
+    stubShotsAndProvider(findingsResponse([]));
+    const adv = findingsHolder();
+    await runVisualVisionForAdvisory(env, {
+      mode: "live",
+      repoFullName,
+      pr,
+      author: "alice",
+      confirmedContributor: true,
+      settings: byokSettings(),
+      advisory: adv,
+      routes: [
+        route({
+          path: "/app",
+          diffUrl: "https://x/gittensory/shot?key=diff",
+          beforeUrl: "https://x/gittensory/shot?key=before",
+          afterUrl: "https://x/gittensory/shot?key=after",
+        }),
+      ],
+    });
+    expect(adv.findings).toEqual([]);
+    expect(await countByokAiEventsForRepoSince(env, repoFullName, utcDayStartIso())).toBe(1);
+  });
+
   it("calls the BYOK vision provider with before+after images and publishes a returned finding (desktop route)", async () => {
     const env = byokEnv();
     await upsertRepositoryAiKey(env, { repoFullName, provider: "anthropic", key: "sk-ant-vision-key", model: null });
@@ -396,7 +474,7 @@ describe("runVisualVisionForAdvisory", () => {
     expect(adv.findings).toEqual([]);
   });
 
-  it("adds no finding when the provider call itself fails (non-2xx) -- callAiProvider's own fail-safe", async () => {
+  it("adds no finding when the provider call itself fails (non-2xx) -- callAiProvider's own fail-safe, but STILL records the attempt as a distinct 'error' status that counts toward the daily cap", async () => {
     const env = byokEnv();
     await upsertRepositoryAiKey(env, { repoFullName, provider: "anthropic", key: "sk-ant-vision-key", model: null });
     stubShotsAndProvider(null);
@@ -406,6 +484,37 @@ describe("runVisualVisionForAdvisory", () => {
       repoFullName,
       pr,
       author: "alice",
+      confirmedContributor: true,
+      settings: byokSettings(),
+      advisory: adv,
+      routes: [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=before", afterUrl: "https://x/gittensory/shot?key=after" })],
+    });
+    expect(adv.findings).toEqual([]);
+    // A genuine provider failure is a distinct "error" status (not "ok") -- but it's still a real request
+    // against the maintainer's key, so it must still count toward the shared daily cap (see
+    // BYOK_SPEND_ATTEMPT_STATUSES's doc comment, src/db/repositories.ts): a repo hitting a flaky/misconfigured
+    // provider must not get unlimited free retries just because every attempt happens to fail.
+    const events = await env.DB.prepare("select status, detail from ai_usage_events where feature = 'visual_vision'").all<{ status: string; detail: string }>();
+    expect(events.results).toEqual([{ status: "error", detail: "provider failure: http_error" }]);
+    expect(await countByokAiEventsForRepoSince(env, repoFullName, utcDayStartIso())).toBe(1);
+  });
+
+  it("adds no finding when the provider returns 200 with no usable text (distinct from an http_error failure)", async () => {
+    const env = byokEnv();
+    await upsertRepositoryAiKey(env, { repoFullName, provider: "anthropic", key: "sk-ant-vision-key", model: null });
+    // An empty string is a genuine 2xx response, unlike stubShotsAndProvider(null)'s 500 -- callAiProvider
+    // returns { text: "", failure: undefined } here (no "http_error"), exercising the "no usable output"
+    // fallback in recordVisualVisionUsage's detail message rather than the provider-failure one. Also uses a
+    // null author (ghost/deleted account, `args.author ?? undefined` short-circuits the reputation/miner
+    // check to neutral with no fetch) to exercise recordVisualVisionUsage's own `actor: args.author ?? null`
+    // fallback alongside it.
+    stubShotsAndProvider("");
+    const adv = findingsHolder();
+    await runVisualVisionForAdvisory(env, {
+      mode: "live",
+      repoFullName,
+      pr,
+      author: null,
       confirmedContributor: true,
       settings: byokSettings(),
       advisory: adv,

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   createAgentSdkCodingAgentDriver,
   type AgentSdkQueryFn,
+  type CreateAgentSdkDriverOptions,
   type CodingAgentDriverTask,
 } from "../dist/index.js";
 
@@ -35,10 +36,14 @@ function queryYielding(
   };
 }
 
+function driverWith(options: CreateAgentSdkDriverOptions) {
+  return createAgentSdkCodingAgentDriver({ listChangedFiles: async () => [], ...options });
+}
+
 test("success: session options, tool-use changed-file tracking, transcript, turn count", async () => {
   const captured: { input?: Parameters<AgentSdkQueryFn>[0] } = {};
   const hooks = { PreToolUse: [{ hooks: ["policy-callback"] }] };
-  const driver = createAgentSdkCodingAgentDriver({
+  const driver = driverWith({
     query: queryYielding(
       [
         assistantMessage({ type: "text", text: "editing now" }),
@@ -74,8 +79,62 @@ test("success: session options, tool-use changed-file tracking, transcript, turn
   assert.equal(captured.input!.options.hooks, hooks);
 });
 
+test("success derives changed files from the worktree after untracked mutating tools", async () => {
+  const driver = driverWith({
+    query: queryYielding([
+      assistantMessage({ type: "tool_use", name: "Bash", input: { command: "node mutate.js" } }),
+      { type: "result", subtype: "success", is_error: false, num_turns: 2, result: "mutated" },
+    ]),
+    listChangedFiles: async (cwd) => {
+      assert.equal(cwd, task.workingDirectory);
+      return ["packages/gittensory-engine/src/vulnerable.ts"];
+    },
+  });
+
+  const result = await driver.run(task);
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.changedFiles, ["packages/gittensory-engine/src/vulnerable.ts"]);
+});
+
+test("success fails closed when changed-file enumeration is unavailable, but still reports the real dollar cost", async () => {
+  const driver = driverWith({
+    query: queryYielding([
+      { type: "result", subtype: "success", is_error: false, num_turns: 2, result: "done", total_cost_usd: 0.0042 },
+    ]),
+    listChangedFiles: async () => {
+      throw new Error("not a git worktree");
+    },
+  });
+
+  const result = await driver.run(task);
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.changedFiles, []);
+  assert.match(result.error!, /agent_sdk_changed_files_unavailable: not a git worktree/);
+  // The SDK session ran and was billed before enumeration ever failed -- budgetSpent must not silently
+  // undercount this path just because the changed-files step failed afterward.
+  assert.equal(result.costUsd, 0.0042);
+});
+
+test("success stringifies a non-Error changed-file enumeration failure", async () => {
+  const driver = driverWith({
+    query: queryYielding([
+      { type: "result", subtype: "success", is_error: false, num_turns: 2, result: "done" },
+    ]),
+    listChangedFiles: async () => {
+      throw "git unavailable";
+    },
+  });
+
+  const result = await driver.run(task);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "agent_sdk_changed_files_unavailable: git unavailable");
+});
+
 test("non-success result subtype maps to a structured failure with the subtype as the error", async () => {
-  const driver = createAgentSdkCodingAgentDriver({
+  const driver = driverWith({
     query: queryYielding([
       assistantMessage({ type: "tool_use", name: "Edit", input: { file_path: "src/a.ts" } }),
       { type: "result", subtype: "error_max_turns", is_error: true, num_turns: 6 },
@@ -90,7 +149,7 @@ test("non-success result subtype maps to a structured failure with the subtype a
 });
 
 test("a success-subtype result that still flags is_error is treated as a failure", async () => {
-  const driver = createAgentSdkCodingAgentDriver({
+  const driver = driverWith({
     query: queryYielding([
       { type: "result", subtype: "success", is_error: true, num_turns: 1, result: "refused" },
     ]),
@@ -101,7 +160,7 @@ test("a success-subtype result that still flags is_error is treated as a failure
 });
 
 test("stream ending without a result frame is a protocol failure, not a silent success", async () => {
-  const driver = createAgentSdkCodingAgentDriver({
+  const driver = driverWith({
     query: queryYielding([assistantMessage({ type: "text", text: "started..." })]),
   });
   const result = await driver.run(task);
@@ -111,7 +170,7 @@ test("stream ending without a result frame is a protocol failure, not a silent s
 });
 
 test("a throw mid-stream returns a redacted structured failure and never propagates", async () => {
-  const driver = createAgentSdkCodingAgentDriver({
+  const driver = driverWith({
     query: () =>
       (async function* (): AsyncGenerator<Record<string, unknown>> {
         yield assistantMessage({ type: "text", text: "before the crash" });
@@ -127,7 +186,7 @@ test("a throw mid-stream returns a redacted structured failure and never propaga
 });
 
 test("secret shapes in the result text are redacted from summary and transcript", async () => {
-  const driver = createAgentSdkCodingAgentDriver({
+  const driver = driverWith({
     query: queryYielding([
       {
         type: "result",
@@ -146,7 +205,7 @@ test("secret shapes in the result text are redacted from summary and transcript"
 });
 
 test("malformed frames (no content array, non-object blocks, missing file_path) are skipped defensively", async () => {
-  const driver = createAgentSdkCodingAgentDriver({
+  const driver = driverWith({
     query: queryYielding([
       { type: "assistant" },
       { type: "assistant", message: { content: "not-an-array" } },
@@ -167,7 +226,7 @@ test("malformed frames (no content array, non-object blocks, missing file_path) 
 });
 
 test("names a result frame with no usable subtype 'unknown'", async () => {
-  const driver = createAgentSdkCodingAgentDriver({
+  const driver = driverWith({
     query: queryYielding([{ type: "result", is_error: true }]),
   });
   const result = await driver.run(task);

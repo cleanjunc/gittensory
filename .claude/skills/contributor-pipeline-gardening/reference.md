@@ -63,19 +63,27 @@ Two products, self-host-first:
 |---|---|---|
 | `Miner Wave N — <theme>` (no suffix) | A finished or active AMS-hardening-style wave | Mostly yes once released |
 | `Miner Wave N — <theme> (maintainer)` | Business/legal/architecture track (currently Wave 5, Rent-a-Loop) | Mostly no — but check individual issues, some concrete implementation sub-tasks are deliberately carved out and unlocked even inside a `(maintainer)`-titled milestone |
+| `Miner Wave 4.5 — AMS Hardening Round 2` | **New, created 2026-07-15.** The home for recurring post-Wave-4 gap-audit findings in `packages/loopover-miner`/`packages/loopover-engine` — correctness bugs, unenforced documented contracts, stale comments, small hardening gaps. Every future "AMS selfhost hardening round N" audit files here, not a fresh milestone each time. | Yes — same shape as Wave 4's own contributor-open issues |
 | `AMS Cloud Readiness (maintainer)` | Hosted **multi-tenant SaaS** AMS — NOT the same thing as "AMS selfhost hardening" despite the name similarity | Mostly no (architecture/billing/SLA decisions) — a handful of pure research-spike/audit/load-test issues are deliberately contributor-eligible; check labels per-issue |
 | `ORB Cloud Readiness (maintainer)` | Same shape, for ORB's hosted SaaS story | Mostly no, same caveat — the first several issues in this milestone (#4878-4884-style, "extract X into gittensory-engine") are often pure refactors miscategorized here, not actually tenant/business-specific — read the body, not just the milestone |
 | `ORB - Long Term Features & Improvements` | Grab-bag: some genuine self-host feature/bug work, some product-design epics awaiting maintainer subjective calls | Mixed — read each body |
 | `LoopOver Rebrand Migration (maintainer)` | Brand/infra cutover | No |
-| Unmilestoned | Orphans | Usually fine to fold into the closest-fitting existing milestone above rather than leave adrift |
+| Unmilestoned | Should be rare — every gardening-generated issue gets a real milestone (see below) | If you find one, fold it into the closest-fitting existing milestone rather than leave it adrift |
 
-**Don't invent a new milestone reflexively — confirmed the hard way, 2026-07-15.** When scoping the
-unified AMS+ORB harness epic (#6012) into an 11-issue docs-porting body of work, a new milestone was
-created for it; the maintainer immediately reverted this and folded the epic into the existing
-`ORB - Long Term Features & Improvements` grab-bag instead. Treat "this genuinely doesn't fit any
-existing bucket" as a much higher bar than it sounds — even an epic-sized new initiative should
-default to the closest existing milestone unless explicitly told otherwise. If a new milestone still
-seems warranted, propose it and wait for confirmation rather than creating it unilaterally.
+**Every gardening-generated issue gets a milestone — none ship unmilestoned.** Default to the
+closest-fitting existing one. Creating a new milestone is a much higher bar than it sounds — confirmed
+the hard way, 2026-07-15: when scoping the unified AMS+ORB harness epic (#6012) into an 11-issue
+docs-porting body of work, a new milestone was created for it; the maintainer immediately reverted
+this and folded the epic into the existing `ORB - Long Term Features & Improvements` grab-bag instead.
+A new milestone is warranted only when nothing existing fits AND the work is either a genuinely major
+initiative or a **recurring category that will keep needing a home** — the latter is why `Miner Wave
+4.5 — AMS Hardening Round 2` (above) was created the same day as the #6012 revert, for the opposite
+reason: this skill's own AMS-hardening gap-audits recur every run now (see the raised cadence in
+`SKILL.md`), so a durable bucket is the correct call, not a one-off exception. A single one-off oddity
+alone is not enough justification. When genuinely unsure and the call is high-stakes (a new milestone,
+not routine label/relationship choices), it's fine to propose 1-2 options — but default to deciding and
+documenting the reasoning (in the issue body or milestone description) rather than blocking a run on
+confirmation, per the maintainer's own stated preference (2026-07-15): "figure it out yourself."
 
 ## What's safe to unleash — the actual test
 
@@ -180,6 +188,15 @@ issue (e.g. #5215-5230) for the exact pattern. Gardening-generated contributor i
 always be the heavier template; the light one is for issues you're explicitly NOT unlocking.
 
 ## Native relationship linking (GraphQL — confirmed working on this repo, 2026-07-14)
+
+**Check every new batch of issues for a real dependency before moving on — this is a required step,
+not an optional nicety** (reinforced by the maintainer, 2026-07-15: relationship links "can be
+valuable/important in guiding users to work on specific things in the correct order"). Most batches of
+independent bug-fixes or parity additions (e.g. a set of REST/GraphQL-mirror issues, each adding one
+unrelated field) genuinely have no dependency on each other — in that case the correct outcome of the
+check is "no links needed," not a forced one. Reserve `addBlockedBy` for a real case where working an
+issue out of order would waste a contributor's time or produce broken intermediate state, and
+`addSubIssue` for anything that's genuinely a piece of a parent epic/tracker.
 
 Prefer these over a markdown checklist for any new tracker/epic:
 

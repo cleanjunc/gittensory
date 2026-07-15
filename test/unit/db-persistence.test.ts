@@ -4,6 +4,7 @@ import {
   getContributorScoringProfile,
   getOpenUpstreamDriftReportByFingerprint,
   hasActiveReviewForHeadSha,
+  hasReviewedForHeadSha,
   listContributorRepoStats,
   listLatestRepoGithubTotalsSnapshots,
   listLatestSignalSnapshotsForTargets,
@@ -366,6 +367,38 @@ describe("active-review tracking (#review-evasion-protection)", () => {
     expect(await hasActiveReviewForHeadSha(env, "owner/repo", 1, "sha1")).toBe(true); // still active -- guarded, not cleared.
     expect(await terminalizeActiveReviewTracking(env, "owner/repo", 1, { onlyIfHeadSha: "sha1" })).toBe(true);
     expect(await hasActiveReviewForHeadSha(env, "owner/repo", 1, "sha1")).toBe(false);
+  });
+
+  it("hasReviewedForHeadSha is false when no row exists at all", async () => {
+    const env = createTestEnv();
+    expect(await hasReviewedForHeadSha(env, "owner/repo", 1, "sha1")).toBe(false);
+  });
+
+  it("hasReviewedForHeadSha (#draft-evasion-post-review): true for the exact head whether the row is still active OR already terminal -- unlike hasActiveReviewForHeadSha, a terminalized (published) review still counts", async () => {
+    const env = createTestEnv();
+    await startActiveReviewTracking(env, { repoFullName: "owner/repo", pullNumber: 1, headSha: "sha1", deliveryId: "delivery-1" });
+    expect(await hasReviewedForHeadSha(env, "owner/repo", 1, "sha1")).toBe(true); // active
+    expect(await hasActiveReviewForHeadSha(env, "owner/repo", 1, "sha1")).toBe(true);
+
+    await terminalizeActiveReviewTracking(env, "owner/repo", 1);
+    expect(await hasReviewedForHeadSha(env, "owner/repo", 1, "sha1")).toBe(true); // STILL true -- the key difference.
+    expect(await hasActiveReviewForHeadSha(env, "owner/repo", 1, "sha1")).toBe(false); // narrower sibling flips to false.
+  });
+
+  it("hasReviewedForHeadSha is false for a different head or PR, even when the tracked row is active", async () => {
+    const env = createTestEnv();
+    await startActiveReviewTracking(env, { repoFullName: "owner/repo", pullNumber: 1, headSha: "sha1", deliveryId: "delivery-1" });
+    expect(await hasReviewedForHeadSha(env, "owner/repo", 1, "sha-different")).toBe(false);
+    expect(await hasReviewedForHeadSha(env, "owner/repo", 2, "sha1")).toBe(false);
+  });
+
+  it("hasReviewedForHeadSha returns to false once a NEW head restarts tracking -- a fresh push earns a fresh shot", async () => {
+    const env = createTestEnv();
+    await startActiveReviewTracking(env, { repoFullName: "owner/repo", pullNumber: 1, headSha: "sha1", deliveryId: "delivery-1" });
+    await terminalizeActiveReviewTracking(env, "owner/repo", 1);
+    await startActiveReviewTracking(env, { repoFullName: "owner/repo", pullNumber: 1, headSha: "sha2", deliveryId: "delivery-2" });
+    expect(await hasReviewedForHeadSha(env, "owner/repo", 1, "sha1")).toBe(false);
+    expect(await hasReviewedForHeadSha(env, "owner/repo", 1, "sha2")).toBe(true);
   });
 
   it("startActiveReviewTracking without an authorLogin persists a null author (defensive -- a deleted-account PR yields a null login)", async () => {

@@ -10,6 +10,7 @@ import {
   getGateBlockOutcome,
   getInstallation,
   hasActiveReviewForHeadSha,
+  hasReviewedForHeadSha,
   isGlobalAgentFrozen,
   recordAuditEvent,
   terminalizeActiveReviewTracking,
@@ -19,6 +20,7 @@ import { ensurePullRequestLabel } from "../github/labels";
 import { fetchPullRequestFreshness, pullRequestFreshnessDetail, type PullRequestFreshness } from "../github/pr-freshness";
 import { closePullRequest, createIssueComment, getLastCloserLogin, getLastReopenerLogin, reopenPullRequest } from "../github/pr-actions";
 import { parseGitHubLoginList } from "../auth/security";
+import { isAutoCloseExempt } from "../settings/auto-close-exempt";
 import { resolveAutonomy } from "../settings/autonomy";
 import { isGlobalAgentPause, resolveAgentActionMode, resolveAgentPermissionReadiness } from "../settings/agent-execution";
 import { DEFAULT_REVIEW_EVASION_LABEL, isProtectedAutomationAuthor, resolveNullableLabel } from "../settings/agent-actions";
@@ -730,10 +732,18 @@ async function closeReviewEvasionSelfCloseIfActive(
   }
 }
 
-/** Review-evasion protection (#review-evasion-protection): a contributor converting their OWN OPEN PR to
- *  draft while loopover has an ACTIVE review pass running against its current headSha is dodging the
- *  one-shot review, distinct from the EXISTING draft-dodge guard above (which only fires after a PRIOR gate
- *  FAILURE on this head). Unlike the self-close sibling, converting to draft never closes the PR on GitHub,
+/** Review-evasion protection (#review-evasion-protection, broadened #draft-evasion-post-review): a
+ *  contributor converting their OWN OPEN PR to draft after loopover has run a review pass against its
+ *  current headSha is dodging the one-shot review, distinct from the EXISTING draft-dodge guard above (which
+ *  only fires after a PRIOR gate FAILURE on this head -- this guard fires on ANY reviewed head, block or
+ *  not, since the underlying complaint is draft-conversion itself: merge-conflict risk, wasted CI, and
+ *  pipeline churn from a PR that already consumed its one-shot review being yanked back to "not ready").
+ *  Uses hasReviewedForHeadSha (not hasActiveReviewForHeadSha) deliberately: the active-only window closes
+ *  the instant a review publishes, but a human reacting to a now-VISIBLE label/comment necessarily acts
+ *  AFTER that -- the narrow window could only ever catch someone converting to draft blind. `.loopover.yml`
+ *  settings.autoCloseExemptLogins (the same shared allowlist the contributor-cap/review-nag guards already
+ *  honor) is an explicit escape hatch for trusted contributors who legitimately need to keep iterating in
+ *  draft after a review. Unlike the self-close sibling, converting to draft never closes the PR on GitHub,
  *  so no reopen step is needed -- a direct close, exactly like the draft-dodge guard's own close step,
  *  suffices. Per-PR actuation-locked like its draft-dodge/reopen-reclose/self-close siblings. */
 export async function maybeCloseReviewEvasionDraftConversion(
@@ -746,11 +756,11 @@ export async function maybeCloseReviewEvasionDraftConversion(
   settings: RepositorySettings,
 ): Promise<void> {
   await withPrActuationLock(env, repoFullName, pr.number, "review-evasion-draft", () =>
-    closeReviewEvasionDraftConversionIfActive(env, deliveryId, installationId, repoFullName, pr, payload, settings),
+    closeReviewEvasionDraftConversionIfReviewed(env, deliveryId, installationId, repoFullName, pr, payload, settings),
   );
 }
 
-async function closeReviewEvasionDraftConversionIfActive(
+async function closeReviewEvasionDraftConversionIfReviewed(
   env: Env,
   deliveryId: string,
   installationId: number,
@@ -768,10 +778,11 @@ async function closeReviewEvasionDraftConversionIfActive(
   // sibling's identical actor check).
   if (!converter || !authorLogin || converter !== authorLogin) return;
   if (isProtectedAutomationAuthor(pr.authorLogin)) return;
+  if (isAutoCloseExempt(pr.authorLogin, settings.autoCloseExemptLogins)) return;
   if (!pr.headSha) return;
   const headSha = pr.headSha;
   if (await hasMaintainerOrOwnerPermission(env, installationId, repoFullName, authorLogin)) return;
-  if (!(await hasActiveReviewForHeadSha(env, repoFullName, pr.number, headSha))) return;
+  if (!(await hasReviewedForHeadSha(env, repoFullName, pr.number, headSha))) return;
 
   const targetKey = `${repoFullName}#${pr.number}`;
   const gateMetadata = { deliveryId, repoFullName, headSha };
@@ -787,7 +798,7 @@ async function closeReviewEvasionDraftConversionIfActive(
     actor: String(pr.authorLogin),
     metadata: gateMetadata,
     dryRun: {
-      detail: `dry-run: would close review-evasion draft-conversion by ${pr.authorLogin} -- active review on headSha ${pr.headSha}`,
+      detail: `dry-run: would close review-evasion draft-conversion by ${pr.authorLogin} -- headSha ${pr.headSha} already has a review recorded`,
       metadata: { ...gateMetadata, mode: "dry_run" },
     },
     paused: {
@@ -849,7 +860,7 @@ async function closeReviewEvasionDraftConversionIfActive(
     actor: "loopover",
     targetKey,
     outcome: "completed",
-    detail: `closed a review-evasion draft-conversion by ${pr.authorLogin} -- active review on headSha ${pr.headSha} was in progress`,
+    detail: `closed a review-evasion draft-conversion by ${pr.authorLogin} -- headSha ${pr.headSha} had already been reviewed`,
     metadata: { deliveryId, repoFullName, headSha: pr.headSha },
   }).catch(
     /* v8 ignore next -- fail-safe: an audit write failure never blocks the handler. */

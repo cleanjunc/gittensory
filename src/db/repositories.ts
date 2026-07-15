@@ -5462,6 +5462,25 @@ export async function hasActiveReviewForHeadSha(env: Env, repoFullName: string, 
   return row !== undefined && row.status === "active" && row.headSha === headSha;
 }
 
+// Review-evasion protection (broadened window, #draft-evasion-post-review): whether loopover has EVER started
+// a review pass for this EXACT repo/PR/headSha, regardless of whether that pass is still active or has already
+// concluded (published) -- unlike hasActiveReviewForHeadSha above, a terminalized row still counts. This is the
+// signal the draft-conversion evasion guard needs: hasActiveReviewForHeadSha's window closes the instant the
+// review publishes, but a human reacting to a now-VISIBLE label/comment necessarily acts AFTER publish, so the
+// narrow "still active" check can only ever catch someone converting to draft blind, before any output exists
+// -- in practice, never. This function instead answers "has this exact commit already consumed its one-shot
+// review," which stays true for as long as the PR's head doesn't change (startActiveReviewTracking resets the
+// row, including this "ever reviewed" signal, the moment a NEW commit arrives -- so pushing a fresh commit
+// always earns a fresh shot, exactly as intended). A row for a DIFFERENT headSha does not count.
+export async function hasReviewedForHeadSha(env: Env, repoFullName: string, pullNumber: number, headSha: string): Promise<boolean> {
+  const row = await getDb(env.DB)
+    .select({ headSha: activeReviewTracking.headSha })
+    .from(activeReviewTracking)
+    .where(and(eq(activeReviewTracking.repoFullName, boundedString(repoFullName, 200)), eq(activeReviewTracking.pullNumber, pullNumber)))
+    .get();
+  return row !== undefined && row.headSha === headSha;
+}
+
 // Review turnaround-time tracking (#4446): reuses the SAME startedAt startActiveReviewTracking already records
 // for review-evasion protection -- reads it (for the exact headSha this pass is publishing) rather than
 // duplicating a second "when did this review start" clock. Not gated on status === "active": the publish site

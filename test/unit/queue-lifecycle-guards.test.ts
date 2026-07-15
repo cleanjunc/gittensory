@@ -2495,6 +2495,53 @@ describe("review-evasion protection (#review-evasion-protection)", () => {
       expect(evasionAudit?.outcome).toBe("completed");
     });
 
+    it("REGRESSION (#draft-evasion-post-review): closes a draft conversion AFTER the review already published, not just mid-computation -- the active-only window would have missed this, since a human reacting to a now-visible label necessarily acts after the pass already terminalized", async () => {
+      const calls: Array<{ url: string; method: string }> = [];
+      stubEvasionFetch(calls);
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory" });
+      await setupEvasionRepo(env);
+      await repositoriesModule.startActiveReviewTracking(env, { repoFullName: "JSONbored/gittensory", pullNumber: 42, headSha: "abc123", deliveryId: "review-start-1" });
+      // The review pass concludes and publishes -- exactly what happens right before a human could ever SEE
+      // a label/comment to react to.
+      await repositoriesModule.terminalizeActiveReviewTracking(env, "JSONbored/gittensory", 42);
+
+      await processJob(env, { type: "github-webhook", deliveryId: "draft-evasion-post-publish", eventName: "pull_request", payload: draftEvasionPayload("contributor") });
+
+      expect(calls.some((c) => c.method === "PATCH" && c.url.endsWith("/pulls/42"))).toBe(true);
+      const audit = await env.DB.prepare("select outcome from audit_events where event_type = ?").bind("github_app.review_evasion_closed").first<{ outcome: string }>();
+      expect(audit?.outcome).toBe("completed");
+    });
+
+    it("does nothing for a draft conversion once the head has moved past the reviewed commit -- a fresh push earns a fresh shot", async () => {
+      const calls: Array<{ url: string; method: string }> = [];
+      stubEvasionFetch(calls);
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory" });
+      await setupEvasionRepo(env);
+      // The tracked review ran against an OLDER commit -- the payload's current headSha (abc123) has never
+      // itself been reviewed.
+      await repositoriesModule.startActiveReviewTracking(env, { repoFullName: "JSONbored/gittensory", pullNumber: 42, headSha: "old-sha-before-push", deliveryId: "review-start-1" });
+      await repositoriesModule.terminalizeActiveReviewTracking(env, "JSONbored/gittensory", 42);
+
+      await processJob(env, { type: "github-webhook", deliveryId: "draft-evasion-new-head", eventName: "pull_request", payload: draftEvasionPayload("contributor") });
+
+      expect(calls.some((c) => c.method === "PATCH" && c.url.endsWith("/pulls/42"))).toBe(false);
+    });
+
+    it("REGRESSION (#draft-evasion-post-review): honors settings.autoCloseExemptLogins -- the shared allowlist the contributor-cap/review-nag guards already use", async () => {
+      const calls: Array<{ url: string; method: string }> = [];
+      stubEvasionFetch(calls);
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory" });
+      await setupEvasionRepo(env, { autoCloseExemptLogins: ["contributor"] });
+      await repositoriesModule.startActiveReviewTracking(env, { repoFullName: "JSONbored/gittensory", pullNumber: 42, headSha: "abc123", deliveryId: "review-start-1" });
+      await repositoriesModule.terminalizeActiveReviewTracking(env, "JSONbored/gittensory", 42);
+
+      await processJob(env, { type: "github-webhook", deliveryId: "draft-evasion-exempt", eventName: "pull_request", payload: draftEvasionPayload("contributor") });
+
+      expect(calls.some((c) => c.method === "PATCH" && c.url.endsWith("/pulls/42"))).toBe(false);
+      const audit = await env.DB.prepare("select count(*) as n from audit_events where event_type = ?").bind("github_app.review_evasion_closed").first<{ n: number }>();
+      expect(audit?.n).toBe(0);
+    });
+
     it("does nothing when the author holds write collaborator permission", async () => {
       const calls: Array<{ url: string; method: string }> = [];
       stubEvasionFetch(calls, { collaboratorPermission: "write" });

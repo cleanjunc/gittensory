@@ -87,6 +87,7 @@ import {
   registerOrbRelayWithMonitor,
   runOrbExportWithMonitor,
   runScheduledLoopWithMonitor,
+  withOrbRelayDrainReentrancyGuard,
 } from "./selfhost/monitored-work";
 import {
   currentOtelTraceParent,
@@ -1150,25 +1151,18 @@ async function main(): Promise<void> {
     const { drainOrbRelay } = await import("./orb/broker-client");
     const { enqueueWebhookByEnv } = await import("./github/webhook");
     /* v8 ignore start -- pull-mode relay loop is a live self-host timer; monitor semantics are covered in selfhost tests. */
-    let drainInFlight = false;
-    const drainRelay = async (): Promise<void> => {
-      if (drainInFlight) return;
-      drainInFlight = true;
-      try {
-        await drainOrbRelayWithMonitor({
-          state: relayDrainState,
-          relayEnv: {
-            ORB_ENROLLMENT_SECRET: process.env.ORB_ENROLLMENT_SECRET,
-            ORB_BROKER_URL: process.env.ORB_BROKER_URL,
-          },
-          env,
-          drain: drainOrbRelay,
-          enqueue: enqueueWebhookByEnv,
-        });
-      } finally {
-        drainInFlight = false;
-      }
-    };
+    const drainRelay = withOrbRelayDrainReentrancyGuard(() =>
+      drainOrbRelayWithMonitor({
+        state: relayDrainState,
+        relayEnv: {
+          ORB_ENROLLMENT_SECRET: process.env.ORB_ENROLLMENT_SECRET,
+          ORB_BROKER_URL: process.env.ORB_BROKER_URL,
+        },
+        env,
+        drain: drainOrbRelay,
+        enqueue: enqueueWebhookByEnv,
+      }),
+    );
     void drainRelay().catch((error) =>
       captureError(error, { kind: "orb_relay_drain" }, "orb_relay_drain"),
     );

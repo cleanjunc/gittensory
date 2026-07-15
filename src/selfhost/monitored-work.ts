@@ -128,6 +128,31 @@ export async function drainOrbRelayWithMonitor(args: {
   );
 }
 
+// Wraps a recurring drain tick with a re-entrancy guard: if the PREVIOUS tick is still running (a slow broker
+// round-trip, or a slow per-event enqueue write), this tick is skipped rather than piling a second concurrent
+// attempt on top of the first. Previously this skip was completely silent -- no metric, no log -- making it
+// indistinguishable from the timer not having fired at all, which is exactly what a Sentry Cron Monitor
+// "missed check-in" (GITTENSORY-12, 295 occurrences and still recurring) looks like from Sentry's side. A live
+// investigation confirmed the loop itself is healthy (frequent real drains succeed) and the schedule/secret
+// config are both correct, so an occasional silent overlap-skip run is the remaining unverified suspect; this
+// turns it into a real signal instead of an invisible blind spot.
+export function withOrbRelayDrainReentrancyGuard(run: () => Promise<void>): () => Promise<void> {
+  let inFlight = false;
+  return async () => {
+    if (inFlight) {
+      incr("loopover_orb_relay_drain_skipped_total");
+      console.warn(JSON.stringify({ level: "warn", event: "orb_relay_drain_skipped_overlap" }));
+      return;
+    }
+    inFlight = true;
+    try {
+      await run();
+    } finally {
+      inFlight = false;
+    }
+  };
+}
+
 type OrbRelayRegisterEnv = {
   ORB_ENROLLMENT_SECRET?: string | undefined;
   ORB_BROKER_URL?: string | undefined;

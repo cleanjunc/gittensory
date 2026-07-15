@@ -18,6 +18,7 @@ import {
   registerOrbRelayWithMonitor,
   runOrbExportWithMonitor,
   runScheduledLoopWithMonitor,
+  withOrbRelayDrainReentrancyGuard,
   type OrbRelayDrainState,
 } from "../../src/selfhost/monitored-work";
 import { drainOrbRelay, type OrbRelayRegistrationState } from "../../src/orb/broker-client";
@@ -485,6 +486,53 @@ describe("self-host monitored recurring work", () => {
       } finally {
         consoleLog.mockRestore();
       }
+    });
+  });
+
+  describe("withOrbRelayDrainReentrancyGuard (GITTENSORY-12 -- make a skipped-overlap tick observable, not silent)", () => {
+    it("skips a concurrent call while the wrapped run is still in flight, counting + logging the overlap instead of staying silent", async () => {
+      let resolveFirst: () => void = () => {};
+      const first = new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const run = vi.fn(() => first);
+      const guarded = withOrbRelayDrainReentrancyGuard(run);
+      const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+      const firstCall = guarded(); // not yet resolved -- run() is "in flight"
+      expect(run).toHaveBeenCalledTimes(1);
+
+      await guarded(); // fires while the first call is still pending
+      expect(run).toHaveBeenCalledTimes(1); // the real work was NOT invoked a second time
+      expect(consoleWarn).toHaveBeenCalledWith(
+        JSON.stringify({ level: "warn", event: "orb_relay_drain_skipped_overlap" }),
+      );
+      expect(await renderMetrics()).toContain("loopover_orb_relay_drain_skipped_total 1");
+
+      consoleWarn.mockRestore();
+      resolveFirst();
+      await firstCall;
+    });
+
+    it("runs the real work again once the previous tick has completed -- no overlap once nothing is in flight", async () => {
+      const run = vi.fn().mockResolvedValue(undefined);
+      const guarded = withOrbRelayDrainReentrancyGuard(run);
+
+      await guarded();
+      await guarded();
+      expect(run).toHaveBeenCalledTimes(2); // sequential calls each reach the real work -- no overlap to skip
+      expect(await renderMetrics()).not.toContain("loopover_orb_relay_drain_skipped_total");
+    });
+
+    it("REGRESSION: clears the in-flight flag even when the wrapped run throws, so the NEXT tick is not skipped forever", async () => {
+      const run = vi.fn().mockRejectedValueOnce(new Error("broker down")).mockResolvedValueOnce(undefined);
+      const guarded = withOrbRelayDrainReentrancyGuard(run);
+
+      // The guard itself doesn't swallow errors (the finally only resets the flag) -- callers still see and
+      // handle failures exactly like before this was extracted (server.ts's own .catch() around drainRelay()).
+      await expect(guarded()).rejects.toThrow("broker down");
+      await guarded(); // the flag was still cleared, so this reaches the real work again instead of skipping
+      expect(run).toHaveBeenCalledTimes(2);
     });
   });
 });

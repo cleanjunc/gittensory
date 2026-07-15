@@ -266,3 +266,97 @@ describe("loopover-miner governor pause/resume/status CLI (#4851)", () => {
     }
   });
 });
+
+describe("governor pause/resume/status --json error contract (#5914)", () => {
+  it("runGovernorPause emits the JSON envelope on a parse error and never opens the store", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const openGovernorStateFn = vi.fn();
+
+    expect(await runGovernorPause(["--verbose", "--json"], { openGovernorState: openGovernorStateFn })).toBe(2);
+    expect(openGovernorStateFn).not.toHaveBeenCalled();
+    expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toEqual({ ok: false, error: "Unknown option: --verbose" });
+  });
+
+  it("runGovernorPause emits the JSON envelope when the governor state throws", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    expect(
+      await runGovernorPause(["--json"], {
+        openGovernorState: () => {
+          throw new Error("disk full");
+        },
+      }),
+    ).toBe(2);
+    expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toEqual({ ok: false, error: "disk full" });
+  });
+
+  it("runGovernorResume emits the JSON envelope on a parse error rejected before --json is reached", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    // `extra` aborts the parse before the parser ever sees --json, so the envelope can only come from
+    // argsWantJson(args) reading raw argv -- parsed.json would be unavailable here.
+    expect(await runGovernorResume(["extra", "--json"])).toBe(2);
+    const envelope = JSON.parse(String(log.mock.calls[0]?.[0]));
+    expect(envelope.ok).toBe(false);
+    expect(envelope.error).toContain("Usage: loopover-miner governor resume");
+  });
+
+  it("runGovernorResume emits the JSON envelope when the governor state throws", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    expect(
+      await runGovernorResume(["--json"], {
+        openGovernorState: () => {
+          throw new Error("disk full");
+        },
+      }),
+    ).toBe(2);
+    expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toEqual({ ok: false, error: "disk full" });
+  });
+
+  it("runGovernorStatus emits the JSON envelope on a parse error", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    expect(await runGovernorStatus(["extra", "--json"])).toBe(2);
+    const envelope = JSON.parse(String(log.mock.calls[0]?.[0]));
+    expect(envelope.ok).toBe(false);
+    expect(envelope.error).toContain("Usage: loopover-miner governor status");
+  });
+
+  it("runGovernorStatus emits the JSON envelope when the governor state throws", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    expect(
+      await runGovernorStatus(["--json"], {
+        openGovernorState: () => {
+          throw new Error("disk full");
+        },
+      }),
+    ).toBe(2);
+    expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toEqual({ ok: false, error: "disk full" });
+  });
+
+  it("keeps non-JSON error paths on stderr as plain text", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    expect(await runGovernorPause(["--verbose"])).toBe(2);
+    expect(await runGovernorResume(["extra"])).toBe(2);
+    expect(await runGovernorStatus(["extra"])).toBe(2);
+    expect(
+      await runGovernorStatus([], {
+        openGovernorState: () => {
+          throw new Error("disk full");
+        },
+      }),
+    ).toBe(2);
+
+    expect(log).not.toHaveBeenCalled();
+    expect(error.mock.calls.map((call) => String(call[0]))).toEqual([
+      "Unknown option: --verbose",
+      expect.stringContaining("Usage: loopover-miner governor resume"),
+      expect.stringContaining("Usage: loopover-miner governor status"),
+      "disk full",
+    ]);
+  });
+});

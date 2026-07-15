@@ -219,6 +219,22 @@ async function buildPostgresBackend(
   const pg = (await import("pg")).default;
   pg.types.setTypeParser(20, (v: string) => Number.parseInt(v, 10)); // int8 (COUNT) → number, like D1
   const pool = new pg.Pool({ connectionString: url, max: resolvePostgresPoolMax() });
+  // node-postgres crashes the WHOLE process with an uncaught exception if the pool has no "error" listener and
+  // an IDLE client's connection drops (Node's EventEmitter throws on an unhandled "error" event) -- confirmed
+  // live (GITTENSORY-1R/1S): Postgres itself being restarted ("terminating connection due to administrator
+  // command") took the whole app down, which then crash-looped for ~29 minutes hitting waitForPostgres's 30s
+  // boot timeout (GITTENSORY-1T) until Postgres was fully back up. The pool already removes a broken client and
+  // opens a fresh one on the next checkout on its own -- the only thing missing was a listener so Node stops
+  // treating an idle client's connection-level error as unhandled.
+  pool.on("error", (error) => {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        event: "selfhost_pg_pool_error",
+        message: error instanceof Error ? error.message : "unknown error",
+      }),
+    );
+  });
   const db = createPgAdapter(pool);
   const queue = createPgQueue(pool, consume);
   await queue.init();

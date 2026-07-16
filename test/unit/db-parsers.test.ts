@@ -161,7 +161,7 @@ describe("database row parser hardening", () => {
     );
   });
 
-  it("REGRESSION: adding another linked issue resets the PR-level claim time", async () => {
+  it("REGRESSION: adding an OVERLAPPING linked issue does NOT reset the PR-level claim time; only a fully disjoint set does", async () => {
     const env = createTestEnv();
 
     vi.useFakeTimers();
@@ -202,10 +202,15 @@ describe("database row parser hardening", () => {
     });
     const expanded = (await listPullRequests(env, "owner/repo")).find((p) => p.number === 11);
 
+    // #linked-issue-claim-overlap-preserve regression: this used to assert linkedIssueClaimedAt was reset to
+    // the fresh "2026-06-29T10:05:00.000Z" timestamp -- that was the AUDITED BUG itself, not the intended
+    // design. Adding #2 alongside the already-claimed #1 shares an overlap with the prior set ({1} ∩ {1,2} =
+    // {1}), so #1's ORIGINAL claim time must survive; resetting it let a later PR that also claims #1 leapfrog
+    // ahead in duplicate-cluster winner priority purely because this PR later mentioned an unrelated issue.
     expect(expanded).toMatchObject({
       title: "Expanded claim",
       linkedIssues: [1, 2],
-      linkedIssueClaimedAt: "2026-06-29T10:05:00.000Z",
+      linkedIssueClaimedAt: first?.linkedIssueClaimedAt,
     });
 
     vi.setSystemTime(new Date("2026-06-29T10:07:00.000Z"));

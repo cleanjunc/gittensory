@@ -593,6 +593,7 @@ import { resolveHardGuardrailGlobs } from "../review/guardrail-config";
 import { guardrailPathMatches, isGuardrailHit } from "../signals/change-guardrail";
 import { createIssueComment } from "../github/pr-actions";
 import {
+  anyLinkedIssueHardRuleOn,
   loadLinkedIssueHardRules,
   mergeLinkedIssueHardRuleWithPersistedViolation,
   resolveLinkedIssueHardRule,
@@ -2697,10 +2698,14 @@ async function runAgentMaintenancePlanAndExecute(
   if (liveLinkedIssueHardRule?.violated === true) {
     await markPullRequestLinkedIssueHardRuleViolated(env, repoFullName, pr.number, liveLinkedIssueHardRule.reason ?? "the linked issue is not eligible for a community PR").catch(() => undefined);
   }
-  const linkedIssueHardRule = mergeLinkedIssueHardRuleWithPersistedViolation(liveLinkedIssueHardRule, {
-    violatedAt: pr.linkedIssueHardRuleViolatedAt,
-    reason: pr.linkedIssueHardRuleViolationReason,
-  });
+  const linkedIssueHardRule = mergeLinkedIssueHardRuleWithPersistedViolation(
+    liveLinkedIssueHardRule,
+    {
+      violatedAt: pr.linkedIssueHardRuleViolatedAt,
+      reason: pr.linkedIssueHardRuleViolationReason,
+    },
+    anyLinkedIssueHardRuleOn(linkedIssueRulesConfig),
+  );
 
   // Unlinked-issue guardrail (#unlinked-issue-guardrail, credibility-gate-farming defense): when this PR
   // links NO issue and the repo opted in (settings.unlinkedIssueGuardrail.mode === "hold"), check whether the
@@ -5868,7 +5873,7 @@ async function handlePullRequestWebhookEvent(
       const draftAuthor = (pr.authorLogin ?? "").toLowerCase();
       const isAuthorDraftConversion = draftConverter.length > 0 && draftConverter === draftAuthor;
       const draftConversionCount = isAuthorDraftConversion
-        ? await bumpPullRequestDraftConversionCount(env, repoFullName, pr.number).catch(
+        ? await bumpPullRequestDraftConversionCount(env, repoFullName, pr.number, deliveryId).catch(
             /* v8 ignore next -- fail-safe: a counter-write failure only means this ONE cycle isn't detected. */
             () => 0,
           )

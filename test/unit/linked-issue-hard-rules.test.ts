@@ -3,6 +3,7 @@ import { createTestEnv } from "../helpers/d1";
 import * as backfillModule from "../../src/github/backfill";
 import { MAX_LINKED_ISSUE_NUMBERS } from "../../src/db/repositories";
 import {
+  anyLinkedIssueHardRuleOn,
   DEFAULT_LINKED_ISSUE_HARD_RULES,
   evaluateLinkedIssueHardRules,
   hasVerifiableOpenLinkedIssueReference,
@@ -596,31 +597,36 @@ describe("mergeLinkedIssueHardRuleWithPersistedViolation (#linked-issue-hard-rul
 
   it("returns the live result unchanged when it is ALREADY a violation (persisted memory adds nothing new)", () => {
     const live = { violated: true, reason: "Linked issue #9 is labeled `maintainer-only` — it is not open for community PRs unless assigned by a maintainer." };
-    expect(mergeLinkedIssueHardRuleWithPersistedViolation(live, notPersisted)).toBe(live);
+    expect(mergeLinkedIssueHardRuleWithPersistedViolation(live, notPersisted, true)).toBe(live);
     // A live violation's reason wins even when a DIFFERENT persisted reason also exists — freshest evidence.
     expect(
-      mergeLinkedIssueHardRuleWithPersistedViolation(live, { violatedAt: "2026-06-01T00:00:00Z", reason: "a stale, different reason" }),
+      mergeLinkedIssueHardRuleWithPersistedViolation(live, { violatedAt: "2026-06-01T00:00:00Z", reason: "a stale, different reason" }, true),
     ).toBe(live);
   });
 
   it("passes through undefined (no rule applies) when nothing is persisted", () => {
-    expect(mergeLinkedIssueHardRuleWithPersistedViolation(undefined, notPersisted)).toBeUndefined();
+    expect(mergeLinkedIssueHardRuleWithPersistedViolation(undefined, notPersisted, true)).toBeUndefined();
   });
 
   it("passes through a clean { violated: false } result unchanged when nothing is persisted", () => {
     const clean = { violated: false, reason: null };
-    expect(mergeLinkedIssueHardRuleWithPersistedViolation(clean, notPersisted)).toBe(clean);
+    expect(mergeLinkedIssueHardRuleWithPersistedViolation(clean, notPersisted, true)).toBe(clean);
   });
 
   // REGRESSION (dodge 1): a contributor edits the PR body during the flag-then-close grace window to strip the
   // "Closes #N" reference. The next pass's live re-parse then sees zero linked issues, so resolveLinkedIssueHardRule
   // returns `undefined` -- exactly like this "live" input. Without the persisted memory, clearLinkedIssueFlag
-  // would remove the pending-closure label as if the violation never happened.
-  it("REGRESSION (body-edit-during-grace-window): a persisted violation is enforced even when the live re-parse now finds NO linked issues at all (undefined)", () => {
-    const merged = mergeLinkedIssueHardRuleWithPersistedViolation(undefined, {
-      violatedAt: "2026-06-01T12:00:00Z",
-      reason: "Linked issue #9 is labeled `maintainer-only` — it is not open for community PRs unless assigned by a maintainer.",
-    });
+  // would remove the pending-closure label as if the violation never happened. `anyRuleOn: true` here because the
+  // rule that originally flagged this PR is STILL active -- only the body changed, not the config.
+  it("REGRESSION (body-edit-during-grace-window): a persisted violation is enforced even when the live re-parse now finds NO linked issues at all (undefined), as long as some rule is still on", () => {
+    const merged = mergeLinkedIssueHardRuleWithPersistedViolation(
+      undefined,
+      {
+        violatedAt: "2026-06-01T12:00:00Z",
+        reason: "Linked issue #9 is labeled `maintainer-only` — it is not open for community PRs unless assigned by a maintainer.",
+      },
+      true,
+    );
     expect(merged).toEqual({
       violated: true,
       reason: "Linked issue #9 is labeled `maintainer-only` — it is not open for community PRs unless assigned by a maintainer.",
@@ -635,6 +641,7 @@ describe("mergeLinkedIssueHardRuleWithPersistedViolation (#linked-issue-hard-rul
     const merged = mergeLinkedIssueHardRuleWithPersistedViolation(
       { violated: false, reason: null },
       { violatedAt: "2026-06-01T12:00:00Z", reason: "Linked issue #9 is already assigned to @claimed-dev — only the assignee or a maintainer can submit that work." },
+      true,
     );
     expect(merged).toEqual({
       violated: true,
@@ -643,10 +650,50 @@ describe("mergeLinkedIssueHardRuleWithPersistedViolation (#linked-issue-hard-rul
   });
 
   it("falls back to the generic reason when a persisted violation carries a null/missing reason", () => {
-    expect(mergeLinkedIssueHardRuleWithPersistedViolation(undefined, { violatedAt: "2026-06-01T00:00:00Z", reason: null })).toEqual({
+    expect(mergeLinkedIssueHardRuleWithPersistedViolation(undefined, { violatedAt: "2026-06-01T00:00:00Z", reason: null }, true)).toEqual({
       violated: true,
       reason: "the linked issue is not eligible for a community PR",
     });
+  });
+
+  // REGRESSION (#linked-issue-hard-rule-persistence-disable-rescue): a maintainer enables a rule, it flags a
+  // PR (persisting a violation marker), then the maintainer decides the rule is too aggressive and turns EVERY
+  // linkedIssueHardRule off. On the next pass, live is `undefined` because resolveLinkedIssueHardRule's own
+  // anyRuleOn guard short-circuits (no rule is "block" at all anymore) -- NOT because a rule is still active
+  // but this pass's body/issue-state dodged detection (that's the `anyRuleOn: true` cases above). The persisted
+  // marker must NOT resurrect a violation from a rule that no longer exists, or the PR stays condemned to a
+  // one-shot close forever despite the maintainer's own deliberate config change.
+  it("REGRESSION (all rules disabled): a persisted violation is NOT resurrected once every linkedIssueHardRule is off", () => {
+    const merged = mergeLinkedIssueHardRuleWithPersistedViolation(
+      undefined,
+      {
+        violatedAt: "2026-06-01T12:00:00Z",
+        reason: "Linked issue #9 is assigned to the maintainer (@acme) — that work is reserved for the maintainer, so this PR cannot be auto-accepted.",
+      },
+      false,
+    );
+    expect(merged).toBeUndefined();
+  });
+
+  // Same rescue case, but live evaluated to a clean result THIS pass rather than undefined (e.g. a stale
+  // in-flight computation) -- anyRuleOn: false must win regardless of what live looked like.
+  it("REGRESSION (all rules disabled): a persisted violation is NOT resurrected even if live is a clean result", () => {
+    const clean = { violated: false, reason: null };
+    const merged = mergeLinkedIssueHardRuleWithPersistedViolation(clean, { violatedAt: "2026-06-01T12:00:00Z", reason: "stale reason" }, false);
+    expect(merged).toBe(clean);
+  });
+});
+
+describe("anyLinkedIssueHardRuleOn (#linked-issue-hard-rule-persistence-disable-rescue)", () => {
+  it("is false when every rule is off", () => {
+    expect(anyLinkedIssueHardRuleOn(config())).toBe(false);
+  });
+
+  it("is true when any single rule is block", () => {
+    expect(anyLinkedIssueHardRuleOn(config({ ownerAssignedClose: "block" }))).toBe(true);
+    expect(anyLinkedIssueHardRuleOn(config({ assignedIssueClose: "block" }))).toBe(true);
+    expect(anyLinkedIssueHardRuleOn(config({ missingPointLabelClose: "block" }))).toBe(true);
+    expect(anyLinkedIssueHardRuleOn(config({ maintainerOnlyLabelClose: "block" }))).toBe(true);
   });
 });
 

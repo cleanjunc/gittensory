@@ -49,6 +49,20 @@ export type LinkedIssueHardRuleResult = {
 
 const NO_VIOLATION: LinkedIssueHardRuleResult = { violated: false, reason: null };
 
+/** Whether the repo's config currently has ANY linked-issue hard rule set to `"block"`. Shared by
+ * {@link evaluateLinkedIssueHardRules}, {@link resolveLinkedIssueHardRule} (both use it to skip evaluation
+ * entirely when nothing is enforced), and the call site's `anyRuleOn` argument to
+ * {@link mergeLinkedIssueHardRuleWithPersistedViolation} (#linked-issue-hard-rule-persistence) -- one shared
+ * definition so those three checks can never drift out of sync with each other. */
+export function anyLinkedIssueHardRuleOn(config: LinkedIssueHardRulesConfig): boolean {
+  return (
+    config.ownerAssignedClose === "block" ||
+    config.assignedIssueClose === "block" ||
+    config.missingPointLabelClose === "block" ||
+    config.maintainerOnlyLabelClose === "block"
+  );
+}
+
 function findMatchingLabel(labels: string[], candidates: string[]): string | null {
   const wanted = new Set(candidates.map((c) => c.toLowerCase()));
   return labels.find((label) => wanted.has(label.toLowerCase())) ?? null;
@@ -77,12 +91,7 @@ export function evaluateLinkedIssueHardRules(input: {
 }): LinkedIssueHardRuleResult {
   const { config, repoOwner } = input;
   const ownerLower = repoOwner.toLowerCase();
-  const anyRuleOn =
-    config.ownerAssignedClose === "block" ||
-    config.assignedIssueClose === "block" ||
-    config.missingPointLabelClose === "block" ||
-    config.maintainerOnlyLabelClose === "block";
-  if (!anyRuleOn) return NO_VIOLATION;
+  if (!anyLinkedIssueHardRuleOn(config)) return NO_VIOLATION;
 
   for (const issue of input.issues) {
     if (issue.state !== "open") continue;
@@ -143,17 +152,29 @@ export function evaluateLinkedIssueHardRules(input: {
  * pending-closure label as if the violation never happened.
  *
  * `violatedAt` is the PR's persisted first-violation marker (`pullRequests.linkedIssueHardRuleViolatedAt`) —
- * present (non-null) once ANY pass has ever confirmed a violation for this PR, and NEVER cleared. When present,
- * the merged result is forced to `violated: true` regardless of what the live pass found THIS time, falling
- * back to the persisted `reason` only when the live pass didn't also (re-)confirm one this pass. A live
- * violation always wins for the `reason` text (freshest, most specific), so a persisted memory never masks new
- * information — it only ever ADDS enforcement the live-only path would have missed.
+ * present (non-null) once ANY pass has ever confirmed a violation for this PR, and NEVER cleared. When present
+ * AND at least one rule is still `"block"` (`anyRuleOn`), the merged result is forced to `violated: true`
+ * regardless of what the live pass found THIS time, falling back to the persisted `reason` only when the live
+ * pass didn't also (re-)confirm one this pass. A live violation always wins for the `reason` text (freshest,
+ * most specific), so a persisted memory never masks new information — it only ever ADDS enforcement the
+ * live-only path would have missed.
+ *
+ * `anyRuleOn` (#linked-issue-hard-rule-persistence-disable-rescue) exists because `live === undefined` is
+ * AMBIGUOUS on its own: resolveLinkedIssueHardRule returns `undefined` both when a rule is still active but
+ * THIS pass's body has zero linked issues (the dodge-1 case above, which the persisted marker must still
+ * catch) AND when NO rule is configured "block" at all anymore (the operator disabled every rule). Those two
+ * cases must NOT be treated the same: a maintainer who deliberately turns every rule off must be able to
+ * rescue a PR a NOW-DISABLED rule flagged in the past, or that PR stays condemned to a one-shot close forever
+ * even though the config that flagged it no longer exists. `anyRuleOn` disambiguates them — pass
+ * `anyLinkedIssueHardRuleOn(config)` from the same config the live evaluation was just run against.
  */
 export function mergeLinkedIssueHardRuleWithPersistedViolation(
   live: LinkedIssueHardRuleResult | undefined,
   persisted: { violatedAt: string | null | undefined; reason: string | null | undefined },
+  anyRuleOn: boolean,
 ): LinkedIssueHardRuleResult | undefined {
   if (live?.violated === true) return live;
+  if (!anyRuleOn) return live;
   if (persisted.violatedAt == null) return live;
   return { violated: true, reason: persisted.reason ?? "the linked issue is not eligible for a community PR" };
 }
@@ -180,12 +201,7 @@ export async function resolveLinkedIssueHardRule(args: {
   // (not "unknown") and the key can never be passed out of sync with the token it belongs to.
   installationId?: number | null | undefined;
 }): Promise<LinkedIssueHardRuleResult | undefined> {
-  const anyRuleOn =
-    args.config.ownerAssignedClose === "block" ||
-    args.config.assignedIssueClose === "block" ||
-    args.config.missingPointLabelClose === "block" ||
-    args.config.maintainerOnlyLabelClose === "block";
-  if (!anyRuleOn) return undefined;
+  if (!anyLinkedIssueHardRuleOn(args.config)) return undefined;
   if (extractLinkedIssueNumbersWithOverflow(args.body ?? "", args.repoFullName).overflow) {
     return {
       violated: true,

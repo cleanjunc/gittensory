@@ -3448,8 +3448,8 @@ describe("review-evasion protection (#review-evasion-protection)", () => {
         updated_at: "2026-05-27T00:00:00Z",
       } as never);
 
-      expect(await repositoriesModule.bumpPullRequestDraftConversionCount(env, "JSONbored/gittensory", 77)).toBe(1);
-      expect(await repositoriesModule.bumpPullRequestDraftConversionCount(env, "JSONbored/gittensory", 77)).toBe(2);
+      expect(await repositoriesModule.bumpPullRequestDraftConversionCount(env, "JSONbored/gittensory", 77, "delivery-1")).toBe(1);
+      expect(await repositoriesModule.bumpPullRequestDraftConversionCount(env, "JSONbored/gittensory", 77, "delivery-2")).toBe(2);
       // A fresh push (new head SHA) between cycles must NOT reset the counter -- unlike mergeAttemptCount.
       await repositoriesModule.upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
         id: 4242,
@@ -3464,12 +3464,46 @@ describe("review-evasion protection (#review-evasion-protection)", () => {
         created_at: "2026-05-27T00:00:00Z",
         updated_at: "2026-05-27T00:00:00Z",
       } as never);
-      expect(await repositoriesModule.bumpPullRequestDraftConversionCount(env, "JSONbored/gittensory", 77)).toBe(3);
+      expect(await repositoriesModule.bumpPullRequestDraftConversionCount(env, "JSONbored/gittensory", 77, "delivery-3")).toBe(3);
     });
 
     it("returns 0 for a PR that does not exist (no row to increment)", async () => {
       const env = createTestEnv({});
-      expect(await repositoriesModule.bumpPullRequestDraftConversionCount(env, "JSONbored/gittensory", 999999)).toBe(0);
+      expect(await repositoriesModule.bumpPullRequestDraftConversionCount(env, "JSONbored/gittensory", 999999, "delivery-x")).toBe(0);
+    });
+
+    // REGRESSION (#draft-conversion-retry-double-count): a queue retry of the SAME webhook message (a GitHub
+    // 5xx, rate-limit, or transient D1 write failure later in the SAME processGitHubWebhook pass) redelivers
+    // the identical deliveryId. Before this fix, bumpPullRequestDraftConversionCount had zero idempotency
+    // protection, so that retry re-bumped the counter for ONE real, first-ever, entirely legitimate draft
+    // conversion -- pushing the count from 1 to 2 and firing maybeCloseRepeatedDraftCycling's false "2nd
+    // offense" close + moderation strike against an innocent contributor.
+    it("REGRESSION (#draft-conversion-retry-double-count): a retry redelivery of the SAME deliveryId does not double-count a single physical conversion", async () => {
+      const env = createTestEnv({});
+      await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
+      await repositoriesModule.upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
+        id: 5252,
+        number: 88,
+        state: "open",
+        title: "First-ever draft conversion",
+        user: { login: "contributor" },
+        head: { sha: "sha-retry-1", ref: "fix", repo: { full_name: "contributor/gittensory", owner: { login: "contributor" } } },
+        base: { sha: "base123", ref: "main", repo: { full_name: "JSONbored/gittensory", owner: { login: "JSONbored" } } },
+        draft: false,
+        merged: false,
+        created_at: "2026-05-27T00:00:00Z",
+        updated_at: "2026-05-27T00:00:00Z",
+      } as never);
+
+      // The original webhook processing attempt bumps the counter...
+      expect(await repositoriesModule.bumpPullRequestDraftConversionCount(env, "JSONbored/gittensory", 88, "delivery-retry-abc")).toBe(1);
+      // ...then a downstream step throws a retryable error, the queue consumer calls message.retry(), and the
+      // SAME message body (SAME deliveryId) is redelivered and reprocessed from the top. Must stay at 1, not 2.
+      expect(await repositoriesModule.bumpPullRequestDraftConversionCount(env, "JSONbored/gittensory", 88, "delivery-retry-abc")).toBe(1);
+      expect(await repositoriesModule.bumpPullRequestDraftConversionCount(env, "JSONbored/gittensory", 88, "delivery-retry-abc")).toBe(1);
+
+      // A genuinely DIFFERENT, later delivery (a real second draft conversion) still counts as a new offense.
+      expect(await repositoriesModule.bumpPullRequestDraftConversionCount(env, "JSONbored/gittensory", 88, "delivery-real-second")).toBe(2);
     });
   });
 

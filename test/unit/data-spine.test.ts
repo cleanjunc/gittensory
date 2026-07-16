@@ -454,7 +454,13 @@ describe("data spine repositories", () => {
       state: "open",
       user: { login: "JSONbored" },
       labels: [{}, { name: "bug" }],
-      body: "Related PR #1 and pull request #2.",
+      // #issue-body-pr-mention-pollution regression: a bare "Related PR #1" mention (no closing keyword) used
+      // to be enough to count as a real link -- that was the audited bug (any "PR #N"/"pull request #N" text
+      // mention anywhere in an issue body silently populated linkedPrs, hiding available issues from
+      // contributor recommendations). extractLinkedPrNumbers now requires the same closing-keyword adjacency
+      // extractLinkedIssueNumbersWithOverflow already enforces, so the body must actually say "closes"/
+      // "fixes"/"resolves" immediately before the PR reference for it to count.
+      body: "Closes PR #1 and fixes pull request #2.",
     });
     await upsertIssueFromGitHub(env, "owner/repo", {
       number: 11,
@@ -477,6 +483,26 @@ describe("data spine repositories", () => {
     expect(await listIssueSignalSample(env, "owner/repo", 1)).toHaveLength(1);
     expect(await listContributorPullRequests(env, "jsonbored")).toMatchObject([{ repoFullName: "owner/repo", number: 1 }]);
     expect(await listContributorIssues(env, "JSONBORED")).toEqual(expect.arrayContaining([expect.objectContaining({ repoFullName: "owner/repo", number: 10 }), expect.objectContaining({ repoFullName: "owner/repo", number: 11 })]));
+  });
+
+  // REGRESSION (#issue-body-pr-mention-pollution): a bare "PR #N"/"pull request #N" text mention with no
+  // GitHub closing keyword nearby must NOT count as a real linked PR -- a very common way to reference other
+  // PRs in discussion ("see PR #N", "regressed after PR #N", "blocked on PR #N") that has nothing to do with
+  // solving THIS issue. Before the fix, any such mention silently populated linkedPrs, which
+  // buildContributorOpportunities uses to exclude an issue from the available pool and buildIssueQualityReport
+  // uses to force status to "do_not_use" -- hiding a fully open, unclaimed issue from recommendations.
+  it("does not treat a bare PR mention with no closing keyword as a real linked PR", async () => {
+    const env = createTestEnv();
+    await upsertIssueFromGitHub(env, "owner/repo", {
+      number: 55,
+      title: "Discussion mentions an unrelated PR",
+      state: "open",
+      user: { login: "JSONbored" },
+      labels: [],
+      body: "...similar to what we saw in PR #501, unrelated feature. Also see pull request #502 for context.",
+    });
+
+    expect(await getIssue(env, "owner/repo", 55)).toMatchObject({ linkedPrs: [] });
   });
 
   it("persists a per-PR slop assessment, round-trips it via the cached record, and keeps latest-wins (PR2)", async () => {

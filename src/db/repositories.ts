@@ -475,9 +475,17 @@ function resolveLinkedIssueClaimedAt(
 ): string | null {
   if (linkedIssues.length === 0) return null;
   if (!existing) return observedLinkedIssueClaimedAt;
+  // Duplicate-winner priority bug (#linked-issue-claim-overlap-preserve): this used to reset the claim
+  // whenever the linked-issue SET differed AT ALL from the prior sync, including a pure ADDITION (e.g. "Fixes
+  // #1" -> "Fixes #1, Fixes #2"). Because linkedIssueClaimedAt is a single PR-level timestamp (not stored
+  // per-issue), that reset threw away issue #1's original, legitimately-earliest claim time just because the
+  // author later also referenced an unrelated #2 -- letting a LATER PR that also claims #1 leapfrog into
+  // duplicate-cluster winner via isDuplicateClusterWinnerByClaim. The correct rule: only start a FRESH clock
+  // when the new set shares NO issue with the old one (a genuine swap to unrelated work); any overlap means at
+  // least one issue's claim is a continuation, not a new claim, so the earliest timestamp must survive.
   if (
     existing.linkedIssuesJson === linkedIssuesJson ||
-    sameLinkedIssueSet(parseLinkedIssuesJson(existing.linkedIssuesJson), linkedIssues)
+    linkedIssueSetsOverlap(parseLinkedIssuesJson(existing.linkedIssuesJson), linkedIssues)
   )
     return existing.linkedIssueClaimedAt ?? observedLinkedIssueClaimedAt;
   return observedLinkedIssueClaimedAt;
@@ -488,12 +496,13 @@ function parseLinkedIssuesJson(value: string): number[] {
   return Array.isArray(parsed) ? (parsed as number[]) : [];
 }
 
-function sameLinkedIssueSet(left: number[], right: number[]): boolean {
-  return normalizedLinkedIssueSet(left) === normalizedLinkedIssueSet(right);
-}
-
-function normalizedLinkedIssueSet(numbers: number[]): string {
-  return jsonString([...new Set(numbers)].sort((left, right) => left - right));
+// Whether `left` and `right` share at least one linked-issue number -- used to decide whether a linked-issue
+// SET change is a continuation of an existing claim (overlap) or a genuine swap to unrelated issues (no
+// overlap), see resolveLinkedIssueClaimedAt above.
+function linkedIssueSetsOverlap(left: number[], right: number[]): boolean {
+  if (left.length === 0 || right.length === 0) return false;
+  const leftSet = new Set(left);
+  return right.some((value) => leftSet.has(value));
 }
 
 export async function upsertIssueFromGitHub(env: Env, repoFullName: string, issue: GitHubIssuePayload, options: { seenOpenAt?: string } = {}): Promise<IssueRecord> {
@@ -3913,15 +3922,56 @@ export async function bumpPullRequestMergeAttempt(env: Env, fullName: string, nu
 
 // Review-evasion: repeated ready<->draft cycling (#gaming-tactic-draft-cycle).
 
+// Idempotency-marker eventType for bumpPullRequestDraftConversionCount below (#draft-conversion-retry-double-
+// count). Deliberately NOT one of the MODERATION_VIOLATION_EVENT_TYPE values -- it must never feed
+// countModerationViolationsForActor's ban-threshold tally, it exists purely to make ONE counter bump
+// idempotent per webhook delivery.
+const DRAFT_CONVERSION_BUMP_EVENT_TYPE = "review_evasion.draft_conversion_bump";
+
 /** Increment the ready<->draft conversion counter for a PR and return the new total. Deliberately NOT scoped
  *  to headSha (unlike bumpPullRequestMergeAttempt) -- a contributor pushing a new commit between draft cycles
- *  is still doing the same repeated-evasion shape, so a fresh head must not reset the count back to zero. */
-export async function bumpPullRequestDraftConversionCount(env: Env, fullName: string, number: number): Promise<number> {
+ *  is still doing the same repeated-evasion shape, so a fresh head must not reset the count back to zero.
+ *
+ *  Delivery-idempotent (#draft-conversion-retry-double-count): processGitHubWebhook's own webhook-processing
+ *  pass explicitly re-throws on a rate-limited/retryable error partway through (e.g. a live GitHub CI/mergeable
+ *  fetch later in the same pass), which the queue consumer turns into a `message.retry()` redelivery of the
+ *  SAME message body (same deliveryId). Without a guard, that redelivery re-runs this bump for the SAME
+ *  physical draft conversion, poisoning the count toward a false "2nd offense" and wrongly auto-closing (plus
+ *  moderation-striking) a contributor who converted to draft exactly once. Mirrors
+ *  recordModerationViolation/hasModerationViolationForTarget's own idempotent-per-(actor, eventType, targetKey)
+ *  `audit_events` check-then-act pattern in this same file, with `deliveryId` standing in for `actor` (it, not
+ *  a GitHub login, is the thing that must be unique per real invocation) and deliberately no time window --
+ *  unlike hasAuditEventForDelivery's short redelivery-window check, a queue retry can legitimately land long
+ *  after the original attempt (backoff), so the marker must be PERMANENT, matching recordModerationViolation's
+ *  own "a later replay must not re-count just because time has passed" reasoning.
+ *
+ *  Ordering note: the counter increment happens BEFORE the marker write (not after) so that if the marker
+ *  write itself fails, the counter has still genuinely advanced (worst case: a rare future retry could
+ *  double-bump once more, no worse than before this fix) rather than the marker silently blocking a real
+ *  future bump forever while the counter itself never advanced.
+ */
+export async function bumpPullRequestDraftConversionCount(env: Env, fullName: string, number: number, deliveryId: string): Promise<number> {
   const db = getDb(env.DB);
-  await db
-    .update(pullRequests)
-    .set({ draftConversionCount: sql`${pullRequests.draftConversionCount} + 1`, updatedAt: nowIso() })
-    .where(and(eq(pullRequests.repoFullName, fullName), eq(pullRequests.number, number)));
+  const targetKey = `${fullName}#${number}`;
+  const alreadyBumpedForThisDelivery = await hasModerationViolationForTarget(env, deliveryId, DRAFT_CONVERSION_BUMP_EVENT_TYPE, targetKey);
+  if (!alreadyBumpedForThisDelivery) {
+    await db
+      .update(pullRequests)
+      .set({ draftConversionCount: sql`${pullRequests.draftConversionCount} + 1`, updatedAt: nowIso() })
+      .where(and(eq(pullRequests.repoFullName, fullName), eq(pullRequests.number, number)));
+    await recordAuditEvent(env, {
+      eventType: DRAFT_CONVERSION_BUMP_EVENT_TYPE,
+      actor: deliveryId,
+      targetKey,
+      outcome: "completed",
+      detail: "ready<->draft conversion counter bumped",
+      metadata: { repoFullName: fullName, pullNumber: number },
+    }).catch(
+      /* v8 ignore next -- best-effort: an audit write failure only means a LATER retry of this exact delivery
+       * could double-bump once more; the counter increment above already succeeded and is not rolled back. */
+      () => undefined,
+    );
+  }
   const [row] = await db
     .select({ count: pullRequests.draftConversionCount })
     .from(pullRequests)
@@ -8086,7 +8136,15 @@ export function extractLinkedIssueNumbers(text: string, repoFullName: string, li
   return extractLinkedIssueNumbersWithOverflow(text, repoFullName, limit).numbers;
 }
 
+// Requires the SAME GitHub closing-keyword adjacency extractLinkedIssueNumbersWithOverflow's regex enforces
+// (#issue-body-pr-mention-pollution) -- without it, ANY bare "PR #N"/"pull request #N" mention in an issue's
+// body (e.g. "similar to what we saw in PR #501, unrelated feature") was counted as a real link, even though
+// no closing verb tied it to this issue. That falsely populated IssueRecord.linkedPrs, which
+// buildContributorOpportunities uses to exclude the issue from the available-issues pool and which
+// buildIssueQualityReport uses to force the issue's status to "do_not_use" -- silently hiding a fully
+// available, unclaimed issue from contributor recommendations purely because its body happened to mention any
+// other real PR number in the repo.
 function extractLinkedPrNumbers(text: string): number[] {
-  const matches = [...text.matchAll(/\b(?:PR|pull request)\s+#(\d+)\b/gi)];
+  const matches = [...text.matchAll(/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+(?:PR|pull request)\s+#(\d+)\b/gi)];
   return [...new Set(matches.map((match) => Number(match[1])).filter((value) => Number.isInteger(value) && value > 0))];
 }

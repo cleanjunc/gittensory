@@ -5,6 +5,15 @@ function fixtureCommand(name: string) {
   return `node ${join(process.cwd(), "test/fixtures/local-scorer", name)}`;
 }
 
+// Points at the real bundled scorer script the package ships, so this test exercises it end to end.
+// Lives here (not exported from lib/local-branch.js) since this test is its only real caller (#6259) --
+// production guidance text always uses the intentionally generic, path-redacted referenceScorePreviewExample.
+function packagedScorerCommand(kind: "metadata" | "gittensor" = "metadata") {
+  const script = kind === "gittensor" ? "gittensor-score-preview.py" : "gittensor-score-preview.mjs";
+  const interpreter = kind === "gittensor" ? "python3" : "node";
+  return `${interpreter} ${join(process.cwd(), "packages/loopover-mcp/scripts", script)}`;
+}
+
 describe("local scorer adapter", () => {
   const metadata = {
     repoFullName: "entrius/allways-ui",
@@ -96,8 +105,8 @@ describe("local scorer adapter", () => {
 
   it("runs the packaged reference scorer against metadata only", async () => {
     // @ts-expect-error package helper is plain JS because the local wrapper ships as a Node bin package.
-    const { referenceScorePreviewCommand, runExternalScorePreview } = await import("../../packages/loopover-mcp/lib/local-branch.js");
-    const result = runExternalScorePreview(metadata, referenceScorePreviewCommand("metadata"));
+    const { runExternalScorePreview } = await import("../../packages/loopover-mcp/lib/local-branch.js");
+    const result = runExternalScorePreview(metadata, packagedScorerCommand("metadata"));
     expect(result.ok).toBe(true);
     expect(result.payload).toMatchObject({
       sourceTokenScore: expect.any(Number),

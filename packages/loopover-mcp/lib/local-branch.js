@@ -1,14 +1,12 @@
 import { execFileSync } from "node:child_process";
 import { realpathSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isCodeFile, isTestPath as isTestFile } from "@loopover/engine/signals/test-evidence";
 import { redactLocalPath } from "./redact-local-path.js";
 
 export { isCodeFile, isTestFile };
 export { redactLocalPath };
-
-const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 function stripTrailingSlashes(value) {
   let end = value.length;
@@ -199,12 +197,6 @@ export function resolveScorePreviewCommand(input = {}) {
   const explicit = input.scorePreviewCommand ?? process.env.GITTENSOR_SCORE_PREVIEW_CMD;
   if (typeof explicit === "string" && explicit.trim()) return explicit.trim();
   return undefined;
-}
-
-export function referenceScorePreviewCommand(kind = "metadata") {
-  const script = kind === "gittensor" ? "gittensor-score-preview.py" : "gittensor-score-preview.mjs";
-  const interpreter = kind === "gittensor" ? "python3" : "node";
-  return `${interpreter} ${join(packageRoot, "scripts", script)}`;
 }
 
 export function referenceScorePreviewExample(kind = "metadata") {

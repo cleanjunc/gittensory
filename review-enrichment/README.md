@@ -34,26 +34,65 @@ inside the operator's trust boundary. The engine prefers a short-lived installat
 
 ## Analyzers
 
-| Analyzer        | Purpose                                                                      | Network/token behavior                                       |
-| --------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `dependency`    | Direct dependency CVEs from changed manifests.                               | Calls OSV.dev.                                               |
-| `lockfileDrift` | Vulnerable transitive versions introduced only through lockfiles.            | Calls OSV.dev querybatch.                                    |
-| `secret`        | Credential-shaped values in added diff lines. Values are never returned.     | Pure local.                                                  |
-| `license`       | Copyleft or unknown dependency licenses.                                     | Calls deps.dev.                                              |
-| `installScript` | npm packages that run install lifecycle hooks.                               | Calls the npm registry.                                      |
-| `actionPin`     | Third-party GitHub Actions pinned to mutable refs.                           | Pure local.                                                  |
-| `eol`           | Runtime/base-image pins that are EOL or close to EOL.                        | Calls endoflife.date.                                        |
-| `redos`         | Regex literals with catastrophic-backtracking structure.                     | Pure local.                                                  |
-| `provenance`    | Missing package attestations plus binary/vendored/minified additions.        | Calls npm/PyPI for attestations; path checks are local.      |
-| `codeowners`    | Changed files owned by CODEOWNERS entries that do not include the PR author. | Calls GitHub API; needs author and token for private repos.  |
-| `secretLog`     | Secrets, PII, or request/session objects written to logs/stdout.             | Pure local.                                                  |
-| `assetWeight`   | Heavy binary assets added or grown.                                          | Calls GitHub API; needs headSha, baseSha for growth, and token for private repos. |
-| `typosquat`     | New dependency names that look squatted or publicly claimable.               | Uses bundled popular-package lists plus npm/PyPI lookups.    |
-| `commitSignature` | Head commit signature/author provenance worth checking.                    | Calls GitHub API; needs headSha and token for private repos. |
-| `iacMisconfig`  | Risky IaC/config changes like public buckets, open ingress, or insecure CORS. | Pure local.                                                 |
-| `nativeBuild`   | Newly-added dependencies that compile native code or ship sdist-only builds. | Calls npm/PyPI registries.                                  |
-| `history`       | Author track record, same-file PR history, and linked-issue alignment.       | Calls GitHub API with bounded fanout; needs author/token for private repos. |
-| `magicNumber`   | Non-trivial numeric literals newly added in non-test source.                 | Pure local.                                                  |
+| Analyzer | Purpose | Network/token behavior |
+| --- | --- | --- |
+| `dependency` | Direct dependency CVEs from changed manifests. | Calls OSV.dev. |
+| `dependencyDiff` | Summarizes direct dependency add/remove/version-change deltas in changed manifest patches — informational, not a CVE scan. | Pure local. |
+| `lockfileDrift` | Vulnerable transitive versions introduced only through lockfiles. | Calls OSV.dev querybatch. |
+| `secret` | Credential-shaped values in added diff lines. Values are never returned. | Pure local. |
+| `license` | Copyleft or unknown dependency licenses. | Calls deps.dev. |
+| `installScript` | npm packages that run install lifecycle hooks. | Calls the npm registry. |
+| `heavyDependency` | Flags materially heavy npm dependencies used only a few times in changed lines. | Calls a public registry/advisory API. |
+| `hardcodedUrl` | Flags absolute HTTP(S) URLs and raw IP:port endpoints newly added in non-test, non-config source. | Pure local. |
+| `actionPin` | Third-party GitHub Actions pinned to mutable refs. | Pure local. |
+| `eol` | Runtime/base-image pins that are EOL or close to EOL. | Calls endoflife.date. |
+| `redos` | Regex literals with catastrophic-backtracking structure. | Pure local. |
+| `provenance` | Missing package attestations plus binary/vendored/minified additions. | Calls npm/PyPI for attestations; path checks are local. |
+| `codeowners` | Changed files owned by CODEOWNERS entries that do not include the PR author. | Calls GitHub API; needs author and token for private repos. |
+| `secretLog` | Secrets, PII, or request/session objects written to logs/stdout. | Pure local. |
+| `assetWeight` | Heavy binary assets added or grown. | Calls GitHub API; needs headSha, baseSha for growth, and token for private repos. |
+| `typosquat` | New dependency names that look squatted or publicly claimable. | Uses bundled popular-package lists plus npm/PyPI lookups. |
+| `commitSignature` | Head commit signature/author provenance worth checking. | Calls GitHub API; needs headSha and token for private repos. |
+| `iacMisconfig` | Risky IaC/config changes like public buckets, open ingress, or insecure CORS. | Pure local. |
+| `nativeBuild` | Newly-added dependencies that compile native code or ship sdist-only builds. | Calls npm/PyPI registries. |
+| `history` | Author track record, same-file PR history, and linked-issue alignment. | Calls GitHub API with bounded fanout; needs author/token for private repos. |
+| `docCommentDrift` | Flags a JSDoc/TSDoc @param that names a parameter the PR removed or renamed but left documented. | Calls GitHub API; needs headSha and a token for private repos. |
+| `duplication` | Flags added code that is a near-verbatim duplicate of a block already present elsewhere in the repo. | Calls GitHub API; needs headSha and a token for private repos. |
+| `duplicationDelta` | Flags a duplicate block pair that existed in a changed file's pre-PR content and is no longer both present — a consolidation the no-checkout reviewer cannot see. | Calls GitHub API; needs headSha and a token for private repos. |
+| `churnHotspot` | Flags changed files that are statistical fragility hotspots — high commit frequency and a high fix/revert fraction. | Calls GitHub API with bounded fanout; needs a token for private repos. |
+| `blameLink` | For files this PR modifies or deletes, surfaces the last PR to touch each file — file-level history context, not per-line blame. | Calls GitHub API; needs a token for private repos. |
+| `approvalIntegrity` | Flags review/approval integrity signals: an APPROVED review that predates the current head commit, the author approving their own PR, and a reviewer whose current review is still CHANGES_REQUESTED. | Calls GitHub API; needs headSha and a token for private repos. |
+| `ciCheckSignals` | Flags a named check that only went green after one or more earlier non-success attempts at the current head commit, and any completed check run whose duration crossed a fixed threshold. | Calls GitHub API; needs headSha and a token for private repos. |
+| `undocumentedExport` | Flags exports newly added to a package's public entrypoint (an index.* barrel) that ship with no adjacent doc comment. | Calls GitHub API; needs headSha and a token for private repos. |
+| `staleBranch` | Flags a PR whose head is significantly behind the repo's current default branch — a staleness risk a clean `mergeable` check alone would not surface. | Calls GitHub API; needs headSha and a token for private repos. |
+| `commitHygiene` | Flags commit-history hygiene issues: a merge commit pulled into the PR's own history, a commit left with git's fixup!/squash! autosquash marker, and a commit carrying a Co-authored-by trailer. | Calls GitHub API; needs a token for private repos. |
+| `pendingReviewRequests` | Flags a reviewer or team whose review request has been outstanding 48+ hours with no response yet. | Calls GitHub API; needs a token for private repos. |
+| `testRatio` | Flags a PR whose source change is material but ships with disproportionately little (or zero) accompanying test change. | Pure local. |
+| `migrationSafety` | Flags risky schema operations in added migration SQL: drops, renames, non-nullable columns without a default, and blocking table rewrites. | Pure local. |
+| `looseRange` | Flags newly-added npm dependency specifiers that use dangerously loose ranges instead of a pinned/caret/tilde range. | Pure local. |
+| `terminology` | Flags non-inclusive terms newly added in identifiers or comments (whitelist/blacklist, master/slave) and suggests the neutral replacement. | Pure local. |
+| `todoMarker` | Surfaces TODO/FIXME/HACK/XXX markers a PR adds in comments, so a reviewer sees the change is shipping known-incomplete work. | Pure local. |
+| `magicNumber` | Non-trivial numeric literals newly added in non-test source. | Pure local. |
+| `conflictMarker` | Flags leftover VCS conflict markers (`<<<<<<<`, `\|\|\|\|\|\|\|`, `=======`, `>>>>>>>`) accidentally committed in added lines. | Pure local. |
+| `debugLeftover` | Flags debugging leftovers a PR adds in non-test source — `debugger;`, bare console sinks, or `print()` calls. | Pure local. |
+| `sizeSmell` | Flags maintainability size smells from patch structure: an estimated resulting file length or an added function body span that exceeds configured thresholds. | Pure local. |
+| `floatingPromise` | Flags newly-added promise-shaped calls whose returned promise is neither awaited, returned, voided, nor same-line .then/.catch-chained. | Pure local. |
+| `deepNesting` | Flags newly-added control-flow blocks whose nesting depth exceeds a threshold inside a contiguous run of added lines. | Pure local. |
+| `errorSwallow` | Flags newly-added catch/except blocks (and Go if-err checks) that swallow or mishandle the error — empty body, unused binding, a bare `return null`/`nil`, or a Python bare `except:` naming no exception type. | Pure local. |
+| `complexity` | Flags a newly-added function whose approximate cyclomatic complexity (branch/loop/logical-operator density, computed on the diff-visible lines) exceeds a threshold. | Pure local. |
+| `complexityDelta` | Flags a function whose approximate cyclomatic complexity changed between the pre-PR and head versions of a file -- not just newly-added functions. | Calls GitHub API; needs headSha and a token for private repos. |
+| `unsafeAny` | Counts and locates explicit `any` annotations, `<any>` assertions, and `as any` casts newly introduced in TypeScript diffs. | Pure local. |
+| `a11y` | Flags common accessibility regressions in newly added JSX/HTML markup lines. | Pure local. |
+| `i18n` | When the diff shows a translation convention, flags newly-added user-facing JSX text or label/title props that bypass it. | Pure local. |
+| `unusedExport` | Flags exports newly added by the PR that have zero non-declaration references anywhere in the repo. | Calls GitHub API; needs headSha and a token for private repos. |
+| `exhaustiveness` | Flags when a PR adds a new enum member or string-literal union variant but an exhaustive switch still omits it. | Calls GitHub API; needs headSha and a token for private repos. |
+| `flakyTest` | For test files this PR touches, surfaces recent default-branch CI test-check failures that reference each file. | Calls GitHub API with bounded fanout; needs a token for private repos. |
+| `commitLint` | Lints the PR's commit subjects against the Conventional Commits spec and flags non-conforming subjects (bad/absent type, over-long, or empty). | Calls GitHub API; needs a token for private repos. |
+| `apiBreak` | Flags an exported symbol a PR removes or renames in a package public entrypoint — a semver-major break for downstream consumers shipped without a major version bump. | Pure local. |
+| `deprecatedDep` | Flags a direct dependency a PR newly adds or upgrades that is an officially deprecated or unmaintained package with a maintained successor — an adoption risk the review brief should surface. | Pure local. |
+| `revertRecurrence` | Flags a changed file where the PR re-introduces added lines in a region a prior revert commit removed — a signal it may be re-treading a path that was already reverted or hot-fixed out. | Calls GitHub API with bounded fanout; needs a token for private repos. |
+| `coverageDelta` | Flags added lines in a PR that the project's own latest successful CI coverage report records as never executed — measured test gaps on exactly the touched lines, not a guess about whether tests look present. | Calls GitHub API with bounded fanout; needs headSha and a token for private repos. |
+| `callerImpact` | Flags an exported symbol the PR removes or renames away from an internal source file that unchanged in-repo files still import — a hidden cross-file compile/runtime break the diff-only reviewer cannot see. | Calls GitHub API with bounded fanout; needs headSha and a token for private repos. |
 
 The engine can send `analyzers: ["secret", "actionPin"]` to run a subset. If the field is omitted, REES runs the
 full registry. An explicit empty array runs no analyzers; the engine uses that fail-closed shape when an

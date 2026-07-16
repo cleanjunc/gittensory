@@ -283,8 +283,8 @@ describe("queue processors", () => {
     await upsertInstallation(env, { action: "created", installation: { id: 9001, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo", full_name: "owner/agent-repo", private: false, owner: { login: "owner" } }, 9001);
     // aiReviewLowConfidenceDisposition left UNSET — the shipped default (hold_for_review) is what's under test.
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { close: "auto" }, aiReviewMode: "block", gatePack: "oss-anti-slop", reviewCheckMode: "required" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { close: "auto" }, gatePack: "oss-anti-slop" });
+    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", reviewCheckMode: "required", aiReviewMode: "block" } });
     await upsertPullRequestFromGitHub(env, "owner/agent-repo", { number: 8, title: "Sub-floor defect PR", state: "open", user: { login: "contributor" }, head: { sha: "b8" }, labels: [], body: "Closes #1" });
     await upsertPullRequestFile(env, { repoFullName: "owner/agent-repo", pullNumber: 8, path: "src/a.ts", status: "modified", additions: 1, deletions: 0, changes: 1, payload: { patch: "@@\n+export const ok = value.length;" } });
     const inputFingerprint = await cachedSubFloorDefectFingerprint("Sub-floor defect PR");
@@ -335,8 +335,8 @@ describe("queue processors", () => {
     });
     await upsertInstallation(env, { action: "created", installation: { id: 9001, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: { pull_requests: "write" }, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo", full_name: "owner/agent-repo", private: false, owner: { login: "owner" } }, 9001);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { close: "auto" }, aiReviewMode: "block", aiReviewLowConfidenceDisposition: "one_shot", gatePack: "oss-anti-slop", reviewCheckMode: "required" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { close: "auto" }, aiReviewLowConfidenceDisposition: "one_shot", gatePack: "oss-anti-slop" });
+    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", reviewCheckMode: "required", aiReviewMode: "block" } });
     await upsertPullRequestFromGitHub(env, "owner/agent-repo", { number: 9, title: "Sub-floor defect PR (one_shot)", state: "open", user: { login: "contributor" }, head: { sha: "c9" }, labels: [], body: "Closes #1" });
     await upsertPullRequestFile(env, { repoFullName: "owner/agent-repo", pullNumber: 9, path: "src/a.ts", status: "modified", additions: 1, deletions: 0, changes: 1, payload: { patch: "@@\n+export const ok = value.length;" } });
     const inputFingerprint = await cachedSubFloorDefectFingerprint("Sub-floor defect PR (one_shot)");
@@ -398,11 +398,9 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      aiReviewMode: "block",
       gatePack: "oss-anti-slop",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "block" } });
     const stickyComment: { current: { id: number; body: string } | null } = { current: null };
     let firstWriteWasPlaceholder = false;
     let postCount = 0;
@@ -468,9 +466,8 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      aiReviewMode: "off",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", aiReviewMode: "off" } });
     // A sibling PR (different author, unrelated title) already open and already detail-synced — its files are
     // in the pull_request_files cache, the same way routine backfill would have populated them.
     await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
@@ -535,9 +532,8 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      aiReviewMode: "off",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", aiReviewMode: "off" } });
     await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
       number: 8,
       title: "Document logging output",
@@ -627,11 +623,9 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      aiReviewMode: "block",
       gatePack: "oss-anti-slop",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "block" } });
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
       const method = init?.method ?? "GET";
@@ -700,14 +694,13 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      aiReviewMode: "block",
       gatePack: "oss-anti-slop",
     });
     // NOTE: no `upsertRepoFocusManifest` call here -- this test's manifest comes from the LIVE .loopover.yml
     // fetch mocked below (an "api_record" DB row would take unconditional precedence over that repo_file fetch,
     // per focus-manifest-loader's readCachedManifestSnapshot, and mask the culture_profile opt-in under test).
-    // The moved batch-A settings are folded into that same YAML response instead (#6442).
+    // The moved batch-A settings (#6442), plus the batch-C reviewCheckMode/aiReviewMode fields (#6444), are
+    // folded into that same YAML response instead.
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
       const method = init?.method ?? "GET";
@@ -722,7 +715,7 @@ describe("queue processors", () => {
       if (url.includes("/branches/")) return Response.json({ protected: false, protection: { required_status_checks: { contexts: [] } } });
       // The repo's own review.culture_profile opt-in, plus the moved batch-A settings fields.
       if (url === "https://raw.githubusercontent.com/JSONbored/gittensory/HEAD/.loopover.yml") {
-        return new Response("review:\n  culture_profile: true\nsettings:\n  commentMode: all_prs\n  publicSurface: comment_only\n  checkRunMode: off\n");
+        return new Response("review:\n  culture_profile: true\nsettings:\n  commentMode: all_prs\n  publicSurface: comment_only\n  checkRunMode: off\n  reviewCheckMode: required\n  aiReviewMode: block\n");
       }
       return Response.json({});
     });
@@ -776,14 +769,13 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      aiReviewMode: "block",
       gatePack: "oss-anti-slop",
     });
     // NOTE: no `upsertRepoFocusManifest` call here -- this test's manifest comes from the LIVE .loopover.yml
     // fetch mocked below (an "api_record" DB row would take unconditional precedence over that repo_file fetch,
     // per focus-manifest-loader's readCachedManifestSnapshot, and mask the impact_map opt-in under test).
-    // The moved batch-A settings are folded into that same YAML response instead (#6442).
+    // The moved batch-A settings (#6442), plus the batch-C reviewCheckMode/aiReviewMode fields (#6444), are
+    // folded into that same YAML response instead.
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
       const method = init?.method ?? "GET";
@@ -798,7 +790,7 @@ describe("queue processors", () => {
       if (url.includes("/branches/")) return Response.json({ protected: false, protection: { required_status_checks: { contexts: [] } } });
       // The repo's own review.impact_map opt-in, plus the moved batch-A settings fields.
       if (url === "https://raw.githubusercontent.com/JSONbored/gittensory/HEAD/.loopover.yml") {
-        return new Response("review:\n  impact_map: true\nsettings:\n  commentMode: all_prs\n  publicSurface: comment_only\n  checkRunMode: off\n");
+        return new Response("review:\n  impact_map: true\nsettings:\n  commentMode: all_prs\n  publicSurface: comment_only\n  checkRunMode: off\n  reviewCheckMode: required\n  aiReviewMode: block\n");
       }
       // Real GitHub raw-content 404s for every other manifest candidate -- without this,
       // Response.json({}) below would 200 the first candidate tried and mask the
@@ -867,11 +859,9 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      aiReviewMode: "block",
       gatePack: "oss-anti-slop",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "block" } });
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
       const method = init?.method ?? "GET";
@@ -948,11 +938,9 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      aiReviewMode: "block",
       gatePack: "oss-anti-slop",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "block" } });
     const postedBodies: string[] = [];
     let postAttempts = 0;
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -1008,8 +996,8 @@ describe("queue processors", () => {
     });
     await persistRegistrySnapshot(env, normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"));
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
-    await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", autoLabelEnabled: false, reviewCheckMode: "required", aiReviewMode: "advisory" });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", autoLabelEnabled: false });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "advisory" } });
     const stickyComment: { current: { id: number; body: string } | null } = { current: null };
     let postCount = 0;
     let patchCount = 0;
@@ -1076,8 +1064,8 @@ describe("queue processors", () => {
     });
     await persistRegistrySnapshot(env, normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"));
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
-    await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", autoLabelEnabled: false, reviewCheckMode: "required", aiReviewMode: "advisory" });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", autoLabelEnabled: false });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "advisory" } });
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
       const method = init?.method ?? "GET";
@@ -1131,9 +1119,8 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      aiReviewMode: "advisory",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", aiReviewMode: "advisory" } });
     const postedBodies: string[] = [];
     let finalCommentAttempted = false;
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -1215,11 +1202,9 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      aiReviewMode: "block",
       gatePack: "oss-anti-slop",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "block" } });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
     await putCachedAiReview(env, "JSONbored/gittensory", 10, "a10", "block", {
       notes: "**Nits (1)**\n- stale cached nit",
@@ -1308,11 +1293,9 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      aiReviewMode: "block",
       gatePack: "oss-anti-slop",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "block" } });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
     await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 48, title: "Clean PR", state: "open", user: { login: "contributor" }, head: { sha: "a48" }, labels: [], body: "Closes #1" });
     const commentBodies: string[] = [];
@@ -1400,11 +1383,9 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      aiReviewMode: "block",
       gatePack: "oss-anti-slop",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "block" } });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
     await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 49, title: "Clean PR", state: "open", user: { login: "contributor" }, head: { sha: "a49" }, labels: [], body: "Closes #1" });
     const commentBodies: string[] = [];
@@ -1476,11 +1457,9 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      aiReviewMode: "block",
       gatePack: "oss-anti-slop",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "block" } });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
     await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 49, title: "Clean PR", state: "open", user: { login: "contributor" }, head: { sha: "a49" }, labels: [], body: "Closes #1" });
     const commentBodies: string[] = [];
@@ -1545,7 +1524,8 @@ describe("queue processors", () => {
     const env = createTestEnv();
     await upsertInstallation(env, { action: "created", installation: { id: 9001, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo", full_name: "owner/agent-repo", private: false, owner: { login: "owner" } }, 9001);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" }, linkedIssueGateMode: "block" });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { linkedIssueGateMode: "block" } });
     await upsertPullRequestFromGitHub(env, "owner/agent-repo", { number: 7, title: "Unlinked PR", state: "open", user: { login: "contributor" }, head: { sha: "a7" }, labels: [], body: "no linked issue here" });
     // Advance past the one-hour freshness window so the just-seeded PR reads as stale.
     vi.setSystemTime(new Date("2026-05-28T02:00:00.000Z"));
@@ -1602,8 +1582,8 @@ describe("queue processors", () => {
     const env = createTestEnv({ JOBS: { async send(m: import("../../src/types").JobMessage) { sent.push(m); } } as unknown as Queue });
     await upsertInstallation(env, { action: "created", installation: { id: 9400, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo", full_name: "owner/agent-repo", private: false, owner: { login: "owner" } }, 9400);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" }, reviewCheckMode: "required" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", reviewCheckMode: "required" } });
     for (const number of [1, 2, 3, 4]) {
       const headSha = `a${number}`;
       await upsertPullRequestFromGitHub(env, "owner/agent-repo", { number, title: `PR${number}`, state: "open", user: { login: "c" }, head: { sha: headSha }, labels: [], body: "" });
@@ -1709,8 +1689,8 @@ describe("queue processors", () => {
     });
     await upsertInstallation(env, { action: "created", installation: { id: 9402, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo", full_name: "owner/agent-repo", private: false, owner: { login: "owner" } }, 9402);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" }, reviewCheckMode: "required" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", reviewCheckMode: "required" } });
     for (const number of [1, 2, 3, 4, 5]) {
       const headSha = `repair-${number}`;
       await upsertPullRequestFromGitHub(env, "owner/agent-repo", { number, title: `Repair ${number}`, state: "open", user: { login: "c" }, head: { sha: headSha }, labels: [], body: "" });
@@ -1750,8 +1730,8 @@ describe("queue processors", () => {
     });
     await upsertInstallation(env, { action: "created", installation: { id: 9403, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo", full_name: "owner/agent-repo", private: false, owner: { login: "owner" } }, 9403);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" }, reviewCheckMode: "required" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", reviewCheckMode: "required" } });
     // PR 1: missing its current Gate check -- the one priority repair. Make it newer-by-regate than the
     // ordinary stale PRs below, reproducing the backlog bug where a max=1 staleness slice could drop the repair.
     await upsertPullRequestFromGitHub(env, "owner/agent-repo", { number: 1, title: "Repair 1", state: "open", user: { login: "c" }, head: { sha: "repair-1" }, labels: [], body: "" });
@@ -1792,8 +1772,8 @@ describe("queue processors", () => {
     const env = createTestEnv({ JOBS: { async send(m: import("../../src/types").JobMessage) { sent.push(m); } } as unknown as Queue });
     await upsertInstallation(env, { action: "created", installation: { id: 9404, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo", full_name: "owner/agent-repo", private: false, owner: { login: "owner" } }, 9404);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" }, reviewCheckMode: "required" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", reviewCheckMode: "required" } });
     // PR 1: missing its current Gate check for its current head -- surfaceRepairPriorityPullNumbers flags this as
     // outage-repair priority (no completed LoopOver Gate check run at the live head SHA).
     await upsertPullRequestFromGitHub(env, "owner/agent-repo", { number: 1, title: "Repair 1", state: "open", user: { login: "c" }, head: { sha: "repair-1" }, labels: [], body: "" });
@@ -1840,8 +1820,8 @@ describe("queue processors", () => {
     const env = createTestEnv({ JOBS: { async send(m: import("../../src/types").JobMessage) { sent.push(m); } } as unknown as Queue });
     await upsertInstallation(env, { action: "created", installation: { id: 9407, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo", full_name: "owner/agent-repo", private: false, owner: { login: "owner" } }, 9407);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" }, reviewCheckMode: "required" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", reviewCheckMode: "required" } });
     // PR 1: missing its current Gate check for its current head -- would ordinarily be flagged outage-repair
     // priority on every tick. Pre-seed REGATE_REPAIR_MAX_ATTEMPTS_PER_SHA=5 (#3998) prior repair-attempt audit
     // events for this EXACT head SHA to simulate a review that keeps failing (e.g. a timeout) and never
@@ -1893,8 +1873,8 @@ describe("queue processors", () => {
     const env = createTestEnv({ JOBS: { async send(m: import("../../src/types").JobMessage) { sent.push(m); } } as unknown as Queue });
     await upsertInstallation(env, { action: "created", installation: { id: 9408, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo", full_name: "owner/agent-repo", private: false, owner: { login: "owner" } }, 9408);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" }, reviewCheckMode: "required" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", reviewCheckMode: "required" } });
     await upsertPullRequestFromGitHub(env, "owner/agent-repo", { number: 2, title: "Fresh repair", state: "open", user: { login: "c" }, head: { sha: "fresh-sha" }, labels: [], body: "" });
     await repositoriesModule.markPullRequestSurfacePublished(env, "owner/agent-repo", 2, "fresh-sha");
     const targetKey = "owner/agent-repo#2#fresh-sha";
@@ -1938,8 +1918,8 @@ describe("queue processors", () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await upsertInstallation(env, { action: "created", installation: { id: 9409, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: { pull_requests: "write", checks: "write" }, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo", full_name: "owner/agent-repo", private: false, owner: { login: "owner" } }, 9409);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" }, aiReviewMode: "off", gatePack: "oss-anti-slop", reviewCheckMode: "required" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" }, gatePack: "oss-anti-slop" });
+    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", aiReviewMode: "off", reviewCheckMode: "required" } });
     await upsertPullRequestFromGitHub(env, "owner/agent-repo", { number: 3, title: "Healthy PR, still waiting on required CI", state: "open", user: { login: "contributor" }, head: { sha: "pending-sha" }, base: { ref: "main" }, labels: [], body: "" });
     const targetKey = "owner/agent-repo#3#pending-sha";
     vi.setSystemTime(new Date("2026-05-28T02:00:00.000Z"));
@@ -1993,8 +1973,8 @@ describe("queue processors", () => {
     const env = createTestEnv({ JOBS: { async send(m: import("../../src/types").JobMessage) { sent.push(m); } } as unknown as Queue });
     await upsertInstallation(env, { action: "created", installation: { id: 9412, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo4", full_name: "owner/agent-repo4", private: false, owner: { login: "owner" } }, 9412);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo4", autonomy: { merge: "auto" }, reviewCheckMode: "required" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo4", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo4", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo4", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", reviewCheckMode: "required" } });
     // Never marked surface-published for this head -- needsSurfaceConvergence is true, a genuine backlog-convergence candidate.
     await upsertPullRequestFromGitHub(env, "owner/agent-repo4", { number: 1, title: "Stuck convergence", state: "open", user: { login: "c" }, head: { sha: "stuck-sha" }, labels: [], body: "" });
     const targetKey = "owner/agent-repo4#1#stuck-sha";
@@ -2034,8 +2014,8 @@ describe("queue processors", () => {
     const env = createTestEnv({ JOBS: { async send(m: import("../../src/types").JobMessage) { sent.push(m); } } as unknown as Queue });
     await upsertInstallation(env, { action: "created", installation: { id: 9413, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo5", full_name: "owner/agent-repo5", private: false, owner: { login: "owner" } }, 9413);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo5", autonomy: { merge: "auto" }, aiReviewMode: "off" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo5", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo5", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo5", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", aiReviewMode: "off" } });
     await upsertPullRequestFromGitHub(env, "owner/agent-repo5", { number: 2, title: "Fresh convergence", state: "open", user: { login: "c" }, head: { sha: "fresh-sha" }, base: { ref: "main" }, labels: [], body: "" });
     const targetKey = "owner/agent-repo5#2#fresh-sha";
     vi.setSystemTime(new Date("2026-05-28T02:00:00.000Z"));
@@ -2076,8 +2056,8 @@ describe("queue processors", () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await upsertInstallation(env, { action: "created", installation: { id: 9411, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: { pull_requests: "write", checks: "write" }, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo3", full_name: "owner/agent-repo3", private: false, owner: { login: "owner" } }, 9411);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo3", autonomy: { merge: "auto" }, aiReviewMode: "off" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo3", { settings: { checkRunMode: "off", commentMode: "all_prs", publicSurface: "comment_only" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo3", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo3", { settings: { checkRunMode: "off", commentMode: "all_prs", publicSurface: "comment_only", aiReviewMode: "off" } });
     await upsertPullRequestFromGitHub(env, "owner/agent-repo3", { number: 5, title: "Healthy PR ready to review", state: "open", user: { login: "contributor" }, head: { sha: "ready-sha" }, base: { ref: "main" }, labels: [], body: "" });
     const targetKey = "owner/agent-repo3#5#ready-sha";
     let finalCommentAttempted = false;
@@ -2116,8 +2096,8 @@ describe("queue processors", () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await upsertInstallation(env, { action: "created", installation: { id: 9413, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: { pull_requests: "write", checks: "write" }, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo5", full_name: "owner/agent-repo5", private: false, owner: { login: "owner" } }, 9413);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo5", autonomy: { merge: "auto" }, aiReviewMode: "off" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo5", { settings: { checkRunMode: "off", commentMode: "all_prs", publicSurface: "comment_only" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo5", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo5", { settings: { checkRunMode: "off", commentMode: "all_prs", publicSurface: "comment_only", aiReviewMode: "off" } });
     await upsertPullRequestFromGitHub(env, "owner/agent-repo5", { number: 5, title: "Healthy PR ready to review", state: "open", user: { login: "contributor" }, head: { sha: "ready-sha" }, base: { ref: "main" }, labels: [], body: "" });
     const originalRecordAuditEvent = repositoriesModule.recordAuditEvent;
     const auditSpy = vi.spyOn(repositoriesModule, "recordAuditEvent").mockImplementation(async (auditEnv, event) => {
@@ -2155,8 +2135,8 @@ describe("queue processors", () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await upsertInstallation(env, { action: "created", installation: { id: 9412, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo4", full_name: "owner/agent-repo4", private: false, owner: { login: "owner" } }, 9412);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo4", autonomy: { merge: "auto" }, aiReviewMode: "off" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo4", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo4", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo4", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", aiReviewMode: "off" } });
     await upsertPullRequestFromGitHub(env, "owner/agent-repo4", { number: 6, title: "Healthy PR ready to review", state: "open", user: { login: "contributor" }, head: { sha: "ready-sha-2" }, base: { ref: "main" }, labels: [], body: "" });
     const targetKey = "owner/agent-repo4#6#ready-sha-2";
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -2196,8 +2176,8 @@ describe("queue processors", () => {
     const env = createTestEnv({ JOBS: { async send(m: import("../../src/types").JobMessage) { sent.push(m); } } as unknown as Queue });
     await upsertInstallation(env, { action: "created", installation: { id: 9401, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo", full_name: "owner/agent-repo", private: false, owner: { login: "owner" } }, 9401);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" }, reviewCheckMode: "required" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" } });
+    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", reviewCheckMode: "required" } });
     await upsertPullRequestFromGitHub(env, "owner/agent-repo", { number: 7, title: "Repair me", state: "open", user: { login: "c" }, head: { sha: "a7" }, labels: [], body: "" });
     await repositoriesModule.markPullRequestSurfacePublished(env, "owner/agent-repo", 7, "a7");
     vi.setSystemTime(new Date("2026-05-28T02:00:00.000Z"));
@@ -2961,8 +2941,8 @@ describe("queue processors", () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await upsertInstallation(env, { action: "created", installation: { id: 9001, account: { login: "owner", id: 1, type: "Organization" }, target_type: "Organization", repository_selection: "selected", permissions: {}, events: [] } });
     await upsertRepositoryFromGitHub(env, { name: "agent-repo", full_name: "owner/agent-repo", private: false, owner: { login: "owner" } }, 9001);
-    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" }, aiReviewMode: "off", gatePack: "oss-anti-slop", reviewCheckMode: "required" });
-    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" } });
+    await upsertRepositorySettings(env, { repoFullName: "owner/agent-repo", autonomy: { merge: "auto" }, gatePack: "oss-anti-slop" });
+    await upsertRepoFocusManifest(env, "owner/agent-repo", { settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off", aiReviewMode: "off", reviewCheckMode: "required" } });
     await upsertPullRequestFromGitHub(env, "owner/agent-repo", { number: 7, title: "Clean PR", state: "open", user: { login: "contributor" }, head: { sha: "a7" }, labels: [], body: "Closes #1" });
     let mergeCalls = 0;
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -3514,8 +3494,6 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "block",
       requireLinkedIssue: true,
     });
     const calls = { minerList: 0, gateChecks: 0 };
@@ -3545,7 +3523,7 @@ describe("queue processors", () => {
     });
 
     // .loopover.yml authoritatively sets the linked-issue blocker to "block" (config-as-code).
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { linkedIssue: "block" }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { linkedIssue: "block" }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", reviewCheckMode: "required", linkedIssueGateMode: "block" } });
     await processJob(env, {
       type: "github-webhook",
       deliveryId: "gate-only",
@@ -3591,14 +3569,12 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "block",
       requireLinkedIssue: true,
     });
     // .loopover.yml authoritatively sets the linked-issue blocker to "block" (config-as-code) — mirrors the
     // existing "publishes an opt-in gate..." test above, which needs the same manifest override for the raw
     // DB setting to take effect as a live hard block.
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { linkedIssue: "block" }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { linkedIssue: "block" }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", reviewCheckMode: "required", linkedIssueGateMode: "block" } });
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
       if (url === "https://api.gittensor.io/miners") return Response.json([]);
@@ -3642,11 +3618,9 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "block",
       requireLinkedIssue: true,
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { linkedIssue: "block" }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { linkedIssue: "block" }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", reviewCheckMode: "required", linkedIssueGateMode: "block" } });
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
       if (url === "https://api.gittensor.io/miners") return Response.json([]);
@@ -3704,12 +3678,10 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
       manifestPolicyGateMode: "block",
       requireLinkedIssue: false,
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { testExpectations: ["Run npm run test:ci."], settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { testExpectations: ["Run npm run test:ci."], settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false, reviewCheckMode: "required", linkedIssueGateMode: "off" } });
     await upsertPullRequestFile(env, {
       repoFullName: "JSONbored/gittensory",
       pullNumber: 43,
@@ -3788,12 +3760,10 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
       manifestPolicyGateMode: "block",
       requireLinkedIssue: false,
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { testExpectations: ["Run npm run test:ci."], settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { testExpectations: ["Run npm run test:ci."], settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false, reviewCheckMode: "required", linkedIssueGateMode: "off" } });
     await upsertPullRequestFile(env, {
       repoFullName: "JSONbored/gittensory",
       pullNumber: 44,
@@ -3875,8 +3845,6 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
       manifestPolicyGateMode: "block",
       requireLinkedIssue: false,
     });
@@ -3886,7 +3854,7 @@ describe("queue processors", () => {
     await upsertRepoFocusManifest(env, "JSONbored/gittensory", {
       wantedPaths: ["docs/"],
       testExpectations: ["Run npm run test:ci."],
-      settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false },
+      settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false, reviewCheckMode: "required", linkedIssueGateMode: "off" },
     });
     await upsertPullRequestFile(env, {
       repoFullName: "JSONbored/gittensory",
@@ -3968,12 +3936,10 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
       manifestPolicyGateMode: "block",
       requireLinkedIssue: false,
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { testExpectations: ["Run npm run test:ci."], settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { testExpectations: ["Run npm run test:ci."], settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false, reviewCheckMode: "required", linkedIssueGateMode: "off" } });
     await upsertPullRequestFile(env, {
       repoFullName: "JSONbored/gittensory",
       pullNumber: 45,
@@ -4055,12 +4021,10 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
       manifestPolicyGateMode: "block",
       requireLinkedIssue: false,
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { linkedIssuePolicy: "required", settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { linkedIssuePolicy: "required", settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false, reviewCheckMode: "required", linkedIssueGateMode: "off" } });
     await upsertPullRequestFile(env, {
       repoFullName: "JSONbored/gittensory",
       pullNumber: 46,
@@ -4142,12 +4106,10 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
       manifestPolicyGateMode: "block",
       requireLinkedIssue: false,
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { linkedIssuePolicy: "required", settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { linkedIssuePolicy: "required", settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false, reviewCheckMode: "required", linkedIssueGateMode: "off" } });
     await upsertPullRequestFile(env, {
       repoFullName: "JSONbored/gittensory",
       pullNumber: 47,
@@ -4229,12 +4191,10 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
       manifestPolicyGateMode: "block",
       requireLinkedIssue: false,
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { testExpectations: ["Run npm run test:ci."], settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { testExpectations: ["Run npm run test:ci."], settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false, reviewCheckMode: "required", linkedIssueGateMode: "off" } });
     await upsertPullRequestFile(env, {
       repoFullName: "JSONbored/gittensory",
       pullNumber: 46,
@@ -4319,15 +4279,13 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
       manifestPolicyGateMode: "block",
       requireLinkedIssue: false,
     });
     await upsertRepoFocusManifest(env, "JSONbored/gittensory", {
       testExpectations: ["Run npm run test:ci."],
       review: { auto_review: { ignore_authors: ["*[bot]"] } },
-      settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false },
+      settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", typeLabelsEnabled: false, reviewCheckMode: "required", linkedIssueGateMode: "off" },
     });
     await upsertPullRequestFile(env, {
       repoFullName: "JSONbored/gittensory",
@@ -4398,11 +4356,8 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
-      aiReviewMode: "off",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", reviewCheckMode: "required", linkedIssueGateMode: "off", aiReviewMode: "off" } });
     const realPrepare = env.DB.prepare.bind(env.DB);
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     env.DB.prepare = ((sql: string) => {
@@ -4452,11 +4407,8 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
-      aiReviewMode: "off",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", reviewCheckMode: "required", linkedIssueGateMode: "off", aiReviewMode: "off" } });
     const realPrepare = env.DB.prepare.bind(env.DB);
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     env.DB.prepare = ((sql: string) => {
@@ -4514,11 +4466,8 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
-      aiReviewMode: "off",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", reviewCheckMode: "required", linkedIssueGateMode: "off", aiReviewMode: "off" } });
     let patches = 0;
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
@@ -4575,9 +4524,8 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      aiReviewMode: "off",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", aiReviewMode: "off" } });
     let commentPosts = 0;
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
@@ -4703,9 +4651,8 @@ describe("queue processors", () => {
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
         autoLabelEnabled: false,
-        aiReviewMode: "off",
       });
-      await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+      await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", aiReviewMode: "off" } });
       let commentPosts = 0;
       vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = input.toString();
@@ -4766,9 +4713,8 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      aiReviewMode: "off",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", aiReviewMode: "off" } });
     let commentPosts = 0;
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
@@ -4839,9 +4785,8 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      aiReviewMode: "off",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", aiReviewMode: "off" } });
     let commentPosts = 0;
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
@@ -4903,11 +4848,8 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
-      aiReviewMode: "off",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", reviewCheckMode: "required", linkedIssueGateMode: "off", aiReviewMode: "off" } });
     let livePullReads = 0;
     const checkBodies: Array<{ status?: string; conclusion?: string; output?: { title?: string; summary?: string } }> = [];
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -4996,11 +4938,8 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "off",
-      aiReviewMode: "off",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", reviewCheckMode: "required", linkedIssueGateMode: "off", aiReviewMode: "off" } });
     let patchAttempts = 0;
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
@@ -5069,15 +5008,13 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
-      linkedIssueGateMode: "block",
       requireLinkedIssue: true,
       autonomy: { review_state_label: "auto", request_changes: "auto" },
       agentDryRun: true, // dry-run → the actions are recorded but make no GitHub mutation
     });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
     // .loopover.yml authoritatively sets the linked-issue blocker to "block" (config-as-code, as in the gate tests above).
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { linkedIssue: "block" }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { linkedIssue: "block" }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", reviewCheckMode: "required", linkedIssueGateMode: "block" } });
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
       if (url === "https://api.gittensor.io/miners") return Response.json([]);
@@ -5129,13 +5066,12 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
       manifestPolicyGateMode: "block",
       autonomy: { merge: "auto", request_changes: "auto" },
       agentDryRun: true,
     });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { hardGuardrailGlobs: ["migrations/**"], commentMode: "off", publicSurface: "off", checkRunMode: "off" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { hardGuardrailGlobs: ["migrations/**"], commentMode: "off", publicSurface: "off", checkRunMode: "off", reviewCheckMode: "required" } });
     await upsertPullRequestFile(env, {
       repoFullName: "JSONbored/gittensory",
       pullNumber: 48,
@@ -5281,13 +5217,12 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
       autonomy: { merge: "observe", request_changes: "observe" }, // evaluate + post the gate, take no merge/close action
       agentDryRun: false, // so the gate check-run is actually POSTed (dry-run suppresses the write) and capturable
     });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
     // The maintainer requires the "approved" label before merge — DETERMINISTIC, enforced.
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { review: { pre_merge_checks: [{ name: "Approved label required", require_label: "approved", enforce: true }] }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { review: { pre_merge_checks: [{ name: "Approved label required", require_label: "approved", enforce: true }] }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled", reviewCheckMode: "required" } });
     await upsertPullRequestFile(env, { repoFullName: "JSONbored/gittensory", pullNumber: 49, path: "src/feature.ts", status: "modified", additions: 5, deletions: 0, changes: 5, payload: {} });
 
     let gateConclusion: string | undefined;
@@ -5357,12 +5292,11 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
       autonomy: { merge: "observe", request_changes: "observe" },
       agentDryRun: false,
     });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { claMode: "block", cla: { consentPhrase: "I have read and agree to the CLA" } }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { claMode: "block", cla: { consentPhrase: "I have read and agree to the CLA" } }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled", reviewCheckMode: "required" } });
     await upsertPullRequestFile(env, { repoFullName: "JSONbored/gittensory", pullNumber: 49, path: "src/feature.ts", status: "modified", additions: 5, deletions: 0, changes: 5, payload: {} });
 
     let gateConclusion: string | undefined;
@@ -5432,12 +5366,11 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
       autonomy: { merge: "observe", request_changes: "observe" },
       agentDryRun: false,
     });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { claMode: "block", cla: { consentPhrase: "I have read and agree to the CLA" } }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { claMode: "block", cla: { consentPhrase: "I have read and agree to the CLA" } }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled", reviewCheckMode: "required" } });
     await upsertPullRequestFile(env, { repoFullName: "JSONbored/gittensory", pullNumber: 50, path: "src/feature.ts", status: "modified", additions: 5, deletions: 0, changes: 5, payload: {} });
 
     let gateConclusion: string | undefined;
@@ -5501,12 +5434,11 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
       autonomy: { merge: "observe", request_changes: "observe" },
       agentDryRun: false,
       // No gate.claMode manifest override — claGateMode stays undefined (the safe default).
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled", reviewCheckMode: "required" } });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
     await upsertPullRequestFile(env, { repoFullName: "JSONbored/gittensory", pullNumber: 51, path: "src/feature.ts", status: "modified", additions: 5, deletions: 0, changes: 5, payload: {} });
 
@@ -5576,13 +5508,12 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
       autonomy: { merge: "observe", request_changes: "observe" },
       agentDryRun: false,
     });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
     // Check-run-only config: no consentPhrase, so ONLY the named check-run's conclusion is consulted.
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { claMode: "block", cla: { checkRunName: "CLA Assistant Lite", checkRunAppSlug: "cla-assistant" } }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { claMode: "block", cla: { checkRunName: "CLA Assistant Lite", checkRunAppSlug: "cla-assistant" } }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled", reviewCheckMode: "required" } });
     await upsertPullRequestFile(env, { repoFullName: "JSONbored/gittensory", pullNumber: 52, path: "src/feature.ts", status: "modified", additions: 5, deletions: 0, changes: 5, payload: {} });
 
     let gateConclusion: string | undefined;
@@ -5649,12 +5580,11 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
       autonomy: { merge: "observe", request_changes: "observe" },
       agentDryRun: false,
     });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { claMode: "block", cla: { checkRunName: "CLA Assistant Lite", checkRunAppSlug: "cla-assistant" } }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { claMode: "block", cla: { checkRunName: "CLA Assistant Lite", checkRunAppSlug: "cla-assistant" } }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled", reviewCheckMode: "required" } });
     await upsertPullRequestFile(env, { repoFullName: "JSONbored/gittensory", pullNumber: 53, path: "src/feature.ts", status: "modified", additions: 5, deletions: 0, changes: 5, payload: {} });
 
     let gateConclusion: string | undefined;
@@ -5726,14 +5656,13 @@ describe("queue processors", () => {
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       autoLabelEnabled: false,
-      reviewCheckMode: "required",
       autonomy: { merge: "observe", request_changes: "observe" },
       agentDryRun: false,
     });
     await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: queueMinerSnapshot("contributor") }, 60_000);
     // Misconfigured: checkRunName set, checkRunAppSlug forgotten -- no run can ever be trusted, so the gate
     // must BLOCK (not hold), even though a same-name check-run with a passing conclusion exists on the commit.
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { claMode: "block", cla: { checkRunName: "CLA Assistant Lite" } }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled" } });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { gate: { claMode: "block", cla: { checkRunName: "CLA Assistant Lite" } }, settings: { commentMode: "off", publicSurface: "off", checkRunMode: "enabled", reviewCheckMode: "required" } });
     await upsertPullRequestFile(env, { repoFullName: "JSONbored/gittensory", pullNumber: 54, path: "src/feature.ts", status: "modified", additions: 5, deletions: 0, changes: 5, payload: {} });
 
     let gateConclusion: string | undefined;

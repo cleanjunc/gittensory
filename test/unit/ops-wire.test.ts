@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/api/routes";
 import { recordAiUsageEvent, recordAuditEvent, recordGateBlockOutcome, updatePullRequestSlopAssessment, upsertPullRequestFromGitHub } from "../../src/db/repositories";
 import {
   classifyAnomalySeverity,
+  clearOpsManifestOverrideCacheForTest,
   computeOpsStats,
   detectOutcomeAnomalies,
   isOpsEnabled,
@@ -67,6 +68,10 @@ describe("isOpsEnabled — default OFF, truthy convention", () => {
 });
 
 describe("resolveOpsManifestOverride — config-as-code lookup (#6275)", () => {
+  beforeEach(() => {
+    clearOpsManifestOverrideCacheForTest();
+  });
+
   it("returns the self-repo's configured ops block when present", async () => {
     const env = createTestEnv();
     await upsertRepoFocusManifest(env, SELF_REPO, { ops: { enabled: true } });
@@ -97,6 +102,29 @@ describe("resolveOpsManifestOverride — config-as-code lookup (#6275)", () => {
     expect(await resolveOpsManifestOverride(env)).toEqual({ present: false, enabled: false });
     expect(warnings.mock.calls.map((c) => String(c[0])).some((line) => line.includes("ops_manifest_override_error"))).toBe(true);
     vi.unstubAllGlobals();
+  });
+
+  it("within the 60s TTL, reuses the cached override instead of re-reading the manifest (#6372 perf)", async () => {
+    const env = createTestEnv();
+    await upsertRepoFocusManifest(env, SELF_REPO, { ops: { enabled: true } });
+    const t0 = Date.parse("2026-07-16T00:00:00Z");
+    expect(await resolveOpsManifestOverride(env, t0)).toEqual({ present: true, enabled: true });
+
+    // A poisoned DB proves the second call never re-reads -- it must serve the cached value.
+    env.DB.prepare = (() => {
+      throw new Error("should not be queried on a cache hit");
+    }) as typeof env.DB.prepare;
+    expect(await resolveOpsManifestOverride(env, t0 + 30_000)).toEqual({ present: true, enabled: true });
+  });
+
+  it("re-reads the manifest once the 60s TTL has elapsed", async () => {
+    const env = createTestEnv();
+    await upsertRepoFocusManifest(env, SELF_REPO, { ops: { enabled: true } });
+    const t0 = Date.parse("2026-07-16T00:00:00Z");
+    expect(await resolveOpsManifestOverride(env, t0)).toEqual({ present: true, enabled: true });
+
+    await upsertRepoFocusManifest(env, SELF_REPO, { ops: { enabled: false } });
+    expect(await resolveOpsManifestOverride(env, t0 + 60_001)).toEqual({ present: true, enabled: false });
   });
 });
 
@@ -657,6 +685,9 @@ describe("computeOpsStats — cross-repo outcome aggregate", () => {
 
 describe("GET /v1/internal/ops/stats — bearer-gated, flag-gated endpoint", () => {
   const bearer = (env: Env) => ({ authorization: `Bearer ${env.INTERNAL_JOB_TOKEN}` });
+  beforeEach(() => {
+    clearOpsManifestOverrideCacheForTest();
+  });
 
   it("401s without the internal token (the /v1/internal/* middleware gate)", async () => {
     const app = createApp();

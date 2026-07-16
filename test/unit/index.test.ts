@@ -1,11 +1,15 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "../../src/index";
 import { recordGitHubRateLimitObservation } from "../../src/db/repositories";
 import { scheduledEnqueueDelaySeconds } from "../../src/selfhost/queue-common";
 import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader";
+import { clearOpsManifestOverrideCacheForTest } from "../../src/review/ops-wire";
 import { createTestEnv } from "../helpers/d1";
 
 describe("worker entrypoint", () => {
+  beforeEach(() => {
+    clearOpsManifestOverrideCacheForTest();
+  });
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();

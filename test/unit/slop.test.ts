@@ -403,6 +403,33 @@ describe("buildMissingTestEvidenceFinding", () => {
       }),
     ).toBeNull();
   });
+
+  // Regression for the audited gap: a protoc regen touches only *.pb.go stubs (matched by the .go
+  // extension in isCodeFile), which nobody hand-writes tests for. Mirrors
+  // buildNonSubstantivePaddingFinding's classifyChangedFile-based generated/vendored/minified exemption
+  // so this signal can't fire on a codegen-only diff.
+  it("does not fire on a codegen-only diff (generated .pb.go stubs, no hand-authored source)", () => {
+    expect(
+      buildMissingTestEvidenceFinding({
+        changedFiles: [
+          { path: "proto/gen/service.pb.go", additions: 120, deletions: 80 },
+          { path: "proto/gen/service_grpc.pb.go", additions: 60, deletions: 20 },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("still fires when a hand-authored code file ships alongside the generated stubs", () => {
+    const finding = buildMissingTestEvidenceFinding({
+      changedFiles: [
+        { path: "proto/gen/service.pb.go", additions: 120, deletions: 80 },
+        { path: "src/api/handler.go", additions: 10, deletions: 0 },
+      ],
+    });
+    expect(finding).toMatchObject({ code: "missing_test_evidence" });
+    // Only the hand-authored file counts toward the reported total, not the exempted generated stub.
+    expect(finding?.detail).toContain("1 code file(s)");
+  });
 });
 
 describe("buildTrivialWhitespaceChurnFinding", () => {

@@ -102,6 +102,10 @@ const MIN_SUBSTANTIVE_TEST_ADDITIONS = 3;
 // A padded diff is one whose churn is dominated by non-substantive output. Set at half the diff so a PR
 // with any meaningful share of real, hand-authored files cannot trip it.
 const PADDING_DOMINANCE_SHARE = 0.5;
+// Categories that are mechanically produced, not hand-authored — shared by buildNonSubstantivePaddingFinding
+// (where this same set of categories counts toward the "padding" share) and buildMissingTestEvidenceFinding
+// (where it exempts codegen-only diffs from the missing-test-evidence signal).
+const PADDING_CATEGORIES = new Set(["minified", "generated", "vendored"]);
 
 export function buildSlopAssessment(input: SlopAssessmentInput): SlopAssessment {
   const findings: AdvisoryFinding[] = [];
@@ -271,7 +275,11 @@ export function buildNoLinkedIssueRationaleFinding(input: SlopAssessmentInput): 
 export function buildMissingTestEvidenceFinding(input: SlopAssessmentInput): AdvisoryFinding | null {
   const changedFiles = input.changedFiles ?? [];
   const changedPaths = changedFiles.map((file) => file.path).filter(Boolean);
-  const codePaths = changedPaths.filter(isCodeFile);
+  // Generated/vendored/minified output carries source-file extensions (e.g. protoc's `.pb.go` stubs) and
+  // so passes the plain isCodeFile check, but nobody hand-writes tests for mechanically regenerated code.
+  // Mirror buildNonSubstantivePaddingFinding's classifyChangedFile-based exemption so this signal can't
+  // fire on a codegen-only diff.
+  const codePaths = changedPaths.filter((path) => isCodeFile(path) && !PADDING_CATEGORIES.has(classifyChangedFile(path)));
   if (codePaths.length === 0) return null;
 
   // A changed test FILE only counts as real test evidence when it carries substantive content. An empty or

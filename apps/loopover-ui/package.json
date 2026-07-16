@@ -10,7 +10,7 @@
     "postinstall": "fumadocs-mdx",
     "dev": "vite dev",
     "build": "vite build",
-    "build:cloudflare": "npm --prefix ../.. run ui:build",
+    "build:cloudflare": "npm --prefix ../.. ci && npm --prefix ../.. run ui:build",
     "build:dev": "vite build --mode development",
     "bundle-analysis": "bundle-analyzer ./dist/client --bundle-name=loopover-ui --upload-token=$CODECOV_TOKEN",
     "deploy:built": "wrangler deploy --config dist/server/wrangler.json",

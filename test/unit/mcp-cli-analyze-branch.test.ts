@@ -1,6 +1,20 @@
 import { rmSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
-import { closeFixtureServer, createPacketRepo, localBranchAnalysisFixture, runAsync, startFixtureServer } from "./support/mcp-cli-harness";
+import { closeFixtureServer, createPacketRepo, localBranchAnalysisFixture, run, runAsync, startFixtureServer } from "./support/mcp-cli-harness";
+
+describe("loopover-mcp CLI — analyze-branch / preflight --help (#6256)", () => {
+  it("prints usage for analyze-branch --help without requiring --login or hitting git/network", () => {
+    const help = run(["analyze-branch", "--help"]);
+    expect(help).toMatch(/loopover-mcp analyze-branch/);
+    expect(help).toMatch(/--login <github-login>/);
+  });
+
+  it("prints usage for preflight --help without requiring --login or hitting git/network", () => {
+    const help = run(["preflight", "--help"]);
+    expect(help).toMatch(/loopover-mcp preflight/);
+    expect(help).toMatch(/--login <github-login>/);
+  });
+});
 
 describe("loopover-mcp CLI — analyze-branch --format table", () => {
   let tempDir: string | null = null;

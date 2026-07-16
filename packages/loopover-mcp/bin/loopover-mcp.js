@@ -1957,6 +1957,8 @@ async function runCli(args) {
     const suggestion = suggestCommand(command);
     throw new Error(`Unknown command: ${command}.${suggestion ? ` Did you mean \`${suggestion}\`?` : ""} Run \`loopover-mcp --help\` to list commands.`);
   }
+  // Match every other subcommand: honor --help before requiring --login / hitting git+network (#6256).
+  if (options.help === true) return printHelp();
   const contributorLogin = options.login ?? process.env.LOOPOVER_LOGIN ?? process.env.GITHUB_LOGIN;
   if (!contributorLogin) throw new Error("Pass --login <github-login> or set LOOPOVER_LOGIN.");
   const result = await analyzeCurrentBranch({

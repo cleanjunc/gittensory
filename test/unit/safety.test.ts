@@ -117,7 +117,7 @@ function prWebhook(deliveryId: string) {
 
 describe("LOOPOVER_REVIEW_SAFETY secrets-scan wired into the review FINALIZE path (processors.ts call site)", () => {
   it("FLAG-ON: a leaked secret in the PR's changed files FAILS the finalized gate (secret_leak blocker appended before evaluateGateCheck)", async () => {
-    const env = createTestEnv({ LOOPOVER_REVIEW_SAFETY: "true", GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ LOOPOVER_REVIEW_SAFETY: "true", GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await seedGateEnabledRepo(env);
     await seedLeakedSecretFile(env);
     const seen: { conclusion?: string | undefined } = {};
@@ -132,7 +132,7 @@ describe("LOOPOVER_REVIEW_SAFETY secrets-scan wired into the review FINALIZE pat
   });
 
   it("FLAG-OFF: a leaked secret STILL fails the gate — the concrete-credential block is unconditional (#audit-3.4)", async () => {
-    const env = createTestEnv({ LOOPOVER_REVIEW_SAFETY: "false", GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ LOOPOVER_REVIEW_SAFETY: "false", GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await seedGateEnabledRepo(env);
     await seedLeakedSecretFile(env);
     const seen: { conclusion?: string | undefined } = {};
@@ -148,7 +148,7 @@ describe("LOOPOVER_REVIEW_SAFETY secrets-scan wired into the review FINALIZE pat
   });
 
   it("UNSET (default): a leaked secret also fails the gate — the secret-leak block does not depend on the flag", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() }); // LOOPOVER_REVIEW_SAFETY unset
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" }); // LOOPOVER_REVIEW_SAFETY unset
     await seedGateEnabledRepo(env);
     await seedLeakedSecretFile(env);
     const seen: { conclusion?: string | undefined } = {};

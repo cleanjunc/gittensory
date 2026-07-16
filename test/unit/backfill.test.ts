@@ -725,7 +725,7 @@ describe("GitHub backfill", () => {
     });
 
     it("REGRESSION: broker-mode refresh replaces stale local permissions with the broker token permission snapshot", async () => {
-      const env = createTestEnv({ ORB_ENROLLMENT_SECRET: "orbsec_test" });
+      const env = createTestEnv({ ORB_ENROLLMENT_SECRET: "orbsec_test", LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertInstallation(env, {
         installation: {
           id: 912,
@@ -994,7 +994,7 @@ describe("GitHub backfill", () => {
   });
 
   it("requires Checks write only for repos with check runs enabled", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await seedRegisteredRepo(env);
     await upsertInstallation(env, {
       installation: {
@@ -1043,7 +1043,7 @@ describe("GitHub backfill", () => {
     // the separate reviewCheckMode axis ("LoopOver Orb Review Agent" check) entirely -- so an installation
     // whose repos only ever published the review-agent check (true for JSONbored's own 3 production repos,
     // none of which set checkRunMode) was never flagged as needing the Checks permission.
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await seedRegisteredRepo(env);
     await upsertInstallation(env, {
       installation: {
@@ -1088,7 +1088,7 @@ describe("GitHub backfill", () => {
   });
 
   it("REGRESSION (#audit-install-health): an acting autonomy requires pull_requests:write, so read-only is needs_attention not healthy", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await seedRegisteredRepo(env);
     await upsertInstallation(env, {
       installation: {
@@ -1131,7 +1131,7 @@ describe("GitHub backfill", () => {
   });
 
   it("REGRESSION: merge autonomy requires contents:write, so contents:read is needs_attention before merge 403s", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await seedRegisteredRepo(env);
     await upsertInstallation(env, {
       installation: {

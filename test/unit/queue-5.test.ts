@@ -688,7 +688,7 @@ describe("queue processors", () => {
     });
 
     it("close policy records a denied cooldown-applied audit when autonomy is not acting for label/close (empty plan)", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", reviewNagPolicy: "close", reviewNagMaxPings: 3, autonomy: {} });
       await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 211, title: "Observe-only autonomy", state: "open", user: { login: "chatty" }, head: { sha: "sha211" }, author_association: "NONE", labels: [], body: "" });
       for (let i = 0; i < 3; i += 1) {
@@ -2550,7 +2550,7 @@ describe("queue processors", () => {
     // Merge-readiness still collects the live slop score, so shouldCollectSlopEvidence runs even with the
     // slop gate disabled — but with slopGateMode "off" the persisted dashboard row must be cleared to null
     // so a previously cached score doesn't linger after a maintainer disables slop.
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
@@ -2781,7 +2781,7 @@ describe("queue processors", () => {
   it("#dup-winner: flag OFF keeps every same-issue sibling blocked (byte-identical) — the winner is also closed-eligible", async () => {
     // Same cluster, flag OFF (default). The lowest open PR (#91) STILL gets the duplicate block + finding,
     // exactly like today — no winner is spared.
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
@@ -2844,7 +2844,7 @@ describe("queue processors", () => {
     // "low") even though the gate's OWN reconciled otherOpenPullRequests (used to build the advisory/gate
     // disposition) had already correctly dropped #90. After the fix, both paths agree: #95 is the winner (no
     // open siblings once reconciled) and carries NO duplicate-cluster slop penalty (slop_band "clean").
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DUPLICATE_WINNER: "true" });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DUPLICATE_WINNER: "true", LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
@@ -6004,7 +6004,7 @@ describe("queue processors", () => {
     }
 
     it("applies the type label when oss_maintainer mode + an unconfirmed miner suppress the context label", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
@@ -6039,7 +6039,7 @@ describe("queue processors", () => {
     });
 
     it("keeps gate-only gittensor_only type labels silent until miner confirmation", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
@@ -6175,7 +6175,7 @@ describe("queue processors", () => {
     });
 
     it("applies the type label to a maintainer-authored PR even though includeMaintainerAuthors excludes it from the public surface", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
@@ -6209,7 +6209,7 @@ describe("queue processors", () => {
     });
 
     it("applies the type label to a bot-authored PR and keeps the three type labels mutually exclusive", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
@@ -6242,7 +6242,7 @@ describe("queue processors", () => {
     });
 
     it("cleans up an arbitrary configured custom category alongside bug/feature/priority (#label-modularity)", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
@@ -6280,7 +6280,7 @@ describe("queue processors", () => {
     });
 
     it("applies the type label when publicSurface: comment_only makes the base context label structurally impossible", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
@@ -6312,7 +6312,7 @@ describe("queue processors", () => {
     });
 
     it("typeLabelsEnabled: false does not suppress the base context label for a confirmed contributor", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
@@ -6346,7 +6346,7 @@ describe("queue processors", () => {
     });
 
     it("posts the LoopOver Context check run independently of both label families being off, with zero label writes", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
@@ -6421,7 +6421,7 @@ describe("queue processors", () => {
     }
 
     it("applies the configured priority label when a linked issue already carries the configured issue label (#priority-linked-issue-gate)", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
@@ -6454,15 +6454,16 @@ describe("queue processors", () => {
         },
       });
 
-      // JSONbored/gittensory falls back to its own bundled manifest (LOOPOVER_REPO_FOCUS_MANIFEST_YAML) when
-      // no other manifest source responds, which REPLACES this test's DB-configured single-mapping override
-      // with its own bug/feature (exclusive) + priority (additive) mapping list -- so the linked issue's
-      // gittensor:priority label composes with the title-derived "fix" -> gittensor:bug, rather than replacing
-      // it. Priority is additive (not a type of its own; see resolvePrTypeLabel's composition fix), so bug
-      // still applies from the title and only feature (never matched) needs removing.
+      // LOOPOVER_DRIFT_ISSUE_REPO is overridden above so "JSONbored/gittensory" is NOT treated as the self
+      // repo here -- otherwise it would fall back to the bundled manifest (LOOPOVER_REPO_FOCUS_MANIFEST_YAML),
+      // which carries its own bug/feature/priority mapping list and would silently replace this test's
+      // DB-configured single-mapping override. With that fallback correctly bypassed, only this test's own
+      // configured priority mapping applies: it is an EXCLUSIVE mapping (removeOtherTypeLabels: true), so per
+      // resolvePrTypeLabel it REPLACES the title-derived type label rather than composing with it -- "priority"
+      // is the sole applied label, and both other built-in categories (bug, feature) are removed.
       expect(seen.issueFetches).toBe(1);
-      expect(seen.posted).toEqual(["gittensor:bug", "gittensor:priority"]);
-      expect(seen.removed).toEqual(["gittensor:feature"]);
+      expect(seen.posted).toEqual(["gittensor:priority"]);
+      expect(seen.removed).toEqual(["gittensor:bug", "gittensor:feature"]);
     });
 
     it("REGRESSION (#4528, PR #4494 shape): keeps the propagated labels on the PR's own merge-closed webhook, instead of falling back to the title guess", async () => {
@@ -6541,7 +6542,7 @@ describe("queue processors", () => {
       // of propagation authority) that let a transient GitHub hiccup permanently strip a correctly propagated
       // gittensor:feature/gittensor:priority label down to gittensor:bug (confirmed in production, PRs
       // #4716/#4783 and 116 others in a 2-day sample). A fetch failure must now be a no-op, not a downgrade.
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
@@ -6635,7 +6636,7 @@ describe("queue processors", () => {
     });
 
     it("REGRESSION (#regression-safe-propagation): a contended per-PR actuation lock skips the label decision entirely instead of racing the pass that already holds it", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
@@ -6695,7 +6696,7 @@ describe("queue processors", () => {
 
       for (const webhook of REVIEW_FAMILY_WEBHOOKS) {
         it(`skips the type-label recompute entirely (never even fetches the linked issue) on a ${webhook.eventName}:${webhook.action} webhook`, async () => {
-          const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+          const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
           await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
           await upsertRepositorySettings(env, {
             repoFullName: "JSONbored/gittensory",
@@ -6858,7 +6859,7 @@ describe("queue processors", () => {
     });
 
     it("records the audit event for a normal applied label decision (#label-decoupling audit)", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",
@@ -6895,7 +6896,7 @@ describe("queue processors", () => {
     });
 
     it("does not let a failing audit write stop label application (completed outcome, fail-open)", async () => {
-      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+      const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
       await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
       await upsertRepositorySettings(env, {
         repoFullName: "JSONbored/gittensory",

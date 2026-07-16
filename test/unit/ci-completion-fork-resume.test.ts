@@ -130,6 +130,7 @@ describe("CI-completion fork PR resume (head-SHA fallback)", () => {
     const sent: JobMessage[] = [];
     const env = createTestEnv({
       JOBS: { async send(message: JobMessage) { sent.push(message); } } as unknown as Queue,
+      LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo",
     });
     await seedForkResumeRepo(env, "JSONbored/gittensory", 99, FORK_SHA);
     vi.stubGlobal("fetch", async () => new Response("not found", { status: 404 }));
@@ -184,7 +185,7 @@ describe("CI-completion fork PR resume (head-SHA fallback)", () => {
   });
 
   it("dispatch: a SAME-REPO check_suite (populated pull_requests[]) re-reviews WITHOUT the fork-resume audit", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await seedForkResumeRepo(env, "JSONbored/gittensory", 99, FORK_SHA);
     vi.stubGlobal("fetch", async () => {
       throw new Error("fetch must not be called for the populated same-repo path");

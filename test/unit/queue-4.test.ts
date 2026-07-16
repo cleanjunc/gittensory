@@ -430,7 +430,7 @@ describe("queue processors", () => {
   });
 
   it("auto-maintain (#778): a repo with no acting autonomy takes no agent action", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
@@ -1082,6 +1082,7 @@ describe("queue processors", () => {
       AI_SUMMARIES_ENABLED: "true",
       AI_PUBLIC_COMMENTS_ENABLED: "true",
       AI_DAILY_NEURON_BUDGET: "100000",
+      LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo",
     });
     await persistRegistrySnapshot(
       env,
@@ -1170,7 +1171,7 @@ describe("queue processors", () => {
   });
 
   it("finalizes the Gate to neutral instead of leaving it in_progress when gate completion fails", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -1242,7 +1243,7 @@ describe("queue processors", () => {
   });
 
   it("does not stamp a current public surface when a required Gate check never finalizes", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -1312,7 +1313,7 @@ describe("queue processors", () => {
   });
 
   it("records the intended label in incomplete-surface audits when a label publishes but Gate never finalizes", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -1387,7 +1388,7 @@ describe("queue processors", () => {
       }
       await originalRecordAuditEvent(auditEnv, event);
     });
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -1446,7 +1447,7 @@ describe("queue processors", () => {
       }
       await originalRecordAuditEvent(auditEnv, event);
     });
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -1500,7 +1501,7 @@ describe("queue processors", () => {
   });
 
   it("propagates a rate-limited Gate completion so the queue retries and the pending Gate stays reviewing", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -1602,7 +1603,7 @@ describe("queue processors", () => {
   });
 
   it("audits opt-in gate check permission failures without blocking webhook processing", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -1772,7 +1773,7 @@ describe("queue processors", () => {
   });
 
   it("reruns the sticky PR panel when a maintainer checks the rerun task", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
@@ -2196,7 +2197,7 @@ describe("queue processors", () => {
   });
 
   it("reruns the sticky PR panel when a write collaborator checks the rerun task", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
@@ -5471,7 +5472,7 @@ describe("queue processors", () => {
   });
 
   it("skips bots and maintainer authors, and keeps explicitly enabled checks minimal", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -5554,7 +5555,7 @@ describe("queue processors", () => {
   });
 
   it("audits advisory context check permission failures without blocking webhook processing", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -5607,7 +5608,7 @@ describe("queue processors", () => {
   });
 
   it("audits advisory context check publish failures AND retries the job (GitHub 5xx is transient, GITTENSORY-5)", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -5721,7 +5722,7 @@ describe("queue processors", () => {
   });
 
   it("records public comment failure without blocking the context check", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -6159,7 +6160,7 @@ describe("queue processors", () => {
   });
 
   it("keeps GitHub-history-only contributors quiet through not_found cache hits and expiry", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
       number: 9,
       title: "Historical merged work",
@@ -6374,7 +6375,7 @@ describe("queue processors", () => {
   });
 
   it("recovers confirmed miners after the unavailable cache window expires", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
       commentMode: "detected_contributors_only",

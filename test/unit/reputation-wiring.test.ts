@@ -472,7 +472,7 @@ describe("processGitHubWebhook records the reputation outcome on a terminal PR (
   it("FLAG-ON: a closed+merged PR webhook records a 'merged' outcome for the submitter", async () => {
     const { processJob } = await import("../../src/queue/processors");
     const { upsertRepositorySettings } = await import("../../src/db/repositories");
-    const env = createTestEnv({ LOOPOVER_REVIEW_REPUTATION: "true" });
+    const env = createTestEnv({ LOOPOVER_REVIEW_REPUTATION: "true", LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     // Gate enabled so the closing-PR public-surface path (skipped-gate + unified closed comment) executes.
     await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory" });
     // External calls (token/miner/github) are best-effort + caught; stub them so nothing throws.
@@ -514,7 +514,7 @@ describe("processGitHubWebhook records the reputation outcome on a terminal PR (
 
   it("FLAG-ON: a closed PR with no author login records against a null submitter (authorLogin ?? null)", async () => {
     const { processJob } = await import("../../src/queue/processors");
-    const env = createTestEnv({ LOOPOVER_REVIEW_REPUTATION: "true" });
+    const env = createTestEnv({ LOOPOVER_REVIEW_REPUTATION: "true", LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
       const url = input.toString();
       if (url.includes("/access_tokens")) return Response.json({ token: "installation-token" });
@@ -547,7 +547,7 @@ describe("processGitHubWebhook records the reputation outcome on a terminal PR (
     const { processJob } = await import("../../src/queue/processors");
     // Flag unset → `isReputationEnabled(env) ? … : undefined` is undefined → the `if (reputationOutcome)`
     // body never runs → submitter_stats stays empty (byte-identical to today).
-    const env = createTestEnv(); // LOOPOVER_REVIEW_REPUTATION unset → OFF
+    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" }); // LOOPOVER_REVIEW_REPUTATION unset → OFF
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
       const url = input.toString();
       if (url.includes("/access_tokens")) return Response.json({ token: "installation-token" });
@@ -577,7 +577,7 @@ describe("processGitHubWebhook records the reputation outcome on a terminal PR (
     const { processJob } = await import("../../src/queue/processors");
     const { upsertRepositorySettings } = await import("../../src/db/repositories");
     // Reputation ON, but the PR is still OPEN and the gate does not route it to manual → undefined outcome.
-    const env = createTestEnv({ LOOPOVER_REVIEW_REPUTATION: "true" });
+    const env = createTestEnv({ LOOPOVER_REVIEW_REPUTATION: "true", LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     // Gate OFF for this repo so the open PR's gate is `undefined` (not failure/action_required) → no "manual".
     await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", publicSurface: "off", commentMode: "off" });
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {

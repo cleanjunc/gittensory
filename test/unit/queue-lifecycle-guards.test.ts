@@ -953,7 +953,7 @@ describe("one-shot reopen prevention", () => {
       return new Response("not found", { status: 404 });
     });
 
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory" });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory", LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await repositoriesModule.upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", autonomy: { merge: "auto", request_changes: "auto" } });
 
     await processJob(env, {
@@ -984,7 +984,7 @@ describe("one-shot reopen prevention", () => {
       return new Response("not found", { status: 404 });
     });
 
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory" });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory", LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await repositoriesModule.upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", autonomy: { close: "auto_with_approval" } });
 
     await processJob(env, {
@@ -1491,7 +1491,7 @@ describe("converted_to_draft gate-close (draft-dodge prevention)", () => {
       return new Response("not found", { status: 404 });
     });
 
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory" });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory", LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await setupRepo(env, { autonomy: null });
     await recordGateBlockOutcome(env, { repoFullName: "JSONbored/gittensory", pullNumber: 42, headSha: "abc123", blockerCodes: ["missing_linked_issue"] });
 
@@ -1681,7 +1681,7 @@ describe("converted_to_draft gate-close (draft-dodge prevention)", () => {
       return new Response("not found", { status: 404 });
     });
 
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory" });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory", LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await setupRepo(env, { autonomy: { approve: "auto" } });
     await recordGateBlockOutcome(env, { repoFullName: "JSONbored/gittensory", pullNumber: 42, headSha: "abc123", blockerCodes: ["missing_linked_issue"] });
 
@@ -1704,7 +1704,7 @@ describe("converted_to_draft gate-close (draft-dodge prevention)", () => {
       return new Response("not found", { status: 404 });
     });
 
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory" });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem(), GITHUB_APP_SLUG: "gittensory", LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
     await setupRepo(env, { autonomy: { close: "auto_with_approval" } });
     await recordGateBlockOutcome(env, { repoFullName: "JSONbored/gittensory", pullNumber: 42, headSha: "abc123", blockerCodes: ["missing_linked_issue"] });
 

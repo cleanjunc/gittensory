@@ -110,7 +110,18 @@ settings:
         removeOtherTypeLabels: false
         trustMaintainerAuthoredIssueForReward: true
   reviewEvasionProtection: close
-  draftPrClosePolicy: close
+  # Agent-layer autonomy dial (#773): without this block every action class defaults to "observe"
+  # (deny-by-default) -- loopover had NO repository_settings DB row at all, so merge/close/approve
+  # actions were silently never taken regardless of review verdict (#6401, #6402 sat fully reviewed,
+  # CI-green, and mergeable with no auto-merge attempt). Matches the policy JSONbored/awesome-claude and
+  # JSONbored/metagraphed already carry live in their DB rows -- this makes it config-as-code instead.
+  autonomy:
+    merge: auto
+    close: auto
+    approve: auto
+    request_changes: auto
+    update_branch: auto
+    assign: auto
 
 # Repo-doc generation roadmap (#2993/#3002) — opt-in only, off by default. Uncomment to let LoopOver open a
 # PR generating AGENTS.md/CLAUDE.md from this repo's own profile.

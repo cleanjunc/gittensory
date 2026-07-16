@@ -2173,10 +2173,10 @@ describe("api routes", () => {
     vi.stubGlobal("fetch", async () => new Response("Not Found", { status: 404 }));
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
-      commentMode: "all_prs",
-      publicSurface: "comment_and_label",
       autoLabelEnabled: true,
-      checkRunMode: "off",
+    });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", {
+      settings: { commentMode: "all_prs", publicSurface: "comment_and_label", checkRunMode: "off" },
     });
     await upsertInstallationHealth(env, {
       installationId: 777,
@@ -2220,7 +2220,12 @@ describe("api routes", () => {
     expect(repairBody.eventDiagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ event: "issue_comment", missing: true })]));
     expect(JSON.stringify(repairBody)).not.toMatch(/wallet|hotkey|raw trust score|payout|reward estimate|farming|private reviewability|public score estimate|github_pat|private key/i);
 
-    await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", checkRunMode: "enabled" });
+    await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory" });
+    // Re-persist the manifest snapshot (it replaces, not merges) carrying forward the unchanged
+    // commentMode/publicSurface fields alongside the updated checkRunMode.
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", {
+      settings: { commentMode: "all_prs", publicSurface: "comment_and_label", checkRunMode: "enabled" },
+    });
     await upsertInstallationHealth(env, {
       installationId: 777,
       accountLogin: "JSONbored",

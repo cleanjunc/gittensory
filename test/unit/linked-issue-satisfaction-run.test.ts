@@ -15,6 +15,7 @@ import { linkedIssueSatisfactionCacheInputFingerprint } from "../../src/review/l
 import { clearInstallationTokenCacheForTest } from "../../src/github/app";
 import { normalizeRegistryPayload } from "../../src/registry/normalize";
 import { persistRegistrySnapshot } from "../../src/registry/sync";
+import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader";
 import type { Advisory, PullRequestFileRecord, RepositorySettings } from "../../src/types";
 import { createTestEnv } from "../helpers/d1";
 
@@ -795,16 +796,16 @@ describe("linked-issue satisfaction wired end-to-end through the real webhook pi
     await upsertRepositoryFromGitHub(env, { name: "metagraphed", full_name: "JSONbored/metagraphed", private: false, owner: { login: "JSONbored" } }, 123);
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/metagraphed",
-      commentMode: "all_prs",
-      publicSurface: "comment_only",
       autoLabelEnabled: false,
-      checkRunMode: "off",
       reviewCheckMode: "required",
       gatePack: "oss-anti-slop",
       linkedIssueGateMode: "off",
       // The gate under test: off by default, opted into "block" here so an above-floor "unaddressed" verdict
       // becomes a real Gate-check failure -- the exact gap #3906 filed against.
       linkedIssueSatisfactionGateMode: "block",
+    });
+    await upsertRepoFocusManifest(env, "JSONbored/metagraphed", {
+      settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" },
     });
 
     let gatePatchBody: { conclusion?: string; output?: { title?: string; text?: string } } = {};
@@ -885,15 +886,15 @@ describe("linked-issue satisfaction wired end-to-end through the real webhook pi
     await upsertRepositoryFromGitHub(env, { name: "metagraphed", full_name: "JSONbored/metagraphed", private: false, owner: { login: "JSONbored" } }, 123);
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/metagraphed",
-      commentMode: "all_prs",
-      publicSurface: "comment_only",
       autoLabelEnabled: false,
-      checkRunMode: "off",
       reviewCheckMode: "required",
       gatePack: "oss-anti-slop",
       linkedIssueGateMode: "off",
       // No override -- linkedIssueSatisfactionGateMode is omitted, so upsertRepositorySettings persists its
       // default "off".
+    });
+    await upsertRepoFocusManifest(env, "JSONbored/metagraphed", {
+      settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off" },
     });
 
     let postedCommentBody = "";
@@ -951,13 +952,13 @@ describe("linked-issue satisfaction wired end-to-end through the real webhook pi
     await upsertRepositoryFromGitHub(env, { name: "metagraphed", full_name: "JSONbored/metagraphed", private: false, owner: { login: "JSONbored" } }, 123);
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/metagraphed",
-      commentMode: "off",
-      publicSurface: "off",
       autoLabelEnabled: false,
-      checkRunMode: "off",
       reviewCheckMode: "required",
       linkedIssueGateMode: "off",
       linkedIssueSatisfactionGateMode: "advisory",
+    });
+    await upsertRepoFocusManifest(env, "JSONbored/metagraphed", {
+      settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off" },
     });
 
     let gatePatchBody: { conclusion?: string } = {};

@@ -249,9 +249,9 @@ describe("extractRepoProfile (#2999)", () => {
     await seedChunk(env, "src/widget.ts", "x");
     await upsertRepositorySettings(env, {
       repoFullName: REPO,
-      checkRunMode: "off",
       reviewCheckMode: "required",
     });
+    await upsertRepoFocusManifest(env, REPO, { settings: { checkRunMode: "off" } });
     const profile = await extractRepoProfile(env, REPO);
     if (!profile.present) throw new Error("expected present profile");
     expect(profile.contributionWorkflow.gatePublishesCheck).toBe(true);
@@ -266,9 +266,9 @@ describe("extractRepoProfile (#2999)", () => {
     // gate.checkMode still gets reported as publishing one.
     await upsertRepositorySettings(env, {
       repoFullName: REPO,
-      checkRunMode: "enabled",
       reviewCheckMode: "disabled",
     });
+    await upsertRepoFocusManifest(env, REPO, { settings: { checkRunMode: "enabled" } });
     const profile = await extractRepoProfile(env, REPO);
     if (!profile.present) throw new Error("expected present profile");
     expect(profile.contributionWorkflow.gatePublishesCheck).toBe(false);

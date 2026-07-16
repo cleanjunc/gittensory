@@ -62,6 +62,7 @@ import {
 } from "../../src/github/client";
 import { normalizeRegistryPayload } from "../../src/registry/normalize";
 import { persistRegistrySnapshot } from "../../src/registry/sync";
+import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader";
 import { renderMetrics, resetMetrics } from "../../src/selfhost/metrics";
 import { createTestEnv } from "../helpers/d1";
 
@@ -725,7 +726,7 @@ describe("GitHub backfill", () => {
     });
 
     it("REGRESSION: broker-mode refresh replaces stale local permissions with the broker token permission snapshot", async () => {
-      const env = createTestEnv({ ORB_ENROLLMENT_SECRET: "orbsec_test", LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
+      const env = createTestEnv({ ORB_ENROLLMENT_SECRET: "orbsec_test" });
       await upsertInstallation(env, {
         installation: {
           id: 912,
@@ -994,7 +995,7 @@ describe("GitHub backfill", () => {
   });
 
   it("requires Checks write only for repos with check runs enabled", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await seedRegisteredRepo(env);
     await upsertInstallation(env, {
       installation: {
@@ -1008,8 +1009,8 @@ describe("GitHub backfill", () => {
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: true, owner: { login: "JSONbored" } }, 123);
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
-      checkRunMode: "enabled",
     });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { checkRunMode: "enabled" } });
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
       const url = input.toString();
       if (url.endsWith("/app/installations/123")) {
@@ -1043,7 +1044,7 @@ describe("GitHub backfill", () => {
     // the separate reviewCheckMode axis ("LoopOver Orb Review Agent" check) entirely -- so an installation
     // whose repos only ever published the review-agent check (true for JSONbored's own 3 production repos,
     // none of which set checkRunMode) was never flagged as needing the Checks permission.
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await seedRegisteredRepo(env);
     await upsertInstallation(env, {
       installation: {
@@ -1088,7 +1089,7 @@ describe("GitHub backfill", () => {
   });
 
   it("REGRESSION (#audit-install-health): an acting autonomy requires pull_requests:write, so read-only is needs_attention not healthy", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await seedRegisteredRepo(env);
     await upsertInstallation(env, {
       installation: {
@@ -1131,7 +1132,7 @@ describe("GitHub backfill", () => {
   });
 
   it("REGRESSION: merge autonomy requires contents:write, so contents:read is needs_attention before merge 403s", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await seedRegisteredRepo(env);
     await upsertInstallation(env, {
       installation: {
@@ -1177,10 +1178,10 @@ describe("GitHub backfill", () => {
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: true, owner: { login: "JSONbored" } }, 123);
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
-      commentMode: "off",
-      publicSurface: "off",
       autoLabelEnabled: false,
-      checkRunMode: "off",
+    });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", {
+      settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off" },
     });
     // Without this, the manifest resolver's live (unmocked) GitHub fetch for "JSONbored/gittensory"'s
     // .loopover.yml actually succeeds -- GitHub's repo-rename redirect resolves it to this same repo's
@@ -1288,17 +1289,17 @@ describe("GitHub backfill", () => {
     await upsertRepositoryFromGitHub(env, { name: "labels", full_name: "JSONbored/labels", private: true, owner: { login: "JSONbored" } }, 124);
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/comments",
-      commentMode: "detected_contributors_only",
-      publicSurface: "comment_only",
       autoLabelEnabled: false,
-      checkRunMode: "off",
+    });
+    await upsertRepoFocusManifest(env, "JSONbored/comments", {
+      settings: { commentMode: "detected_contributors_only", publicSurface: "comment_only", checkRunMode: "off" },
     });
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/labels",
-      commentMode: "off",
-      publicSurface: "label_only",
       autoLabelEnabled: true,
-      checkRunMode: "off",
+    });
+    await upsertRepoFocusManifest(env, "JSONbored/labels", {
+      settings: { commentMode: "off", publicSurface: "label_only", checkRunMode: "off" },
     });
 
     const repair = await buildInstallationRepairDiagnostics(env, {
@@ -1423,11 +1424,9 @@ describe("GitHub backfill", () => {
     await seedInstalledAndRegisteredRepo(env);
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
-      commentMode: "off",
-      publicSignalLevel: "standard",
-      checkRunMode: "enabled",
-      checkRunDetailLevel: "standard",
-      backfillEnabled: false,
+    });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", {
+      settings: { commentMode: "off", publicSignalLevel: "standard", checkRunMode: "enabled", checkRunDetailLevel: "standard", backfillEnabled: false },
     });
 
     const result = await backfillRegisteredRepositories(env);
@@ -3503,11 +3502,9 @@ describe("GitHub backfill", () => {
     await seedRegisteredRepo(env);
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
-      commentMode: "off",
-      publicSignalLevel: "standard",
-      checkRunMode: "enabled",
-      checkRunDetailLevel: "standard",
-      backfillEnabled: false,
+    });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", {
+      settings: { commentMode: "off", publicSignalLevel: "standard", checkRunMode: "enabled", checkRunDetailLevel: "standard", backfillEnabled: false },
     });
 
     await expect(enqueueRepositoryOpenDataBackfill(env, { repoFullName: "missing/repo", requestedBy: "api" })).resolves.toMatchObject({ status: "skipped" });
@@ -3515,11 +3512,9 @@ describe("GitHub backfill", () => {
 
     await upsertRepositorySettings(env, {
       repoFullName: "JSONbored/gittensory",
-      commentMode: "off",
-      publicSignalLevel: "standard",
-      checkRunMode: "enabled",
-      checkRunDetailLevel: "standard",
-      backfillEnabled: true,
+    });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", {
+      settings: { commentMode: "off", publicSignalLevel: "standard", checkRunMode: "enabled", checkRunDetailLevel: "standard", backfillEnabled: true },
     });
     await upsertRepoSyncSegment(env, {
       repoFullName: "JSONbored/gittensory",
@@ -4609,7 +4604,7 @@ describe("fetchLinkedIssueClosedByPullRequest (#5385)", () => {
   }
 
   it("returns fetch_error without ever calling fetch when no token is available", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
     const result = await fetchLinkedIssueClosedByPullRequest(env, "owner/repo", 100, 200, undefined);
@@ -4618,7 +4613,7 @@ describe("fetchLinkedIssueClosedByPullRequest (#5385)", () => {
   });
 
   it("returns fetch_error without ever calling fetch for a malformed repoFullName (no owner/name split)", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
     expect(await fetchLinkedIssueClosedByPullRequest(env, "", 100, 200, "test-token")).toBe("fetch_error");
@@ -4627,7 +4622,7 @@ describe("fetchLinkedIssueClosedByPullRequest (#5385)", () => {
   });
 
   it("returns fetch_error when GraphQL responds 200 OK with a top-level errors array (GitHub's REAL response shape for an unresolvable issue number, confirmed via gh api graphql)", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
       input.toString() === "https://api.github.com/graphql"
         ? Response.json({ data: { repository: { issue: null } }, errors: [{ type: "NOT_FOUND", message: "Could not resolve to an issue." }] })
@@ -4638,7 +4633,7 @@ describe("fetchLinkedIssueClosedByPullRequest (#5385)", () => {
   });
 
   it("returns fetch_error when timelineItems.nodes is missing/non-array (malformed response, no top-level errors)", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
       input.toString() === "https://api.github.com/graphql"
         ? Response.json({ data: { repository: { issue: { timelineItems: {} } } } })
@@ -4649,7 +4644,7 @@ describe("fetchLinkedIssueClosedByPullRequest (#5385)", () => {
   });
 
   it("returns fetch_error when the GraphQL request itself throws (network failure)", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     vi.stubGlobal("fetch", async () => {
       throw new Error("network down");
     });
@@ -4658,7 +4653,7 @@ describe("fetchLinkedIssueClosedByPullRequest (#5385)", () => {
   });
 
   it("returns closed_by_pull_request when the closer is a matching PullRequest", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
       input.toString() === "https://api.github.com/graphql" ? Response.json(closerBody({ typename: "PullRequest", number: 200 })) : new Response("not found", { status: 404 }),
     );
@@ -4666,7 +4661,7 @@ describe("fetchLinkedIssueClosedByPullRequest (#5385)", () => {
   });
 
   it("returns not_closed_by_pull_request when the closer is a DIFFERENT PullRequest (anti-spoofing)", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
       input.toString() === "https://api.github.com/graphql" ? Response.json(closerBody({ typename: "PullRequest", number: 999 })) : new Response("not found", { status: 404 }),
     );
@@ -4674,7 +4669,7 @@ describe("fetchLinkedIssueClosedByPullRequest (#5385)", () => {
   });
 
   it("returns not_closed_by_pull_request when the issue was closed manually with no closer at all (confirmed live shape via gh api graphql against JSONbored/gittensory#5130: closer: null)", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
       input.toString() === "https://api.github.com/graphql"
         ? Response.json({ data: { repository: { issue: { timelineItems: { nodes: [{ __typename: "ClosedEvent", closer: null }] } } } } })
@@ -4684,7 +4679,7 @@ describe("fetchLinkedIssueClosedByPullRequest (#5385)", () => {
   });
 
   it("returns not_closed_by_pull_request when the closer is a Commit, not a PullRequest (issue closed via a commit message reference)", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
       input.toString() === "https://api.github.com/graphql" ? Response.json(closerBody({ typename: "Commit" })) : new Response("not found", { status: 404 }),
     );
@@ -4692,7 +4687,7 @@ describe("fetchLinkedIssueClosedByPullRequest (#5385)", () => {
   });
 
   it("returns not_closed_by_pull_request when there is no CLOSED_EVENT at all (nodes is an empty array)", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
       input.toString() === "https://api.github.com/graphql" ? Response.json(closerBody(null)) : new Response("not found", { status: 404 }),
     );

@@ -13,6 +13,12 @@ describe("GET /v1/public/repos/:owner/:repo/quality — error path", () => {
   it("returns 503 when quality metrics computation throws", async () => {
     const env = createTestEnv();
     await upsertRepositoryFromGitHub(env, { name: "quality", full_name: "acme/quality", private: false, owner: { login: "acme" }, default_branch: "main" }, 560);
+    // NOTE: publicQualityMetrics intentionally stays DB-backed here (not moved to the focus manifest)
+    // because the route under test (`loadPublicRepoQualityMetrics` in src/api/routes.ts) reads
+    // `getRepositorySettings` directly -- the same deliberate raw-DB-row bypass documented on the sibling
+    // `loadPublicRepoBadge` helper -- and never consults `resolveRepositorySettings`/the manifest overlay.
+    // Moving this field to `upsertRepoFocusManifest` would make the route see publicQualityMetrics=false
+    // (404) instead of true (503 via the mocked throw), which is a real behavior difference, not a wiring bug.
     await upsertRepositorySettings(env, { repoFullName: "acme/quality", publicQualityMetrics: true });
 
     const res = await createApp().request("/v1/public/repos/acme/quality/quality", {}, env);

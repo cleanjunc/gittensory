@@ -9,6 +9,7 @@ import {
   upsertRepositoryFromGitHub,
   upsertRepositorySettings,
 } from "../../src/db/repositories";
+import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader";
 import { createTestEnv } from "../helpers/d1";
 
 // Drives the LOOPOVER_REVIEW_SAFETY secrets-scan WIRING through the live review finalize path
@@ -63,13 +64,11 @@ async function seedGateEnabledRepo(env: Env): Promise<void> {
   await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
   await upsertRepositorySettings(env, {
     repoFullName: "JSONbored/gittensory",
-    commentMode: "off",
-    publicSurface: "off",
     autoLabelEnabled: false,
-    checkRunMode: "off",
     reviewCheckMode: "required",
     slopGateMode: "advisory", // turns the shared gateFiles load on so the reuse branch is hit
   });
+  await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off" } });
   await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: safetyMinerSnapshot("contributor") }, 60_000);
 }
 
@@ -117,7 +116,7 @@ function prWebhook(deliveryId: string) {
 
 describe("LOOPOVER_REVIEW_SAFETY secrets-scan wired into the review FINALIZE path (processors.ts call site)", () => {
   it("FLAG-ON: a leaked secret in the PR's changed files FAILS the finalized gate (secret_leak blocker appended before evaluateGateCheck)", async () => {
-    const env = createTestEnv({ LOOPOVER_REVIEW_SAFETY: "true", GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
+    const env = createTestEnv({ LOOPOVER_REVIEW_SAFETY: "true", GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await seedGateEnabledRepo(env);
     await seedLeakedSecretFile(env);
     const seen: { conclusion?: string | undefined } = {};
@@ -132,7 +131,7 @@ describe("LOOPOVER_REVIEW_SAFETY secrets-scan wired into the review FINALIZE pat
   });
 
   it("FLAG-OFF: a leaked secret STILL fails the gate — the concrete-credential block is unconditional (#audit-3.4)", async () => {
-    const env = createTestEnv({ LOOPOVER_REVIEW_SAFETY: "false", GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
+    const env = createTestEnv({ LOOPOVER_REVIEW_SAFETY: "false", GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await seedGateEnabledRepo(env);
     await seedLeakedSecretFile(env);
     const seen: { conclusion?: string | undefined } = {};
@@ -148,7 +147,7 @@ describe("LOOPOVER_REVIEW_SAFETY secrets-scan wired into the review FINALIZE pat
   });
 
   it("UNSET (default): a leaked secret also fails the gate — the secret-leak block does not depend on the flag", async () => {
-    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" }); // LOOPOVER_REVIEW_SAFETY unset
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() }); // LOOPOVER_REVIEW_SAFETY unset
     await seedGateEnabledRepo(env);
     await seedLeakedSecretFile(env);
     const seen: { conclusion?: string | undefined } = {};

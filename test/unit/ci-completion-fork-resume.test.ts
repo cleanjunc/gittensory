@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ciCompletionHeadSha, processJob, resolveCiCompletionPrNumbers } from "../../src/queue/processors";
 import { upsertPullRequestFromGitHub, upsertRepositoryFromGitHub, upsertRepositorySettings } from "../../src/db/repositories";
+import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader";
 import { createTestEnv } from "../helpers/d1";
 import type { GitHubWebhookPayload, JobMessage } from "../../src/types";
 
@@ -47,7 +48,8 @@ async function seedForkResumeRepo(env: ReturnType<typeof createTestEnv>, repo: s
   await upsertRepositoryFromGitHub(env, { name: repo.split("/")[1] ?? "repo", full_name: repo, private: false, owner: { login: owner ?? "owner" } }, 5001);
   // publicSurface/check/gate all OFF + no autonomy → reReviewStoredPullRequest is a clean no-op (no network),
   // so the test isolates resolution + coalesce + audit, exactly the head-SHA fix surface.
-  await upsertRepositorySettings(env, { repoFullName: repo, publicSurface: "off", checkRunMode: "off", autonomy: {} });
+  await upsertRepositorySettings(env, { repoFullName: repo, autonomy: {} });
+  await upsertRepoFocusManifest(env, repo, { settings: { publicSurface: "off", checkRunMode: "off" } });
   await upsertPullRequestFromGitHub(env, repo, { number: prNumber, title: "Fork PR", state: "open", user: { login: "outside-contributor" }, head: { sha: headSha }, labels: [], body: "fork change" });
 }
 
@@ -69,7 +71,7 @@ describe("CI-completion fork PR resume (head-SHA fallback)", () => {
   });
 
   it("(a) same-repo: populated pull_requests[] is returned verbatim, no head-SHA fallback", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     // A throwing fetch proves the populated path never touches GitHub.
     vi.stubGlobal("fetch", async () => {
       throw new Error("fetch must not be called for the same-repo populated path");
@@ -80,7 +82,7 @@ describe("CI-completion fork PR resume (head-SHA fallback)", () => {
   });
 
   it("(b) fork: empty pull_requests[] → a stored open PR matching the head SHA is resolved (DB fast path)", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     await seedForkResumeRepo(env, "JSONbored/gittensory", 99, FORK_SHA);
     // A throwing fetch proves the DB fast path resolves without the live commits/pulls call.
     vi.stubGlobal("fetch", async () => {
@@ -118,7 +120,7 @@ describe("CI-completion fork PR resume (head-SHA fallback)", () => {
   });
 
   it("(c2) empty head SHA short-circuits to empty without any lookup", async () => {
-    const env = createTestEnv({});
+    const env = createTestEnv();
     vi.stubGlobal("fetch", async () => {
       throw new Error("fetch must not be called for an empty head SHA");
     });
@@ -130,7 +132,6 @@ describe("CI-completion fork PR resume (head-SHA fallback)", () => {
     const sent: JobMessage[] = [];
     const env = createTestEnv({
       JOBS: { async send(message: JobMessage) { sent.push(message); } } as unknown as Queue,
-      LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo",
     });
     await seedForkResumeRepo(env, "JSONbored/gittensory", 99, FORK_SHA);
     vi.stubGlobal("fetch", async () => new Response("not found", { status: 404 }));
@@ -185,7 +186,7 @@ describe("CI-completion fork PR resume (head-SHA fallback)", () => {
   });
 
   it("dispatch: a SAME-REPO check_suite (populated pull_requests[]) re-reviews WITHOUT the fork-resume audit", async () => {
-    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "unrelated-org/unrelated-repo" });
+    const env = createTestEnv();
     await seedForkResumeRepo(env, "JSONbored/gittensory", 99, FORK_SHA);
     vi.stubGlobal("fetch", async () => {
       throw new Error("fetch must not be called for the populated same-repo path");

@@ -12,6 +12,7 @@ import { clearInstallationTokenCacheForTest } from "../../src/github/app";
 import { clearGitHubResponseCacheForTest } from "../../src/github/client";
 import { fallbackShotR2Key, FALLBACK_ARTIFACT_NAME, isFallbackDispatchInFlight, markFallbackDispatched } from "../../src/review/visual/actions-fallback";
 import { processJob } from "../../src/queue/processors";
+import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader";
 import { createTestEnv } from "../helpers/d1";
 
 // Mirrors test/unit/queue.test.ts's own generatePrivateKeyPem helper -- createInstallationToken mints a real
@@ -115,9 +116,9 @@ async function seedRepoAndPr(env: ReturnType<typeof createTestEnv>, headSha: str
     autonomy: { merge: "observe", update_branch: "observe" },
     aiReviewMode: "off",
     gatePack: "oss-anti-slop",
-    checkRunMode: "off",
-    commentMode: "off",
-    publicSurface: "off",
+  });
+  await upsertRepoFocusManifest(env, "owner/fallback-repo", {
+    settings: { checkRunMode: "off", commentMode: "off", publicSurface: "off" },
   });
   await upsertPullRequestFromGitHub(env, "owner/fallback-repo", {
     number: 55,

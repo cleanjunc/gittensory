@@ -40,6 +40,7 @@
     "rees:metadata": "npm --prefix review-enrichment run metadata",
     "rees:metadata:check": "npm --prefix review-enrichment run metadata:check",
     "rees:validate-sourcemaps": "npm --prefix review-enrichment run validate:sourcemaps",
+    "rees:coverage": "node scripts/rees-coverage.mjs",
     "db:migrations:check": "tsx scripts/check-migrations.mjs",
     "db:schema-drift:check": "tsx scripts/check-schema-drift.mjs",
     "actionlint": "node scripts/actionlint.mjs",

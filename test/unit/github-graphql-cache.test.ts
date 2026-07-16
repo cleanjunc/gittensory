@@ -87,7 +87,8 @@ describe("graphql cache allowlist", () => {
     expect(graphqlOperationName(`query LoopOverContributorActivity { rateLimit { remaining } }`)).toBe("LoopOverContributorActivity");
     expect(graphqlCacheClassForQuery(`query LoopOverContributorActivity { x: rateLimit { remaining } }`)).toBe("contributor_activity");
     expect(githubGraphQlCacheTtlSeconds("contributor_activity")).toBe(600);
-    vi.stubEnv("GITHUB_GRAPHQL_CACHE_TTL_SECONDS", "   ");
+    vi.stubEnv("GITHUB_GRAPHQL_CONTRIBUTOR_ACTIVITY_CACHE_TTL_SECONDS", "   ");
+    expect(githubGraphQlCacheTtlSeconds("contributor_activity")).toBe(600);
     expect(githubGraphQlCacheTtlSeconds("repo_totals")).toBe(600);
 
     expect(isCacheableGraphQlQuery(MUTABLE_QUERY)).toBe(false);
@@ -102,13 +103,27 @@ describe("graphql cache allowlist", () => {
     expect(isCacheableGraphQlResponseBody("not-json")).toBe(false);
   });
 
-  it("honors GITHUB_GRAPHQL_CACHE_TTL_SECONDS with a positive fallback", () => {
-    vi.stubEnv("GITHUB_GRAPHQL_CACHE_TTL_SECONDS", "120");
-    expect(githubGraphQlCacheTtlSeconds("repo_totals")).toBe(120);
-    vi.stubEnv("GITHUB_GRAPHQL_CACHE_TTL_SECONDS", "0");
-    expect(githubGraphQlCacheTtlSeconds("repo_totals")).toBe(600);
-    vi.stubEnv("GITHUB_GRAPHQL_CACHE_TTL_SECONDS", "not-a-number");
-    expect(githubGraphQlCacheTtlSeconds("repo_totals")).toBe(600);
+  it("resolves per-class GraphQL cache TTL env overrides with safe fallbacks", () => {
+    expect(githubGraphQlCacheTtlSeconds("repo_totals", {})).toBe(600);
+    expect(githubGraphQlCacheTtlSeconds("contributor_activity", {})).toBe(600);
+    expect(githubGraphQlCacheTtlSeconds("repo_totals", { GITHUB_GRAPHQL_REPO_TOTALS_CACHE_TTL_SECONDS: "120" })).toBe(120);
+    expect(githubGraphQlCacheTtlSeconds("contributor_activity", { GITHUB_GRAPHQL_CONTRIBUTOR_ACTIVITY_CACHE_TTL_SECONDS: "90.8" })).toBe(90);
+    expect(githubGraphQlCacheTtlSeconds("repo_totals", { GITHUB_GRAPHQL_REPO_TOTALS_CACHE_TTL_SECONDS: "3600" })).toBe(3600);
+    expect(githubGraphQlCacheTtlSeconds("contributor_activity", { GITHUB_GRAPHQL_CONTRIBUTOR_ACTIVITY_CACHE_TTL_SECONDS: "300" })).toBe(300);
+    expect(githubGraphQlCacheTtlSeconds("repo_totals", { GITHUB_GRAPHQL_REPO_TOTALS_CACHE_TTL_SECONDS: "0" })).toBe(600);
+    expect(githubGraphQlCacheTtlSeconds("contributor_activity", { GITHUB_GRAPHQL_CONTRIBUTOR_ACTIVITY_CACHE_TTL_SECONDS: "" })).toBe(600);
+    expect(githubGraphQlCacheTtlSeconds("contributor_activity", { GITHUB_GRAPHQL_CONTRIBUTOR_ACTIVITY_CACHE_TTL_SECONDS: "0" })).toBe(600);
+    expect(githubGraphQlCacheTtlSeconds("repo_totals", { GITHUB_GRAPHQL_REPO_TOTALS_CACHE_TTL_SECONDS: "0.5" })).toBe(600);
+    expect(githubGraphQlCacheTtlSeconds("contributor_activity", { GITHUB_GRAPHQL_CONTRIBUTOR_ACTIVITY_CACHE_TTL_SECONDS: "not-a-number" })).toBe(600);
+    expect(githubGraphQlCacheTtlSeconds("repo_totals", { GITHUB_GRAPHQL_REPO_TOTALS_CACHE_TTL_SECONDS: "Infinity" })).toBe(600);
+    expect(
+      githubGraphQlCacheTtlSeconds("repo_totals", { GITHUB_GRAPHQL_REPO_TOTALS_CACHE_TTL_SECONDS: "900" }),
+    ).toBe(900);
+    expect(githubGraphQlCacheTtlSeconds("contributor_activity", { GITHUB_GRAPHQL_REPO_TOTALS_CACHE_TTL_SECONDS: "900" })).toBe(600);
+    expect(
+      githubGraphQlCacheTtlSeconds("contributor_activity", { GITHUB_GRAPHQL_CONTRIBUTOR_ACTIVITY_CACHE_TTL_SECONDS: "180" }),
+    ).toBe(180);
+    expect(githubGraphQlCacheTtlSeconds("repo_totals", { GITHUB_GRAPHQL_CONTRIBUTOR_ACTIVITY_CACHE_TTL_SECONDS: "180" })).toBe(600);
   });
 });
 

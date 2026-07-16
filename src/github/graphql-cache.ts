@@ -53,7 +53,10 @@ function positiveEnvSeconds(env: Record<string, string | undefined>, name: strin
 }
 
 export function githubGraphQlCacheTtlSeconds(cls: GitHubGraphQlCacheClass, env: Record<string, string | undefined> = process.env): number {
-  return positiveEnvSeconds(env, "GITHUB_GRAPHQL_CACHE_TTL_SECONDS", DEFAULT_GRAPHQL_TTL_SECONDS);
+  if (cls === "repo_totals") {
+    return positiveEnvSeconds(env, "GITHUB_GRAPHQL_REPO_TOTALS_CACHE_TTL_SECONDS", DEFAULT_GRAPHQL_TTL_SECONDS);
+  }
+  return positiveEnvSeconds(env, "GITHUB_GRAPHQL_CONTRIBUTOR_ACTIVITY_CACHE_TTL_SECONDS", DEFAULT_GRAPHQL_TTL_SECONDS);
 }
 
 async function sha256Hex(value: string): Promise<string> {

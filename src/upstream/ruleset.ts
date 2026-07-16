@@ -11,6 +11,7 @@ import {
   upsertUpstreamDriftReport,
 } from "../db/repositories";
 import { resolveLoopOverSelfRepoFullName } from "../config/loopover-repo-focus-manifest";
+import { loadRepoFocusManifest } from "../signals/focus-manifest-loader";
 import { githubHeaders, timeoutFetch } from "../github/client";
 import { resolveUpstreamCommitSha } from "./commit";
 import { isGlobalAgentPause } from "../settings/agent-execution";
@@ -272,8 +273,57 @@ export function registryHyperparameterDriftWarningsForRepo(reports: UpstreamDrif
   ];
 }
 
-export async function fileUpstreamDriftIssues(env: Env): Promise<Record<string, JsonValue>> {
-  if (!truthy(env.LOOPOVER_AUTO_FILE_DRIFT_ISSUES)) {
+/** A manifest-sourced enable override (#6275) -- the `upstreamDriftIssues` block of the loopover self-repo's
+ *  `.loopover.yml` (see FocusManifestUpstreamDriftIssuesConfig). `present: false` (no block, or the repo has
+ *  no manifest at all) means "no override configured", not "disabled" -- the caller falls through to
+ *  LOOPOVER_AUTO_FILE_DRIFT_ISSUES in that case, exactly as if this parameter were omitted. Mirrors
+ *  MaintainerRecapManifestOverride (src/review/maintainer-recap-wire.ts). */
+export type UpstreamDriftIssuesManifestOverride = { present: boolean; enabled: boolean };
+
+/** True when the scheduled upstream-drift-issue-filing job is enabled. Config-as-code (#6275): a present
+ *  `upstreamDriftIssues` manifest block on the loopover self-repo wins outright; otherwise falls back to the
+ *  LOOPOVER_AUTO_FILE_DRIFT_ISSUES env flag (default OFF). Truthy env convention matches isRecapEnabled. */
+export function isAutoFileDriftIssuesEnabled(
+  env: { LOOPOVER_AUTO_FILE_DRIFT_ISSUES?: string | undefined },
+  manifestOverride?: UpstreamDriftIssuesManifestOverride | undefined,
+): boolean {
+  if (manifestOverride?.present) return manifestOverride.enabled;
+  return truthy(env.LOOPOVER_AUTO_FILE_DRIFT_ISSUES);
+}
+
+/**
+ * Config-as-code override lookup (#6275): read the `upstreamDriftIssues` block off the loopover self-repo's
+ * `.loopover.yml` (resolveLoopOverSelfRepoFullName) -- filing issues against loopover's own tracking repo is
+ * a fleet-wide (whole-deployment) capability, not a per-contributor-repo one (no repo context exists at
+ * either of its 2 real call sites: the cron dispatch in job-dispatch.ts and the manual-trigger route in
+ * routes.ts), so ONE designated repo's manifest stands in for "the operator's own config", mirroring
+ * resolveMaintainerRecapManifestOverride exactly. A manifest load failure (network blip, malformed YAML)
+ * degrades to `{ present: false }` -- the caller then falls through to LOOPOVER_AUTO_FILE_DRIFT_ISSUES,
+ * exactly as if no override existed, so a manifest hiccup can never accidentally file or suppress issues.
+ */
+export async function resolveAutoFileDriftIssuesManifestOverride(env: Env): Promise<UpstreamDriftIssuesManifestOverride> {
+  try {
+    const manifest = await loadRepoFocusManifest(env, resolveLoopOverSelfRepoFullName(env));
+    const config = manifest.upstreamDriftIssues;
+    return { present: config.present, enabled: config.enabled };
+  } catch (error) {
+    console.warn(JSON.stringify({ event: "upstream_drift_issues_manifest_override_error", message: errorMessage(error).slice(0, 200) }));
+    return { present: false, enabled: false };
+  }
+}
+
+/**
+ * Files (or updates) GitHub issues against the loopover self-repo's tracker for every open upstream-drift
+ * report. `manifestOverride` is optional and defaults to undefined (no override), so every existing direct
+ * caller (unit tests included) that omits it keeps resolving purely off LOOPOVER_AUTO_FILE_DRIFT_ISSUES,
+ * byte-identical to before the config-as-code override existed (#6275). The two real callers
+ * (job-dispatch.ts's cron dispatch, routes.ts's manual-trigger route) resolve
+ * resolveAutoFileDriftIssuesManifestOverride and pass it through so an operator's `upstreamDriftIssues`
+ * manifest override actually takes effect at the point execution is decided, not just at an outer gate that
+ * this inner check would otherwise silently override right back.
+ */
+export async function fileUpstreamDriftIssues(env: Env, manifestOverride?: UpstreamDriftIssuesManifestOverride | undefined): Promise<Record<string, JsonValue>> {
+  if (!isAutoFileDriftIssuesEnabled(env, manifestOverride)) {
     return { status: "disabled", created: 0, updated: 0, skipped: 0 };
   }
   // Respect the global agent kill-switch: filing drift issues is an autonomous GitHub WRITE, so the env brake or

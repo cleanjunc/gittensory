@@ -396,6 +396,35 @@ export type FocusManifestPublicStatsConfig = {
 };
 
 /**
+ * Config-as-code override for the fleet-wide AI-drafted-PR creation capability (#6275), declared under
+ * `draftFlow:`. Overrides the LOOPOVER_REVIEW_DRAFT env flag that gates the public OAuth draft-submission
+ * flow (src/services/draft.ts) -- like `maintainerRecap:`, this is read from the loopover self-repo's own
+ * manifest (resolveLoopOverSelfRepoFullName), since the capability is operator-level (whole-deployment),
+ * not per-contributor-repo -- there is no repo context at any of its activation checks. Mirrors
+ * `maintainerRecap:` exactly: no DB-backed counterpart, so the parsed value (or the default below when
+ * unset) IS the effective value. Not present ⇒ the caller falls back to the env var, byte-identical to
+ * before this override existed.
+ */
+export type FocusManifestDraftFlowConfig = {
+  present: boolean;
+  enabled: boolean;
+};
+
+/**
+ * Config-as-code override for the scheduled upstream-drift-issue-filing job (#6275), declared under
+ * `upstreamDriftIssues:`. Overrides the LOOPOVER_AUTO_FILE_DRIFT_ISSUES env flag that gates
+ * fileUpstreamDriftIssues (src/upstream/ruleset.ts) -- like `maintainerRecap:`/`draftFlow:` above, this is
+ * read from the loopover self-repo's own manifest, since filing issues against loopover's own tracking
+ * repo is operator-level (fleet-wide), not per-contributor-repo. Mirrors `draftFlow:` exactly: no DB-backed
+ * counterpart, so the parsed value (or the default below when unset) IS the effective value. Not present ⇒
+ * the caller falls back to the env var, byte-identical to before this override existed.
+ */
+export type FocusManifestUpstreamDriftIssuesConfig = {
+  present: boolean;
+  enabled: boolean;
+};
+
+/**
  * Generic repository-settings override declared in `.loopover.yml` under `settings:`. A partial of
  * {@link RepositorySettings} — every behaviour a maintainer can toggle in the dashboard can be set here
  * as code. Unset fields are omitted so the resolver layers it OVER the DB-backed settings
@@ -978,6 +1007,8 @@ export type FocusManifest = {
   maintainerRecap: FocusManifestMaintainerRecapConfig;
   ops: FocusManifestOpsConfig;
   publicStats: FocusManifestPublicStatsConfig;
+  draftFlow: FocusManifestDraftFlowConfig;
+  upstreamDriftIssues: FocusManifestUpstreamDriftIssuesConfig;
   warnings: string[];
 };
 
@@ -1129,6 +1160,16 @@ const EMPTY_PUBLIC_STATS_CONFIG: FocusManifestPublicStatsConfig = {
   enabled: false,
 };
 
+const EMPTY_DRAFT_FLOW_CONFIG: FocusManifestDraftFlowConfig = {
+  present: false,
+  enabled: false,
+};
+
+const EMPTY_UPSTREAM_DRIFT_ISSUES_CONFIG: FocusManifestUpstreamDriftIssuesConfig = {
+  present: false,
+  enabled: false,
+};
+
 const EMPTY_MANIFEST: FocusManifest = {
   present: false,
   source: "none",
@@ -1150,6 +1191,8 @@ const EMPTY_MANIFEST: FocusManifest = {
   maintainerRecap: { ...EMPTY_MAINTAINER_RECAP_CONFIG },
   ops: { ...EMPTY_OPS_CONFIG },
   publicStats: { ...EMPTY_PUBLIC_STATS_CONFIG },
+  draftFlow: { ...EMPTY_DRAFT_FLOW_CONFIG },
+  upstreamDriftIssues: { ...EMPTY_UPSTREAM_DRIFT_ISSUES_CONFIG },
   warnings: [],
 };
 
@@ -1184,6 +1227,8 @@ function emptyManifest(source: FocusManifestSource, warnings: string[] = []): Fo
     maintainerRecap: { ...EMPTY_MAINTAINER_RECAP_CONFIG },
     ops: { ...EMPTY_OPS_CONFIG },
     publicStats: { ...EMPTY_PUBLIC_STATS_CONFIG },
+    draftFlow: { ...EMPTY_DRAFT_FLOW_CONFIG },
+    upstreamDriftIssues: { ...EMPTY_UPSTREAM_DRIFT_ISSUES_CONFIG },
   };
 }
 
@@ -1943,6 +1988,52 @@ function parsePublicStatsConfig(value: JsonValue | undefined, warnings: string[]
 /** Serialize a publicStats config back into the parse-compatible shape so a cached snapshot round-trips
  *  through {@link parsePublicStatsConfig} unchanged. Returns null when nothing is configured. */
 export function publicStatsConfigToJson(config: FocusManifestPublicStatsConfig): JsonValue {
+  if (!config.present) return null;
+  return { enabled: config.enabled };
+}
+
+/**
+ * Parse the optional `draftFlow:` mapping (#6275). Mirrors {@link parseReviewRecapConfig}'s shape minus the
+ * cadence knob -- `enabled` is the only field, defaulting to false (no DB layer to overlay onto), so the
+ * parsed value IS the effective value.
+ */
+function parseDraftFlowConfig(value: JsonValue | undefined, warnings: string[]): FocusManifestDraftFlowConfig {
+  if (value === undefined || value === null) return { ...EMPTY_DRAFT_FLOW_CONFIG };
+  if (typeof value !== "object" || Array.isArray(value)) {
+    warnings.push('Manifest field "draftFlow" must be a mapping; ignoring it.');
+    return { ...EMPTY_DRAFT_FLOW_CONFIG };
+  }
+  const record = value as Record<string, JsonValue>;
+  const enabled = normalizeOptionalBoolean(record.enabled, "draftFlow.enabled", warnings) ?? false;
+  return { present: true, enabled };
+}
+
+/** Serialize a draftFlow config back into the parse-compatible shape so a cached snapshot round-trips
+ *  through {@link parseDraftFlowConfig} unchanged. Returns null when nothing is configured. */
+export function draftFlowConfigToJson(config: FocusManifestDraftFlowConfig): JsonValue {
+  if (!config.present) return null;
+  return { enabled: config.enabled };
+}
+
+/**
+ * Parse the optional `upstreamDriftIssues:` mapping (#6275). Mirrors {@link parseDraftFlowConfig} exactly --
+ * `enabled` is the only field, defaulting to false, so the parsed value IS the effective value.
+ */
+function parseUpstreamDriftIssuesConfig(value: JsonValue | undefined, warnings: string[]): FocusManifestUpstreamDriftIssuesConfig {
+  if (value === undefined || value === null) return { ...EMPTY_UPSTREAM_DRIFT_ISSUES_CONFIG };
+  if (typeof value !== "object" || Array.isArray(value)) {
+    warnings.push('Manifest field "upstreamDriftIssues" must be a mapping; ignoring it.');
+    return { ...EMPTY_UPSTREAM_DRIFT_ISSUES_CONFIG };
+  }
+  const record = value as Record<string, JsonValue>;
+  const enabled = normalizeOptionalBoolean(record.enabled, "upstreamDriftIssues.enabled", warnings) ?? false;
+  return { present: true, enabled };
+}
+
+/** Serialize an upstreamDriftIssues config back into the parse-compatible shape so a cached snapshot
+ *  round-trips through {@link parseUpstreamDriftIssuesConfig} unchanged. Returns null when nothing is
+ *  configured. */
+export function upstreamDriftIssuesConfigToJson(config: FocusManifestUpstreamDriftIssuesConfig): JsonValue {
   if (!config.present) return null;
   return { enabled: config.enabled };
 }
@@ -3292,6 +3383,8 @@ export function parseFocusManifest(raw: unknown, source?: FocusManifestSource): 
     maintainerRecap: parseMaintainerRecapConfig(record.maintainerRecap, warnings),
     ops: parseOpsConfig(record.ops, warnings),
     publicStats: parsePublicStatsConfig(record.publicStats, warnings),
+    draftFlow: parseDraftFlowConfig(record.draftFlow, warnings),
+    upstreamDriftIssues: parseUpstreamDriftIssuesConfig(record.upstreamDriftIssues, warnings),
     warnings,
   };
   if (
@@ -3312,7 +3405,9 @@ export function parseFocusManifest(raw: unknown, source?: FocusManifestSource): 
     !manifest.reviewRecap.present &&
     !manifest.maintainerRecap.present &&
     !manifest.ops.present &&
-    !manifest.publicStats.present
+    !manifest.publicStats.present &&
+    !manifest.draftFlow.present &&
+    !manifest.upstreamDriftIssues.present
   ) {
     warnings.push("Manifest contained no recognized focus fields; falling back to deterministic signals.");
     manifest.present = false;

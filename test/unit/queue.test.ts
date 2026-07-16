@@ -65,6 +65,7 @@ import { aiReviewCacheInputFingerprint } from "../../src/review/ai-review-cache-
 import { fingerprint as reviewMemoryFingerprint } from "../../src/review/review-memory-match";
 import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader";
 import * as focusManifestLoaderModule from "../../src/signals/focus-manifest-loader";
+import * as rulesetModule from "../../src/upstream/ruleset";
 import { normalizeRegistryPayload } from "../../src/registry/normalize";
 import { persistRegistrySnapshot } from "../../src/registry/sync";
 import {
@@ -682,6 +683,28 @@ describe("queue processors", () => {
 
     await expect(getLatestUpstreamRulesetSnapshot(env)).resolves.toMatchObject({ activeModel: "pending_saturation_model", registryRepoCount: 1 });
     await expect(listUpstreamDriftReports(env)).resolves.toEqual([]);
+  });
+
+  it("dispatch-level gate: resolves the upstreamDriftIssues manifest override and threads it into fileUpstreamDriftIssues (#6275)", async () => {
+    const env = createTestEnv(); // LOOPOVER_AUTO_FILE_DRIFT_ISSUES defaults to "false"
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { upstreamDriftIssues: { enabled: true } });
+    const spy = vi.spyOn(rulesetModule, "fileUpstreamDriftIssues").mockResolvedValue({ status: "completed", created: 0, updated: 0, skipped: 0 });
+
+    await processJob(env, { type: "file-upstream-drift-issues", requestedBy: "test" });
+
+    expect(spy).toHaveBeenCalledWith(env, { present: true, enabled: true });
+    spy.mockRestore();
+  });
+
+  it("dispatch-level gate: skips fileUpstreamDriftIssues entirely when a present override disables it (env var otherwise on)", async () => {
+    const env = createTestEnv({ LOOPOVER_AUTO_FILE_DRIFT_ISSUES: "true" });
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { upstreamDriftIssues: { enabled: false } });
+    const spy = vi.spyOn(rulesetModule, "fileUpstreamDriftIssues");
+
+    await processJob(env, { type: "file-upstream-drift-issues", requestedBy: "test" });
+
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 
   it("fans out all-repo backfill jobs into repo-scoped queue messages", async () => {

@@ -43,6 +43,8 @@ import {
   maintainerRecapConfigToJson,
   opsConfigToJson,
   publicStatsConfigToJson,
+  draftFlowConfigToJson,
+  upstreamDriftIssuesConfigToJson,
   settingsOverrideToJson,
   type FocusManifest,
   type FocusManifestContentLaneConfig,
@@ -919,6 +921,8 @@ describe("compileFocusManifestPolicy", () => {
       maintainerRecap: { present: false, enabled: false, cadence: "weekly", channel: "discord" },
       ops: { present: false, enabled: false },
       publicStats: { present: false, enabled: false },
+      draftFlow: { present: false, enabled: false },
+      upstreamDriftIssues: { present: false, enabled: false },
       warnings: [],
     });
     expect(policy.publicSafe.entryGuidance).toContain("Keep PRs focused.");
@@ -2015,6 +2019,102 @@ describe("parseFocusManifest gate config", () => {
 
     it("publicStatsConfigToJson returns null for an absent config", () => {
       expect(publicStatsConfigToJson(parseFocusManifest(null).publicStats)).toBeNull();
+    });
+  });
+
+  describe("draftFlow: (#6275, fleet-wide AI-drafted-PR creation capability config-as-code override)", () => {
+    it("defaults to fully disabled/absent when the key is omitted, and does not make the manifest present on its own", () => {
+      const m = parseFocusManifest({});
+      expect(m.draftFlow).toEqual({ present: false, enabled: false });
+      expect(m.present).toBe(false);
+    });
+
+    it("treats an explicit null the same as an omitted key", () => {
+      expect(parseFocusManifest({ draftFlow: null }).draftFlow).toEqual({ present: false, enabled: false });
+    });
+
+    it("warns and falls back to the default when the value is a non-mapping type (string or array)", () => {
+      const asString = parseFocusManifest({ draftFlow: "nope" as never });
+      expect(asString.draftFlow.present).toBe(false);
+      expect(asString.warnings.some((w) => /"draftFlow" must be a mapping/.test(w))).toBe(true);
+      const asArray = parseFocusManifest({ draftFlow: ["nope"] as never });
+      expect(asArray.draftFlow.present).toBe(false);
+      expect(asArray.warnings.some((w) => /"draftFlow" must be a mapping/.test(w))).toBe(true);
+    });
+
+    it("parses enabled: true, making the manifest present", () => {
+      const m = parseFocusManifest({ draftFlow: { enabled: true } });
+      expect(m.draftFlow).toEqual({ present: true, enabled: true });
+      expect(m.present).toBe(true);
+    });
+
+    it("parses enabled: false explicitly, still making the manifest present (an explicit override wins over the env var either way)", () => {
+      const m = parseFocusManifest({ draftFlow: { enabled: false } });
+      expect(m.draftFlow).toEqual({ present: true, enabled: false });
+      expect(m.present).toBe(true);
+    });
+
+    it("warns and defaults to false when enabled is a non-boolean value", () => {
+      const m = parseFocusManifest({ draftFlow: { enabled: "yes" as unknown as boolean } });
+      expect(m.draftFlow.enabled).toBe(false);
+      expect(m.warnings.some((w) => /draftFlow\.enabled/.test(w))).toBe(true);
+    });
+
+    it("round-trips through draftFlowConfigToJson -> parseFocusManifest unchanged", () => {
+      const m = parseFocusManifest({ draftFlow: { enabled: true } });
+      expect(parseFocusManifest({ draftFlow: draftFlowConfigToJson(m.draftFlow) }).draftFlow).toEqual(m.draftFlow);
+    });
+
+    it("draftFlowConfigToJson returns null for an absent config", () => {
+      expect(draftFlowConfigToJson(parseFocusManifest(null).draftFlow)).toBeNull();
+    });
+  });
+
+  describe("upstreamDriftIssues: (#6275, scheduled upstream-drift-issue-filing job config-as-code override)", () => {
+    it("defaults to fully disabled/absent when the key is omitted, and does not make the manifest present on its own", () => {
+      const m = parseFocusManifest({});
+      expect(m.upstreamDriftIssues).toEqual({ present: false, enabled: false });
+      expect(m.present).toBe(false);
+    });
+
+    it("treats an explicit null the same as an omitted key", () => {
+      expect(parseFocusManifest({ upstreamDriftIssues: null }).upstreamDriftIssues).toEqual({ present: false, enabled: false });
+    });
+
+    it("warns and falls back to the default when the value is a non-mapping type (string or array)", () => {
+      const asString = parseFocusManifest({ upstreamDriftIssues: "nope" as never });
+      expect(asString.upstreamDriftIssues.present).toBe(false);
+      expect(asString.warnings.some((w) => /"upstreamDriftIssues" must be a mapping/.test(w))).toBe(true);
+      const asArray = parseFocusManifest({ upstreamDriftIssues: ["nope"] as never });
+      expect(asArray.upstreamDriftIssues.present).toBe(false);
+      expect(asArray.warnings.some((w) => /"upstreamDriftIssues" must be a mapping/.test(w))).toBe(true);
+    });
+
+    it("parses enabled: true, making the manifest present", () => {
+      const m = parseFocusManifest({ upstreamDriftIssues: { enabled: true } });
+      expect(m.upstreamDriftIssues).toEqual({ present: true, enabled: true });
+      expect(m.present).toBe(true);
+    });
+
+    it("parses enabled: false explicitly, still making the manifest present (an explicit override wins over the env var either way)", () => {
+      const m = parseFocusManifest({ upstreamDriftIssues: { enabled: false } });
+      expect(m.upstreamDriftIssues).toEqual({ present: true, enabled: false });
+      expect(m.present).toBe(true);
+    });
+
+    it("warns and defaults to false when enabled is a non-boolean value", () => {
+      const m = parseFocusManifest({ upstreamDriftIssues: { enabled: "yes" as unknown as boolean } });
+      expect(m.upstreamDriftIssues.enabled).toBe(false);
+      expect(m.warnings.some((w) => /upstreamDriftIssues\.enabled/.test(w))).toBe(true);
+    });
+
+    it("round-trips through upstreamDriftIssuesConfigToJson -> parseFocusManifest unchanged", () => {
+      const m = parseFocusManifest({ upstreamDriftIssues: { enabled: true } });
+      expect(parseFocusManifest({ upstreamDriftIssues: upstreamDriftIssuesConfigToJson(m.upstreamDriftIssues) }).upstreamDriftIssues).toEqual(m.upstreamDriftIssues);
+    });
+
+    it("upstreamDriftIssuesConfigToJson returns null for an absent config", () => {
+      expect(upstreamDriftIssuesConfigToJson(parseFocusManifest(null).upstreamDriftIssues)).toBeNull();
     });
   });
 

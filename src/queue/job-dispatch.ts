@@ -18,7 +18,7 @@ import {
   refreshInstallationHealth,
 } from "../github/backfill";
 import { refreshScoringModelSnapshot } from "../scoring/model";
-import { fileUpstreamDriftIssues, refreshUpstreamDrift } from "../upstream/ruleset";
+import { fileUpstreamDriftIssues, isAutoFileDriftIssuesEnabled, refreshUpstreamDrift, resolveAutoFileDriftIssuesManifestOverride } from "../upstream/ruleset";
 import { generateWeeklyValueReport } from "../services/weekly-value-report";
 import { isRecapEnabled, resolveMaintainerRecapManifestOverride, runMaintainerRecapJob } from "../review/maintainer-recap-wire";
 import { performRepoDocRefresh } from "../github/repo-doc-refresh-runner";
@@ -165,9 +165,16 @@ export async function processJob(env: Env, message: JobMessage): Promise<void> {
     case "refresh-upstream-drift":
       await refreshUpstreamDrift(env);
       return;
-    case "file-upstream-drift-issues":
-      await fileUpstreamDriftIssues(env);
+    case "file-upstream-drift-issues": {
+      // Config-as-code override (#6275): a present `upstreamDriftIssues` manifest block on the loopover
+      // self-repo wins over LOOPOVER_AUTO_FILE_DRIFT_ISSUES. Defense-in-depth: this dispatch-time gate PLUS
+      // fileUpstreamDriftIssues's own internal gate both consult the same resolved override, so a stale
+      // in-flight job that lands after a flag-flip (env OR manifest) still no-ops rather than filing issues
+      // the operator just turned off.
+      const driftIssuesOverride = await resolveAutoFileDriftIssuesManifestOverride(env);
+      if (isAutoFileDriftIssuesEnabled(env, driftIssuesOverride)) await fileUpstreamDriftIssues(env, driftIssuesOverride);
       return;
+    }
     case "build-contributor-evidence":
       await buildContributorEvidence(env, message.login, message.logins);
       return;

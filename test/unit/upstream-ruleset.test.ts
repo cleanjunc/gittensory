@@ -11,13 +11,16 @@ import {
   detectAndPersistUpstreamDrift,
   buildUpstreamDriftReport,
   fileUpstreamDriftIssues,
+  isAutoFileDriftIssuesEnabled,
   loadUpstreamStatus,
   registryHyperparameterDriftWarningsForRepo,
   refreshUpstreamDrift,
   refreshUpstreamSourceSnapshots,
+  resolveAutoFileDriftIssuesManifestOverride,
   resolveDriftAssignees,
 } from "../../src/upstream/ruleset";
 import type { UpstreamDriftReportRecord, UpstreamRulesetSnapshotRecord, UpstreamSourceSnapshotRecord } from "../../src/types";
+import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader";
 import { createTestEnv } from "../helpers/d1";
 
 describe("upstream ruleset drift tracking", () => {
@@ -1336,6 +1339,97 @@ describe("upstream ruleset drift tracking", () => {
     expect(auditEvents.filter((event) => event.eventType === "upstream.drift_detected")).toHaveLength(2);
     expect(serialized).not.toMatch(/SRC_TOK_SATURATION_SCALE|master_repositories\.json|wallet|hotkey|raw trust score|payout|reward estimate|farming|private reviewability|public score estimate/i);
     expect(serialized).not.toContain("OSS_EMISSION_SHARE");
+  });
+});
+
+describe("isAutoFileDriftIssuesEnabled — default OFF, truthy convention (#6275)", () => {
+  it("is OFF for unset / false / empty, ON for 1/true/yes/on", () => {
+    for (const off of [undefined, "", "false", "no", "0", "off"]) expect(isAutoFileDriftIssuesEnabled({ LOOPOVER_AUTO_FILE_DRIFT_ISSUES: off })).toBe(false);
+    for (const on of ["1", "true", "yes", "on", "TRUE", "On"]) expect(isAutoFileDriftIssuesEnabled({ LOOPOVER_AUTO_FILE_DRIFT_ISSUES: on })).toBe(true);
+  });
+
+  it("a present manifest override wins outright over the env flag, in both directions", () => {
+    expect(isAutoFileDriftIssuesEnabled({ LOOPOVER_AUTO_FILE_DRIFT_ISSUES: "false" }, { present: true, enabled: true })).toBe(true);
+    expect(isAutoFileDriftIssuesEnabled({ LOOPOVER_AUTO_FILE_DRIFT_ISSUES: "true" }, { present: true, enabled: false })).toBe(false);
+  });
+
+  it("falls back to the env flag when the manifest override is not present", () => {
+    expect(isAutoFileDriftIssuesEnabled({ LOOPOVER_AUTO_FILE_DRIFT_ISSUES: "true" }, { present: false, enabled: false })).toBe(true);
+    expect(isAutoFileDriftIssuesEnabled({ LOOPOVER_AUTO_FILE_DRIFT_ISSUES: "false" }, undefined)).toBe(false);
+  });
+});
+
+describe("resolveAutoFileDriftIssuesManifestOverride — config-as-code lookup (#6275)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const SELF_REPO = "JSONbored/gittensory";
+
+  it("returns the self-repo's configured upstreamDriftIssues block when present", async () => {
+    const env = createTestEnv();
+    await upsertRepoFocusManifest(env, SELF_REPO, { upstreamDriftIssues: { enabled: true } });
+
+    expect(await resolveAutoFileDriftIssuesManifestOverride(env)).toEqual({ present: true, enabled: true });
+  });
+
+  it("returns present: false when the self-repo has no upstreamDriftIssues block configured", async () => {
+    const env = createTestEnv();
+    await upsertRepoFocusManifest(env, SELF_REPO, { wantedPaths: ["src/"] });
+
+    expect(await resolveAutoFileDriftIssuesManifestOverride(env)).toEqual({ present: false, enabled: false });
+  });
+
+  it("degrades to present: false (never throws) when the manifest load itself fails", async () => {
+    const env = createTestEnv();
+    // loadRepoFocusManifest reads signal_snapshots (the persisted-record cache) before any live fetch fallback.
+    const realPrepare = env.DB.prepare.bind(env.DB);
+    env.DB.prepare = ((sql: string) => {
+      if (/"signal_snapshots"|signal_snapshots/i.test(sql)) throw new Error("poisoned query");
+      return realPrepare(sql);
+    }) as typeof env.DB.prepare;
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("network down");
+    });
+    const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(await resolveAutoFileDriftIssuesManifestOverride(env)).toEqual({ present: false, enabled: false });
+    expect(warnings.mock.calls.map((c) => String(c[0])).some((line) => line.includes("upstream_drift_issues_manifest_override_error"))).toBe(true);
+    warnings.mockRestore();
+  });
+});
+
+describe("fileUpstreamDriftIssues — manifest override param (#6275)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("byte-identical when the override param is omitted: the env var alone still fully decides", async () => {
+    const offEnv = createTestEnv();
+    await expect(fileUpstreamDriftIssues(offEnv)).resolves.toMatchObject({ status: "disabled", created: 0, updated: 0, skipped: 0 });
+
+    const onEnv = createTestEnv({ LOOPOVER_AUTO_FILE_DRIFT_ISSUES: "true", LOOPOVER_DRIFT_ISSUE_TOKEN: "token" });
+    await upsertUpstreamDriftReport(onEnv, driftReport("omitted-override-fingerprint"));
+    vi.stubGlobal("fetch", githubIssueFetch({ create: { number: 501, url: "https://github.com/JSONbored/gittensory/issues/501" } }));
+    await expect(fileUpstreamDriftIssues(onEnv)).resolves.toMatchObject({ status: "completed", created: 1 });
+  });
+
+  it("a present override enables filing even when the env var is off", async () => {
+    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_TOKEN: "token" }); // LOOPOVER_AUTO_FILE_DRIFT_ISSUES defaults to "false"
+    await upsertUpstreamDriftReport(env, driftReport("override-enabled-fingerprint"));
+    vi.stubGlobal("fetch", githubIssueFetch({ create: { number: 502, url: "https://github.com/JSONbored/gittensory/issues/502" } }));
+
+    await expect(fileUpstreamDriftIssues(env, { present: true, enabled: true })).resolves.toMatchObject({ status: "completed", created: 1 });
+  });
+
+  it("a present override disables filing even when the env var is on", async () => {
+    const env = createTestEnv({ LOOPOVER_AUTO_FILE_DRIFT_ISSUES: "true", LOOPOVER_DRIFT_ISSUE_TOKEN: "token" });
+    await upsertUpstreamDriftReport(env, driftReport("override-disabled-fingerprint"));
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await expect(fileUpstreamDriftIssues(env, { present: true, enabled: false })).resolves.toEqual({ status: "disabled", created: 0, updated: 0, skipped: 0 });
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
 

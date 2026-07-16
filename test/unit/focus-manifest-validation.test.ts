@@ -106,6 +106,10 @@ ops:
   enabled: true
 publicStats:
   enabled: false
+draftFlow:
+  enabled: true
+upstreamDriftIssues:
+  enabled: false
 `,
     });
     expect(result.status).toBe("ok");
@@ -122,14 +126,18 @@ publicStats:
       maintainerRecap: { enabled: true, cadence: "daily", channel: "discord" },
       ops: { enabled: true },
       publicStats: { enabled: false },
+      draftFlow: { enabled: true },
+      upstreamDriftIssues: { enabled: false },
     });
   });
 
-  it("omits maintainerRecap/ops/publicStats from the normalized output when none are configured", () => {
+  it("omits maintainerRecap/ops/publicStats/draftFlow/upstreamDriftIssues from the normalized output when none are configured", () => {
     const result = buildFocusManifestValidation({ content: "wantedPaths: [src/]\n" });
     expect(result.normalized).not.toHaveProperty("maintainerRecap");
     expect(result.normalized).not.toHaveProperty("ops");
     expect(result.normalized).not.toHaveProperty("publicStats");
+    expect(result.normalized).not.toHaveProperty("draftFlow");
+    expect(result.normalized).not.toHaveProperty("upstreamDriftIssues");
   });
 
   it("returns error when manifest content is not a mapping", () => {

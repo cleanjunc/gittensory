@@ -945,6 +945,20 @@ describe("api route guards and error branches", () => {
     expect(queuedUpstreamDrift.status).toBe(202);
     const queuedUpstreamDriftIssues = await app.request("/v1/internal/jobs/file-upstream-drift-issues", { method: "POST", headers: internalHeaders(env) }, env);
     expect(queuedUpstreamDriftIssues.status).toBe(202);
+
+    // /v1/internal/jobs/file-upstream-drift-issues/run respects the upstreamDriftIssues manifest override
+    // (#6275) for an explicit maintainer-triggered call, mirroring generate-review-recap/run above: disabled
+    // by default (env var off, no override), then filing proceeds once the self-repo's manifest enables it
+    // (here surfacing as "skipped: missing_issue_token" since this test env carries no drift-issue token).
+    const disabledDriftIssuesRun = await app.request("/v1/internal/jobs/file-upstream-drift-issues/run", { method: "POST", headers: internalHeaders(env) }, env);
+    expect(disabledDriftIssuesRun.status).toBe(200);
+    await expect(disabledDriftIssuesRun.json()).resolves.toEqual({ status: "disabled", created: 0, updated: 0, skipped: 0 });
+
+    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { upstreamDriftIssues: { enabled: true } });
+    const enabledDriftIssuesRun = await app.request("/v1/internal/jobs/file-upstream-drift-issues/run", { method: "POST", headers: internalHeaders(env) }, env);
+    expect(enabledDriftIssuesRun.status).toBe(200);
+    await expect(enabledDriftIssuesRun.json()).resolves.toMatchObject({ status: "skipped", reason: "missing_issue_token" });
+
     const queuedEvidence = await app.request("/v1/internal/jobs/build-contributor-evidence", {
       method: "POST",
       headers: internalHeaders(env),

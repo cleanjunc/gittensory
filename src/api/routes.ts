@@ -289,7 +289,7 @@ import {
   type InstallationHealthSummary,
   type RegistrationReadinessReport,
 } from "../signals/registration-readiness";
-import { fileUpstreamDriftIssues, loadUpstreamStatus, refreshUpstreamDrift, registryHyperparameterDriftWarningsForRepo } from "../upstream/ruleset";
+import { fileUpstreamDriftIssues, loadUpstreamStatus, refreshUpstreamDrift, registryHyperparameterDriftWarningsForRepo, resolveAutoFileDriftIssuesManifestOverride } from "../upstream/ruleset";
 import type {
   BountyLifecycleEventRecord,
   ControlPanelRoleName,
@@ -3967,7 +3967,13 @@ export function createApp() {
     return c.json({ ok: true, status: "queued" }, 202);
   });
 
-  app.post("/v1/internal/jobs/file-upstream-drift-issues/run", async (c) => c.json(await fileUpstreamDriftIssues(c.env)));
+  app.post("/v1/internal/jobs/file-upstream-drift-issues/run", async (c) => {
+    // Config-as-code override (#6275): resolve the loopover self-repo's `upstreamDriftIssues` manifest block
+    // (if any) and thread it through so a present override actually takes effect, matching the cron dispatch
+    // gate in job-dispatch.ts.
+    const driftIssuesOverride = await resolveAutoFileDriftIssuesManifestOverride(c.env);
+    return c.json(await fileUpstreamDriftIssues(c.env, driftIssuesOverride));
+  });
 
   app.post("/v1/internal/jobs/build-contributor-evidence", async (c) => {
     const body = await c.req.json().catch(() => ({}));

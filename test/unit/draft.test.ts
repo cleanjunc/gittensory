@@ -1,8 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/api/routes";
-import { buildContributorMdx, handleDraftCreate, handleDraftOAuthCallback, handleDraftStatus, processSubmitDraft, slugify } from "../../src/services/draft";
+import { buildContributorMdx, draftFlowEnabled, handleDraftCreate, handleDraftOAuthCallback, handleDraftStatus, processSubmitDraft, resolveDraftFlowManifestOverride, slugify } from "../../src/services/draft";
 import { decryptDraftToken, encryptDraftToken, newDraftId, randomDraftToken, sha256Hex } from "../../src/utils/crypto";
+import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader";
 import { createTestEnv } from "../helpers/d1";
+
+// Every draftFlowEnabled call site now independently resolves the loopover self-repo's `draftFlow` manifest
+// override (#6275), which may fall through to a live GitHub fetch for its `.loopover.yml` on a cache miss.
+// Restore every spy/stub after each test unconditionally (not just on the happy path) so an assertion that
+// throws before a test's own `fetchSpy.mockRestore()` can never leave a stale `vi.spyOn(globalThis, "fetch")`
+// active for later tests in this file (this file has no other global fetch mocking convention).
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 const DRAFT_SECRET = "draft-token-encryption-secret-at-least-32b";
 
@@ -39,6 +50,58 @@ const SAMPLE_FIELDS = {
   privacy_notes: "No personal data collected.",
 };
 
+describe("draftFlowEnabled — default OFF, truthy convention (#6275)", () => {
+  it("is OFF for unset / false / empty, ON for 1/true/yes/on", () => {
+    for (const off of [undefined, "", "false", "no", "0", "off"]) expect(draftFlowEnabled({ LOOPOVER_REVIEW_DRAFT: off })).toBe(false);
+    for (const on of ["1", "true", "yes", "on", "TRUE", "On"]) expect(draftFlowEnabled({ LOOPOVER_REVIEW_DRAFT: on })).toBe(true);
+  });
+
+  it("a present manifest override wins outright over the env flag, in both directions", () => {
+    expect(draftFlowEnabled({ LOOPOVER_REVIEW_DRAFT: "false" }, { present: true, enabled: true })).toBe(true);
+    expect(draftFlowEnabled({ LOOPOVER_REVIEW_DRAFT: "true" }, { present: true, enabled: false })).toBe(false);
+  });
+
+  it("falls back to the env flag when the manifest override is not present", () => {
+    expect(draftFlowEnabled({ LOOPOVER_REVIEW_DRAFT: "true" }, { present: false, enabled: false })).toBe(true);
+    expect(draftFlowEnabled({ LOOPOVER_REVIEW_DRAFT: "false" }, undefined)).toBe(false);
+  });
+});
+
+describe("resolveDraftFlowManifestOverride — config-as-code lookup (#6275)", () => {
+  const SELF_REPO = "JSONbored/gittensory";
+
+  it("returns the self-repo's configured draftFlow block when present", async () => {
+    const env = createTestEnv();
+    await upsertRepoFocusManifest(env, SELF_REPO, { draftFlow: { enabled: true } });
+
+    expect(await resolveDraftFlowManifestOverride(env)).toEqual({ present: true, enabled: true });
+  });
+
+  it("returns present: false when the self-repo has no draftFlow block configured", async () => {
+    const env = createTestEnv();
+    await upsertRepoFocusManifest(env, SELF_REPO, { wantedPaths: ["src/"] });
+
+    expect(await resolveDraftFlowManifestOverride(env)).toEqual({ present: false, enabled: false });
+  });
+
+  it("degrades to present: false (never throws) when the manifest load itself fails", async () => {
+    const env = createTestEnv();
+    // loadRepoFocusManifest reads signal_snapshots (the persisted-record cache) before any live fetch fallback.
+    const realPrepare = env.DB.prepare.bind(env.DB);
+    env.DB.prepare = ((sql: string) => {
+      if (/"signal_snapshots"|signal_snapshots/i.test(sql)) throw new Error("poisoned query");
+      return realPrepare(sql);
+    }) as typeof env.DB.prepare;
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("network down");
+    });
+    const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(await resolveDraftFlowManifestOverride(env)).toEqual({ present: false, enabled: false });
+    expect(warnings.mock.calls.map((c) => String(c[0])).some((line) => line.includes("draft_flow_manifest_override_error"))).toBe(true);
+  });
+});
+
 describe("draft flow — flag OFF (LOOPOVER_REVIEW_DRAFT unset/false)", () => {
   it("POST /v1/drafts returns 404 when the flag is off", async () => {
     const app = createApp();
@@ -71,10 +134,60 @@ describe("draft flow — flag OFF (LOOPOVER_REVIEW_DRAFT unset/false)", () => {
 
   it("processSubmitDraft is a no-op when the flag is off", async () => {
     const env = createTestEnv();
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    // The disabled-check ALSO resolves the self-repo's draftFlow manifest override (#6275), which may fall
+    // through to a live GitHub fetch for its .loopover.yml when uncached -- stub that fetch as a generic 404
+    // so the loader degrades to "no override", and assert no OTHER (business-logic) GitHub call happens.
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
     await processSubmitDraft(env, "draft_anything");
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(fetchSpy.mock.calls.every(([url]) => String(url).includes("raw.githubusercontent.com"))).toBe(true);
+  });
+});
+
+describe("draft flow — config-as-code override end-to-end (#6275)", () => {
+  const SELF_REPO = "JSONbored/gittensory";
+
+  it("handleDraftCreate: a present draftFlow override enables the flow even when the env var is off", async () => {
+    const env = createTestEnv({ GITHUB_OAUTH_CLIENT_ID: "Iv-test-client-id", GITHUB_OAUTH_CLIENT_SECRET: "test-oauth-client-secret", DRAFT_TOKEN_ENCRYPTION_SECRET: DRAFT_SECRET });
+    await upsertRepoFocusManifest(env, SELF_REPO, { draftFlow: { enabled: true } });
+
+    const res = await handleDraftCreate(new Request(`${ORIGIN}/v1/drafts`, { method: "POST", headers: jsonHeaders(), body: JSON.stringify(SAMPLE_FIELDS) }), env);
+
+    expect(res.status).toBe(201);
+  });
+
+  it("handleDraftCreate: a present draftFlow override disables the flow even when the env var is on", async () => {
+    const env = draftEnv();
+    await upsertRepoFocusManifest(env, SELF_REPO, { draftFlow: { enabled: false } });
+
+    const res = await handleDraftCreate(new Request(`${ORIGIN}/v1/drafts`, { method: "POST", headers: jsonHeaders(), body: JSON.stringify(SAMPLE_FIELDS) }), env);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("processSubmitDraft: a present draftFlow override enables submission even when the env var is off", async () => {
+    const env = createTestEnv({ DRAFT_TOKEN_ENCRYPTION_SECRET: DRAFT_SECRET });
+    await upsertRepoFocusManifest(env, SELF_REPO, { draftFlow: { enabled: true } });
+    const id = await seedQueuedDraftWithToken(env);
+    // A deterministic GitHub 500 (not a real network call) is enough to prove the guard did NOT fire: a fresh,
+    // unexpired, unconsumed token was just seeded, so token_unavailable is unreachable -- any status OTHER
+    // than "queued" means execution proceeded past the draftFlowEnabled guard into the fork-PR flow.
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ message: "boom" }), { status: 500 }));
+
+    await processSubmitDraft(env, id);
+
+    const row = await env.DB.prepare("SELECT status FROM submission_drafts WHERE id = ?").bind(id).first<{ status: string }>();
+    expect(row?.status).not.toBe("queued");
+  });
+
+  it("processSubmitDraft: a present draftFlow override disables submission even when the env var is on (no-op, draft stays queued)", async () => {
+    const env = draftEnv();
+    await upsertRepoFocusManifest(env, SELF_REPO, { draftFlow: { enabled: false } });
+    const id = await seedQueuedDraftWithToken(env);
+
+    await processSubmitDraft(env, id);
+
+    const row = await env.DB.prepare("SELECT status FROM submission_drafts WHERE id = ?").bind(id).first<{ status: string }>();
+    expect(row?.status).toBe("queued");
   });
 });
 
@@ -250,11 +363,11 @@ describe("processSubmitDraft — error path without dragging in the GitHub engin
     )
       .bind(id, JSON.stringify(SAMPLE_FIELDS))
       .run();
-    // No token row -> token_unavailable, set without any network call.
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    // No token row -> token_unavailable, without any business-logic GitHub call. The draftFlow manifest
+    // override resolution (#6275) still fires first -- stub it as a generic 404 (cache miss -> no override).
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
     await processSubmitDraft(env, id);
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(fetchSpy.mock.calls.every(([url]) => String(url).includes("raw.githubusercontent.com"))).toBe(true);
     const row = await env.DB.prepare("SELECT status, last_error FROM submission_drafts WHERE id = ?").bind(id).first<{ status: string; last_error: string }>();
     expect(row).toMatchObject({ status: "error", last_error: "token_unavailable" });
   });
@@ -522,10 +635,11 @@ describe("processSubmitDraft — fork-PR happy path + branches", () => {
     const env = draftEnv();
     const id = await seedQueuedDraftWithToken(env);
     await env.DB.prepare("UPDATE submission_drafts SET status = 'pr_open' WHERE id = ?").bind(id).run();
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    // The draftFlow manifest override resolution (#6275) still fires first -- stub it as a generic 404
+    // (cache miss -> no override) and assert no OTHER (business-logic) GitHub call happens.
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
     await processSubmitDraft(env, id);
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(fetchSpy.mock.calls.every(([url]) => String(url).includes("raw.githubusercontent.com"))).toBe(true);
   });
 });
 
@@ -540,19 +654,22 @@ describe("handleDraftOAuthCallback — success + error paths", () => {
 
   it("rejects a valid OAuth state when the browser-bound draft cookie is missing", async () => {
     const env = draftEnv();
+    // Stub fetch as a generic 404 for the WHOLE test: the draftFlow manifest override resolution (#6275)
+    // fires on every handler call, including inside createDraftState's own handleDraftCreate -- this path
+    // expects no business-logic GitHub call in either phase.
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
     const { state } = await createDraftState(env);
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
     const res = await handleDraftOAuthCallback(new Request(`${ORIGIN}/v1/drafts/auth/callback?code=valid-code&state=${encodeURIComponent(state)}`), env);
     expect(res.status).toBe(400);
     expect(await res.text()).toBe("Invalid or expired submission state.");
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(fetchSpy.mock.calls.every(([url]) => String(url).includes("raw.githubusercontent.com"))).toBe(true);
   });
 
   it("treats a malformed draft cookie as absent (covers the cookie-parser empty-name + decode-failure arms)", async () => {
     const env = draftEnv();
+    // Stub fetch as a generic 404 for the WHOLE test (see the previous test's comment for why).
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
     const { state } = await createDraftState(env);
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
     // One Cookie header that drives both parseCookieHeader fallbacks:
     //  • " =lead"                  → whitespace-only name (eq > 0 but name trims to "") → `if (!name) continue`
     //  • loopover_draft_oauth=%  → a lone-percent value makes decodeURIComponent throw → decoded as ""
@@ -565,8 +682,7 @@ describe("handleDraftOAuthCallback — success + error paths", () => {
     );
     expect(res.status).toBe(400);
     expect(await res.text()).toBe("Invalid or expired submission state.");
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(fetchSpy.mock.calls.every(([url]) => String(url).includes("raw.githubusercontent.com"))).toBe(true);
   });
 
   it("exchanges the code, stores an encrypted token, flips the draft to queued, and returns meta-refresh HTML", async () => {
@@ -753,13 +869,14 @@ describe("buildContributorMdx — block-scalar branch + optional frontmatter", (
 // ---------------------------------------------------------------------------
 
 describe("queue dispatch — submit-draft job", () => {
-  it("processJob routes a submit-draft message to processSubmitDraft (flag-off → internal no-op, no fetch)", async () => {
+  it("processJob routes a submit-draft message to processSubmitDraft (flag-off → internal no-op, no business-logic fetch)", async () => {
     const { processJob } = await import("../../src/queue/processors");
     const env = createTestEnv(); // LOOPOVER_REVIEW_DRAFT unset → processSubmitDraft no-ops internally
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    // The draftFlow manifest override resolution (#6275) still fires first -- stub it as a generic 404
+    // (cache miss -> no override) and assert no OTHER (business-logic) GitHub call happens.
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
     await processJob(env, { type: "submit-draft", requestedBy: "test", draftId: "draft_anything" });
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(fetchSpy.mock.calls.every(([url]) => String(url).includes("raw.githubusercontent.com"))).toBe(true);
   });
 });
 
@@ -1027,10 +1144,11 @@ describe("processSubmitDraft — token expiry / consumed guards + base-SHA + tit
   it("marks the draft error 'token_unavailable' when the token is expired (expiry guard)", async () => {
     const env = draftEnv();
     const id = await seedQueuedDraftWithToken(env, SAMPLE_FIELDS, { expiresAt: new Date(Date.now() - 60_000).toISOString() });
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    // The draftFlow manifest override resolution (#6275) still fires first -- stub it as a generic 404
+    // (cache miss -> no override) and assert no OTHER (business-logic) GitHub call happens.
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
     await processSubmitDraft(env, id);
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(fetchSpy.mock.calls.every(([url]) => String(url).includes("raw.githubusercontent.com"))).toBe(true);
     const row = await env.DB.prepare("SELECT status, last_error FROM submission_drafts WHERE id = ?").bind(id).first<{ status: string; last_error: string }>();
     expect(row).toMatchObject({ status: "error", last_error: "token_unavailable" });
   });
@@ -1039,10 +1157,9 @@ describe("processSubmitDraft — token expiry / consumed guards + base-SHA + tit
     // A malformed expires_at must NOT be treated as "never expired"; it short-circuits to token_unavailable.
     const env = draftEnv();
     const id = await seedQueuedDraftWithToken(env, SAMPLE_FIELDS, { expiresAt: "not-a-valid-date" });
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
     await processSubmitDraft(env, id);
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(fetchSpy.mock.calls.every(([url]) => String(url).includes("raw.githubusercontent.com"))).toBe(true);
     const row = await env.DB.prepare("SELECT status, last_error FROM submission_drafts WHERE id = ?").bind(id).first<{ status: string; last_error: string }>();
     expect(row).toMatchObject({ status: "error", last_error: "token_unavailable" });
   });
@@ -1050,10 +1167,9 @@ describe("processSubmitDraft — token expiry / consumed guards + base-SHA + tit
   it("marks the draft error 'token_unavailable' when the token is already consumed (consumed guard)", async () => {
     const env = draftEnv();
     const id = await seedQueuedDraftWithToken(env, SAMPLE_FIELDS, { consumed: true });
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
     await processSubmitDraft(env, id);
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(fetchSpy.mock.calls.every(([url]) => String(url).includes("raw.githubusercontent.com"))).toBe(true);
     const row = await env.DB.prepare("SELECT status, last_error FROM submission_drafts WHERE id = ?").bind(id).first<{ status: string; last_error: string }>();
     expect(row).toMatchObject({ status: "error", last_error: "token_unavailable" });
   });
@@ -1063,20 +1179,18 @@ describe("processSubmitDraft — token expiry / consumed guards + base-SHA + tit
     const id = await seedQueuedDraftWithToken(env);
     // Drop the encryption secret AFTER seeding so the token row exists but cannot be decrypted.
     (env as { DRAFT_TOKEN_ENCRYPTION_SECRET?: string }).DRAFT_TOKEN_ENCRYPTION_SECRET = "";
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
     await processSubmitDraft(env, id);
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(fetchSpy.mock.calls.every(([url]) => String(url).includes("raw.githubusercontent.com"))).toBe(true);
     const row = await env.DB.prepare("SELECT status, last_error FROM submission_drafts WHERE id = ?").bind(id).first<{ status: string; last_error: string }>();
     expect(row).toMatchObject({ status: "error", last_error: "token_unavailable" });
   });
 
   it("returns early (no-op) when the draft id does not exist (missing-row guard)", async () => {
     const env = draftEnv();
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
     await processSubmitDraft(env, "draft_does_not_exist");
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(fetchSpy.mock.calls.every(([url]) => String(url).includes("raw.githubusercontent.com"))).toBe(true);
   });
 
   it("marks the draft error when the fork base SHA cannot be resolved (both base + fallback ref absent)", async () => {
@@ -1508,12 +1622,13 @@ describe("createUserForkContentPr — fork-name + default-branch `||` fallback a
     // which the processSubmitDraft outer catch records as the draft error. Exercises the if-throw arm.
     const env = draftEnv({ DRAFT_PUBLIC_REPO: "not-a-valid-repo" });
     const id = await seedQueuedDraftWithToken(env);
-    // parseRepo(params.publicRepo) runs BEFORE the first fetch, so the throw happens with no network call.
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    // parseRepo(params.publicRepo) runs BEFORE any business-logic fetch, so the throw happens with no
+    // business-logic network call. The draftFlow manifest override resolution (#6275) still fires first --
+    // stub it as a generic 404 (cache miss -> no override).
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 404 }));
 
     await processSubmitDraft(env, id);
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(fetchSpy.mock.calls.every(([url]) => String(url).includes("raw.githubusercontent.com"))).toBe(true);
 
     const row = await env.DB.prepare("SELECT status, last_error FROM submission_drafts WHERE id = ?").bind(id).first<{ status: string; last_error: string }>();
     expect(row?.status).toBe("error");

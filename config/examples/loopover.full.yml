@@ -1251,3 +1251,19 @@ settings:
 # LOOPOVER_PUBLIC_STATS env var, which stays the fallback when absent.
 # publicStats:
 #   enabled: true   # Bool. Default: false (the env var decides instead).
+
+# Fleet-wide AI-drafted-PR creation capability (#6275): config-as-code override for the LOOPOVER_REVIEW_DRAFT
+# env flag that gates the public OAuth draft-submission flow (POST /v1/drafts and friends). Operator-level,
+# not per-repo -- there is no repo context at any of its activation checks -- so only meaningful on the
+# loopover self-repo's own manifest; a present block there wins over the env var, which stays the fallback
+# when absent.
+# draftFlow:
+#   enabled: true   # Bool. Default: false (the env var decides instead).
+
+# Scheduled upstream-drift-issue-filing job (#6275): config-as-code override for the
+# LOOPOVER_AUTO_FILE_DRIFT_ISSUES env flag that gates fileUpstreamDriftIssues (files/updates GitHub issues
+# against loopover's own tracking repo when the upstream gittensor ruleset drifts). Operator-level, not
+# per-repo -- only meaningful on the loopover self-repo's own manifest; a present block there wins over the
+# env var, which stays the fallback when absent.
+# upstreamDriftIssues:
+#   enabled: true   # Bool. Default: false (the env var decides instead).

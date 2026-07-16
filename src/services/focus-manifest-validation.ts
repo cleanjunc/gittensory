@@ -9,6 +9,8 @@ import {
   maintainerRecapConfigToJson,
   opsConfigToJson,
   publicStatsConfigToJson,
+  draftFlowConfigToJson,
+  upstreamDriftIssuesConfigToJson,
   settingsOverrideToJson,
   type FocusManifest,
   type FocusManifestSource,
@@ -82,6 +84,10 @@ function focusManifestToNormalizedJson(manifest: FocusManifest): Record<string, 
   if (ops !== null) normalized.ops = ops;
   const publicStats = publicStatsConfigToJson(manifest.publicStats);
   if (publicStats !== null) normalized.publicStats = publicStats;
+  const draftFlow = draftFlowConfigToJson(manifest.draftFlow);
+  if (draftFlow !== null) normalized.draftFlow = draftFlow;
+  const upstreamDriftIssues = upstreamDriftIssuesConfigToJson(manifest.upstreamDriftIssues);
+  if (upstreamDriftIssues !== null) normalized.upstreamDriftIssues = upstreamDriftIssues;
 
   return normalized;
 }

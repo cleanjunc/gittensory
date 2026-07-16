@@ -11,6 +11,9 @@
 // the flag is off the router never mounts these handlers (callers see 404).
 import { decryptDraftToken, encryptDraftToken, newDraftId, randomDraftToken, sha256Hex, timingSafeEqualHex } from "../utils/crypto";
 import { timeoutFetch } from "../github/client";
+import { loadRepoFocusManifest } from "../signals/focus-manifest-loader";
+import { resolveLoopOverSelfRepoFullName } from "../config/loopover-repo-focus-manifest";
+import { errorMessage } from "../utils/json";
 
 const REDACT_KEYS = /(email|phone|address|contact|zip|postcode|name)/i;
 const TOKEN_TTL_SECONDS = 900;
@@ -37,8 +40,41 @@ const SUPPORTED_CATEGORIES = [
 // Config (env-driven; reviewbot's DraftConfig collapsed to module + env vars).
 // ---------------------------------------------------------------------------
 
-export function draftFlowEnabled(env: Env): boolean {
+/** A manifest-sourced enable override (#6275) -- the `draftFlow` block of the loopover self-repo's
+ *  `.loopover.yml` (see FocusManifestDraftFlowConfig). `present: false` (no block, or the repo has no
+ *  manifest at all) means "no override configured", not "disabled" -- the caller falls through to
+ *  LOOPOVER_REVIEW_DRAFT in that case, exactly as if this parameter were omitted. Mirrors
+ *  MaintainerRecapManifestOverride (src/review/maintainer-recap-wire.ts). */
+export type DraftFlowManifestOverride = { present: boolean; enabled: boolean };
+
+export function draftFlowEnabled(
+  env: { LOOPOVER_REVIEW_DRAFT?: string | undefined },
+  manifestOverride?: DraftFlowManifestOverride | undefined,
+): boolean {
+  if (manifestOverride?.present) return manifestOverride.enabled;
   return /^(1|true|yes|on)$/i.test((env.LOOPOVER_REVIEW_DRAFT ?? "").trim());
+}
+
+/**
+ * Config-as-code override lookup (#6275): read the `draftFlow` block off the loopover self-repo's
+ * `.loopover.yml` (resolveLoopOverSelfRepoFullName) -- the draft flow is a fleet-wide (whole-deployment)
+ * capability, not a per-contributor-repo one (no repo context exists at any of its 4 activation checks
+ * below), so ONE designated repo's manifest stands in for "the operator's own config", mirroring
+ * resolveMaintainerRecapManifestOverride exactly. A manifest load failure (network blip, malformed YAML)
+ * degrades to `{ present: false }` -- the caller then falls through to LOOPOVER_REVIEW_DRAFT, exactly as if
+ * no override existed, so a manifest hiccup can never accidentally enable or disable the flow. Each of the
+ * 4 call sites resolves its own override independently (3 HTTP handlers + 1 queue-job function) rather than
+ * threading a shared context, matching how each already independently calls draftFlowEnabled today.
+ */
+export async function resolveDraftFlowManifestOverride(env: Env): Promise<DraftFlowManifestOverride> {
+  try {
+    const manifest = await loadRepoFocusManifest(env, resolveLoopOverSelfRepoFullName(env));
+    const config = manifest.draftFlow;
+    return { present: config.present, enabled: config.enabled };
+  } catch (error) {
+    console.warn(JSON.stringify({ event: "draft_flow_manifest_override_error", message: errorMessage(error).slice(0, 200) }));
+    return { present: false, enabled: false };
+  }
 }
 
 function draftConfig(env: Env): { publicRepo: string; baseRef: string; categories: string[]; branchPrefix: string } {
@@ -539,7 +575,7 @@ function draftOAuthCookie(state: string, origin: string, maxAgeSeconds: number):
 }
 
 export async function handleDraftCreate(request: Request, env: Env): Promise<Response> {
-  if (!draftFlowEnabled(env)) return new Response("not found", { status: 404 });
+  if (!draftFlowEnabled(env, await resolveDraftFlowManifestOverride(env))) return new Response("not found", { status: 404 });
   if (!(request.headers.get("content-type") || "").includes("application/json")) return json({ ok: false, error: "expected_json" }, 415);
 
   const config = draftConfig(env);
@@ -584,7 +620,7 @@ export async function handleDraftCreate(request: Request, env: Env): Promise<Res
 }
 
 export async function handleDraftStatus(_request: Request, env: Env, draftId: string): Promise<Response> {
-  if (!draftFlowEnabled(env)) return new Response("not found", { status: 404 });
+  if (!draftFlowEnabled(env, await resolveDraftFlowManifestOverride(env))) return new Response("not found", { status: 404 });
   const row = await env.DB.prepare(`SELECT * FROM submission_drafts WHERE id = ?`).bind(draftId).first<DraftRow>();
   if (!row) return json({ ok: false, error: "not_found" }, 404);
   let fields: Record<string, unknown> = {};
@@ -613,7 +649,7 @@ export async function handleDraftStatus(_request: Request, env: Env, draftId: st
 }
 
 export async function handleDraftOAuthCallback(request: Request, env: Env): Promise<Response> {
-  if (!draftFlowEnabled(env)) return new Response("not found", { status: 404 });
+  if (!draftFlowEnabled(env, await resolveDraftFlowManifestOverride(env))) return new Response("not found", { status: 404 });
   const url = new URL(request.url);
   const code = url.searchParams.get("code") || "";
   const providerError = url.searchParams.get("error") || "";
@@ -663,7 +699,7 @@ export async function handleDraftOAuthCallback(request: Request, env: Env): Prom
 
 /** Queue handler for submit-draft: fork + open the content PR with the user's token. */
 export async function processSubmitDraft(env: Env, draftId: string): Promise<void> {
-  if (!draftFlowEnabled(env)) return;
+  if (!draftFlowEnabled(env, await resolveDraftFlowManifestOverride(env))) return;
   const config = draftConfig(env);
   const row = await env.DB.prepare(`SELECT * FROM submission_drafts WHERE id = ?`).bind(draftId).first<DraftRow>();
   if (!row || row.status === "pr_open") return;

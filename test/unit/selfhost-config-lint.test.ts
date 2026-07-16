@@ -118,6 +118,22 @@ reviewRecap:
     expect(result.recognizedFields).toEqual(["publicStats"]);
   });
 
+  it("recognizes a standalone draftFlow: block instead of flagging it as unknown (#6275)", () => {
+    const result = lintManifestText("draftFlow:\n  enabled: true\n");
+
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toEqual([]);
+    expect(result.recognizedFields).toEqual(["draftFlow"]);
+  });
+
+  it("recognizes a standalone upstreamDriftIssues: block instead of flagging it as unknown (#6275)", () => {
+    const result = lintManifestText("upstreamDriftIssues:\n  enabled: true\n");
+
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toEqual([]);
+    expect(result.recognizedFields).toEqual(["upstreamDriftIssues"]);
+  });
+
   it("flags legacy blockedPaths with a migration-specific warning, not the generic unknown-field message", () => {
     const result = lintManifestText("wantedPaths: [src/]\nblockedPaths: [dist/]\n");
 

@@ -237,7 +237,10 @@ describe("explainScoreBreakdown", () => {
 
     const breakdown = explainScoreBreakdown(preview);
     expect(breakdown.gateHighlights.length).toBeGreaterThan(0);
-    expect(breakdown.gateHighlights[0]?.explanation).toMatch(/private context|estimated score/i);
+    // score-breakdown.ts now uses its own curated vocabulary (not the shared public-comment sanitizer), so
+    // "estimated score" is the only possible outcome here -- the "private context" alternative was pinned to
+    // the old shared-sanitizer mangling and is no longer reachable.
+    expect(breakdown.gateHighlights[0]?.explanation).toMatch(/estimated score/i);
     expect(JSON.stringify(breakdown.gateHighlights)).not.toMatch(FORBIDDEN);
   });
 
@@ -727,5 +730,36 @@ describe("explainScoreBreakdown", () => {
     const top = breakdown.highestLeverageLever;
     expect(top.tiedLeverageComponents).toEqual([]);
     expect(top.reason).not.toMatch(/ties with/);
+  });
+
+  // REGRESSION (score-breakdown-own-vocabulary): explainScoreBreakdown previously piped its own copy through
+  // the shared public-comment sanitizer (src/github/commands.ts's sanitizePublicComment), which mangles bare
+  // "score"/"credibility" into "private context" -- fine for a genuinely public GitHub comment, but this
+  // endpoint is authenticated and per-contributor, and "score"/"credibility" are its entire point. Asserts
+  // the feature's own core vocabulary survives byte-for-byte, not just "no forbidden wallet/hotkey word leaked".
+  it("REGRESSION: never mangles this feature's own core vocabulary (score/credibility/leverage) into private context", () => {
+    const preview = buildScorePreview({
+      repo,
+      snapshot,
+      input: {
+        repoFullName: repo.fullName,
+        sourceTokenScore: 100,
+        totalTokenScore: 100,
+        sourceLines: 100,
+        openPrCount: 0,
+        openIssueCount: 0,
+        existingContributorTokenScore: 5000,
+        credibility: 1,
+        linkedIssueMode: "none",
+      },
+    });
+    const breakdown = explainScoreBreakdown(preview);
+    const serialized = JSON.stringify(breakdown);
+    expect(serialized).not.toMatch(/private context/i);
+    const baseScore = breakdown.components.find((c) => c.component === "baseScore");
+    expect(baseScore?.summary).toMatch(/score cap|score pipeline/i);
+    const credibilityComponent = breakdown.components.find((c) => c.component === "credibilityMultiplier");
+    expect(credibilityComponent?.summary).toMatch(/credibility/i);
+    expect(serialized).not.toMatch(FORBIDDEN);
   });
 });

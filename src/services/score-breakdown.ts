@@ -1,5 +1,22 @@
-import { sanitizePublicComment } from "../github/commands";
+import { PUBLIC_LOCAL_PATH_INLINE } from "../signals/redaction";
 import type { ScoreGateDelta, ScorePreviewResult } from "../scoring/preview";
+
+// This endpoint (POST /v1/scoring/explain-breakdown, gated by requireContributorAccess) is authenticated and
+// scoped to the requesting contributor's OWN score -- not a public GitHub comment surface -- so "score",
+// "credibility", and "leverage" are its legitimate core vocabulary, not a leak. Reusing the shared
+// sanitizePublicComment (src/github/commands.ts, tuned for genuinely public GitHub comment surfaces) mangled
+// this feature's own output ("saturated near the score cap" -> "saturated near the private context cap",
+// "Contributor credibility evidence..." -> "Contributor private context evidence..."). Mirrors the
+// established, documented pattern in agent-action-explanation-card.ts / miner-dashboard-recommendations.ts
+// (see src/signals/redaction.ts's note above PUBLIC_UNSAFE_TERMS): this endpoint's output is entirely
+// computed, structured score data (numbers and gate deltas), so the only genuine residual risk is an
+// accidentally-embedded token or local filesystem path -- keep just that minimal safety net rather than the
+// full gittensor-economic-vocabulary substitution.
+const TOKEN_OR_PATH_PATTERN = new RegExp(`\\bgithub_pat_[A-Za-z0-9_]+|\\bgh[pousr]_[A-Za-z0-9_]+|(?:${PUBLIC_LOCAL_PATH_INLINE})\\S+`, "gi");
+
+function sanitizeScoreBreakdownText(value: string): string {
+  return value.replace(TOKEN_OR_PATH_PATTERN, "<redacted>");
+}
 
 export type ScoreMultiplierBand = "full" | "reduced" | "neutral" | "blocked";
 
@@ -359,7 +376,7 @@ function roundBand(value: number): string {
 function gateHighlightsFor(preview: ScorePreviewResult): ScoreBreakdownExplanation["gateHighlights"] {
   return preview.gateDeltas.map((delta) => ({
     gate: delta.gate,
-    explanation: sanitizePublicComment(delta.explanation),
+    explanation: sanitizeScoreBreakdownText(delta.explanation),
   }));
 }
 
@@ -383,7 +400,7 @@ function pickHighestLeverage(components: ScoreMultiplierBreakdown[]): ScoreBreak
     component: top.component,
     lever: top.lever,
     tiedLeverageComponents: tied,
-    reason: sanitizePublicComment(reason),
+    reason: sanitizeScoreBreakdownText(reason),
   };
 }
 
@@ -408,8 +425,8 @@ export function explainScoreBreakdown(preview: ScorePreviewResult): ScoreBreakdo
     nonCodeCapBreakdown(preview),
   ].map((entry) => ({
     ...entry,
-    summary: sanitizePublicComment(entry.summary),
-    lever: sanitizePublicComment(entry.lever),
+    summary: sanitizeScoreBreakdownText(entry.summary),
+    lever: sanitizeScoreBreakdownText(entry.lever),
   }));
 
   return {

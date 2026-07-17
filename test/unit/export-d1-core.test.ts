@@ -197,8 +197,8 @@ describe("export-d1-core buildTableExport + manifest", () => {
       buildTableExport("auth_sessions", [{ id: 9, token_hash: "h" }]),
       buildTableExport("d1_migrations", [{ id: 1 }]), // null → excluded
     ];
-    const manifest = buildExportManifest(exports, { database: "gittensory" });
-    expect(manifest.database).toBe("gittensory");
+    const manifest = buildExportManifest(exports, { database: "loopover" });
+    expect(manifest.database).toBe("loopover");
     expect(manifest.tableCount).toBe(2);
     expect(manifest.totalRows).toBe(3);
     expect(manifest.tables.map((t) => t.table).sort()).toEqual(["auth_sessions", "repositories"]);

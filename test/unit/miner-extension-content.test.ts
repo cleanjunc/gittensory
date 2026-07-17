@@ -15,15 +15,15 @@ const NOW = Date.parse("2026-07-03T12:00:00.000Z");
 function rawIssue(overrides: Record<string, unknown> = {}) {
   return {
     owner: "JSONbored",
-    repo: "gittensory",
-    repoFullName: "JSONbored/gittensory",
+    repo: "loopover",
+    repoFullName: "JSONbored/loopover",
     issueNumber: 145,
     title: "Add miner extension badge",
     labels: ["help wanted", "gittensor:feature"],
     commentsCount: 1,
     createdAt: "2026-07-01T00:00:00.000Z",
     updatedAt: "2026-07-02T00:00:00.000Z",
-    htmlUrl: "https://github.com/JSONbored/gittensory/issues/145",
+    htmlUrl: "https://github.com/JSONbored/loopover/issues/145",
     aiPolicyAllowed: true as const,
     aiPolicySource: "CONTRIBUTING.md" as const,
     ...overrides,
@@ -61,13 +61,13 @@ describe("miner extension opportunity badge", () => {
 
   it("detects GitHub issue routes without matching pull requests", () => {
     const internals = loadContentInternals();
-    expect(internals.matchGitHubIssueTarget("/JSONbored/gittensory/issues/145")).toEqual({
+    expect(internals.matchGitHubIssueTarget("/JSONbored/loopover/issues/145")).toEqual({
       kind: "issue",
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       issueNumber: 145,
     });
-    expect(internals.matchGitHubIssueTarget("/JSONbored/gittensory/pull/146")).toBeNull();
+    expect(internals.matchGitHubIssueTarget("/JSONbored/loopover/pull/146")).toBeNull();
   });
 
   it("looks up ranked opportunities using the same repo#issue key as the miner ranker", () => {
@@ -76,10 +76,10 @@ describe("miner extension opportunity badge", () => {
     });
     const badge = loadBadgeInternals();
 
-    const match = badge.lookupRankedOpportunity(ranked, "JSONbored/gittensory", 145);
+    const match = badge.lookupRankedOpportunity(ranked, "JSONbored/loopover", 145);
     expect(match?.issueNumber).toBe(145);
     expect(match?.rankScore).toBeGreaterThan(0);
-    expect(badge.lookupRankedOpportunity(ranked, "JSONbored/gittensory", 404)).toBeNull();
+    expect(badge.lookupRankedOpportunity(ranked, "JSONbored/loopover", 404)).toBeNull();
   });
 
   it("formats tier, score, and a short why without duplicating ranking math", () => {
@@ -118,13 +118,13 @@ describe("miner extension opportunity badge", () => {
   it("returns ready context when watched repo has a cached ranked candidate", async () => {
     const ranked = rankCandidateIssues([rawIssue()], { nowMs: NOW });
     const internals = loadBackgroundInternals({
-      watchedRepos: ["JSONbored/gittensory"],
+      watchedRepos: ["JSONbored/loopover"],
       rankedCandidates: ranked,
     });
 
     const payload = await internals.loadIssueOpportunityContext({
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       issueNumber: 145,
     });
 
@@ -135,13 +135,13 @@ describe("miner extension opportunity badge", () => {
 
   it("omits badge context when repo is watched but no ranked signal exists", async () => {
     const internals = loadBackgroundInternals({
-      watchedRepos: ["JSONbored/gittensory"],
+      watchedRepos: ["JSONbored/loopover"],
       rankedCandidates: [],
     });
 
     const payload = await internals.loadIssueOpportunityContext({
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       issueNumber: 145,
     });
 
@@ -151,8 +151,8 @@ describe("miner extension opportunity badge", () => {
 
   it("parses watched repos and ranked candidate JSON for options storage", () => {
     const internals = loadOptionsInternals();
-    expect(internals.parseWatchedRepos("JSONbored/gittensory\nowner/repo")).toEqual([
-      "JSONbored/gittensory",
+    expect(internals.parseWatchedRepos("JSONbored/loopover\nowner/repo")).toEqual([
+      "JSONbored/loopover",
       "owner/repo",
     ]);
     expect(internals.parseRankedCandidatesJson("[]")).toEqual([]);
@@ -204,7 +204,7 @@ describe("miner extension opportunity badge", () => {
     const elements = {
       "#settings": createFormMock(),
       "#status": { textContent: "" },
-      "#watchedRepos": { value: "JSONbored/gittensory" },
+      "#watchedRepos": { value: "JSONbored/loopover" },
       "#rankedCandidatesJson": { value: "" },
       "#minerUiUrl": { value: "" },
       "#syncNow": { addEventListener: () => {} },
@@ -311,26 +311,26 @@ describe("miner extension opportunity badge", () => {
     const ranked = rankCandidateIssues([rawIssue()], { nowMs: NOW });
     const savedAt = NOW - 60_000;
     const ready = loadBackgroundInternals({
-      watchedRepos: ["JSONbored/gittensory"],
+      watchedRepos: ["JSONbored/loopover"],
       rankedCandidates: ranked,
       rankedCandidatesSavedAt: savedAt,
     });
     const readyPayload = await ready.loadIssueOpportunityContext({
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       issueNumber: 145,
     });
     expect(readyPayload.status).toBe("ready");
     expect(readyPayload.savedAt).toBe(savedAt);
 
     const noSignal = loadBackgroundInternals({
-      watchedRepos: ["JSONbored/gittensory"],
+      watchedRepos: ["JSONbored/loopover"],
       rankedCandidates: [],
       rankedCandidatesSavedAt: savedAt,
     });
     const noSignalPayload = await noSignal.loadIssueOpportunityContext({
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       issueNumber: 145,
     });
     expect(noSignalPayload.status).toBe("no-signal");
@@ -343,7 +343,7 @@ describe("miner extension opportunity badge", () => {
     const elements = {
       "#settings": createFormMock(),
       "#status": { textContent: "" },
-      "#watchedRepos": { value: "JSONbored/gittensory" },
+      "#watchedRepos": { value: "JSONbored/loopover" },
       "#rankedCandidatesJson": { value: "[]" },
       "#minerUiUrl": { value: "" },
       "#syncNow": { addEventListener: () => {} },
@@ -434,12 +434,12 @@ describe("miner extension opportunity badge", () => {
 
     // Re-seed as if another synced device still has the legacy key, then confirm save also purges it.
     synced.discoveryIndexUrl = "https://legacy.example.test/index.json";
-    elements["#watchedRepos"].value = "JSONbored/gittensory";
+    elements["#watchedRepos"].value = "JSONbored/loopover";
     await elements["#settings"].dispatchSubmit();
 
     expect(setCalls).toHaveLength(1);
     expect(setCalls[0]).toEqual({
-      watchedRepos: ["JSONbored/gittensory"],
+      watchedRepos: ["JSONbored/loopover"],
       minerUiUrl: "http://localhost:5174",
     });
     expect(removeCalls).toEqual(["discoveryIndexUrl", "discoveryIndexUrl"]);
@@ -503,7 +503,7 @@ function loadContentInternals() {
   const context: Record<string, unknown> = {
     __LOOPOVER_MINER_EXTENSION_TEST__: true,
     __loopoverMinerOpportunityBadge: badge,
-    location: { pathname: "/JSONbored/gittensory/pull/146" },
+    location: { pathname: "/JSONbored/loopover/pull/146" },
     document: {
       querySelector: () => null,
       createElement: () => createMockContainer(),

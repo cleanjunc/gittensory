@@ -32,7 +32,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     await persistRegistrySnapshot(
       asCloudEnv(env),
       normalizeRegistryPayload(
-        { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0, trusted_label_pipeline: true, label_multipliers: {} } },
+        { "JSONbored/loopover": { emission_share: 0.01, issue_discovery_share: 0, trusted_label_pipeline: true, label_multipliers: {} } },
         { kind: "raw-github", url: "https://example.test/master_repositories.json" },
         "2026-05-23T00:00:00.000Z",
       ),
@@ -52,7 +52,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
   it("fetches and stores reviews on first sync when no sync-state row exists (cache miss)", async () => {
     const env = createTestEnv({ GITHUB_PUBLIC_TOKEN: "public-token" });
     await seedRegisteredRepo(env);
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", {
       number: 60,
       title: "Open PR, never synced",
       state: "open",
@@ -67,12 +67,12 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
         : Response.json([]),
     );
 
-    const result = await refreshPullRequestDetails(env, "JSONbored/gittensory", 60);
+    const result = await refreshPullRequestDetails(env, "JSONbored/loopover", 60);
 
     expect(result).toMatchObject({ status: "complete" });
     expect(urls.some((url) => url.includes("/pulls/60/reviews"))).toBe(true);
-    expect(await listPullRequestReviews(env, "JSONbored/gittensory", 60)).toEqual([expect.objectContaining({ reviewerLogin: "maintainer", state: "APPROVED" })]);
-    expect(await getPullRequestDetailSyncState(env, "JSONbored/gittensory", 60)).toMatchObject({ status: "complete" });
+    expect(await listPullRequestReviews(env, "JSONbored/loopover", 60)).toEqual([expect.objectContaining({ reviewerLogin: "maintainer", state: "APPROVED" })]);
+    expect(await getPullRequestDetailSyncState(env, "JSONbored/loopover", 60)).toMatchObject({ status: "complete" });
   });
 
   it("does not re-fetch reviews when reviewsSyncedAt is set and no invalidation has been recorded (cache hit), and leaves stored rows untouched", async () => {
@@ -82,7 +82,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-20T01:00:00.000Z"));
     await seedRegisteredRepo(env);
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", {
       number: 61,
       title: "Open PR, reviews already synced",
       state: "open",
@@ -92,8 +92,8 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
       body: "",
     });
     await upsertPullRequestReview(env, {
-      id: "JSONbored/gittensory#61#1",
-      repoFullName: "JSONbored/gittensory",
+      id: "JSONbored/loopover#61#1",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 61,
       reviewerLogin: "maintainer",
       state: "APPROVED",
@@ -102,7 +102,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
       payload: { id: 1 },
     });
     await upsertPullRequestDetailSyncState(env, {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 61,
       status: "complete",
       headSha: "head-61",
@@ -111,11 +111,11 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     });
     const urls = stubFetchTracking((url) => (url.includes("/reviews") ? new Response("must not be called", { status: 500 }) : Response.json([])));
 
-    const result = await refreshPullRequestDetails(env, "JSONbored/gittensory", 61);
+    const result = await refreshPullRequestDetails(env, "JSONbored/loopover", 61);
 
     expect(result).toMatchObject({ status: "complete", warnings: [] });
     expect(urls.some((url) => url.includes("/pulls/61/reviews"))).toBe(false);
-    expect(await listPullRequestReviews(env, "JSONbored/gittensory", 61)).toEqual([expect.objectContaining({ reviewerLogin: "maintainer", state: "APPROVED" })]);
+    expect(await listPullRequestReviews(env, "JSONbored/loopover", 61)).toEqual([expect.objectContaining({ reviewerLogin: "maintainer", state: "APPROVED" })]);
   });
 
   it("does not re-fetch reviews when reviewsInvalidatedAt predates reviewsSyncedAt (stale invalidation, still a cache hit)", async () => {
@@ -125,7 +125,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-20T01:00:00.000Z"));
     await seedRegisteredRepo(env);
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", {
       number: 62,
       title: "Open PR, invalidation predates sync",
       state: "open",
@@ -135,7 +135,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
       body: "",
     });
     await upsertPullRequestDetailSyncState(env, {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 62,
       status: "complete",
       headSha: "head-62",
@@ -144,7 +144,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     });
     const urls = stubFetchTracking((url) => (url.includes("/reviews") ? new Response("must not be called", { status: 500 }) : Response.json([])));
 
-    const result = await refreshPullRequestDetails(env, "JSONbored/gittensory", 62);
+    const result = await refreshPullRequestDetails(env, "JSONbored/loopover", 62);
 
     expect(result).toMatchObject({ status: "complete" });
     expect(urls.some((url) => url.includes("/pulls/62/reviews"))).toBe(false);
@@ -153,7 +153,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
   it("REGRESSION (bounded-age backstop): an unparseable reviewsSyncedAt is treated as stale (NaN branch, miss) rather than throwing", async () => {
     const env = createTestEnv({ GITHUB_PUBLIC_TOKEN: "public-token" });
     await seedRegisteredRepo(env);
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", {
       number: 68,
       title: "Open PR, unparseable review marker",
       state: "open",
@@ -163,7 +163,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
       body: "",
     });
     await upsertPullRequestDetailSyncState(env, {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 68,
       status: "complete",
       headSha: "head-68",
@@ -175,7 +175,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
         : Response.json([]),
     );
 
-    const result = await refreshPullRequestDetails(env, "JSONbored/gittensory", 68);
+    const result = await refreshPullRequestDetails(env, "JSONbored/loopover", 68);
 
     expect(result).toMatchObject({ status: "complete" });
     expect(urls.some((url) => url.includes("/pulls/68/reviews"))).toBe(true);
@@ -184,7 +184,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
   it("re-fetches reviews on the next sync after markPullRequestReviewsInvalidated bumps reviewsInvalidatedAt past reviewsSyncedAt (cache invalidation)", async () => {
     const env = createTestEnv({ GITHUB_PUBLIC_TOKEN: "public-token" });
     await seedRegisteredRepo(env);
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", {
       number: 63,
       title: "Open PR, invalidated after sync",
       state: "open",
@@ -194,15 +194,15 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
       body: "",
     });
     await upsertPullRequestDetailSyncState(env, {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 63,
       status: "complete",
       headSha: "head-63",
       reviewsSyncedAt: "2026-05-20T00:00:00.000Z",
     });
 
-    await markPullRequestReviewsInvalidated(env, "JSONbored/gittensory", 63);
-    expect(await getPullRequestDetailSyncState(env, "JSONbored/gittensory", 63)).toMatchObject({
+    await markPullRequestReviewsInvalidated(env, "JSONbored/loopover", 63);
+    expect(await getPullRequestDetailSyncState(env, "JSONbored/loopover", 63)).toMatchObject({
       reviewsSyncedAt: "2026-05-20T00:00:00.000Z",
       status: "complete",
       headSha: "head-63",
@@ -214,17 +214,17 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
         : Response.json([]),
     );
 
-    const result = await refreshPullRequestDetails(env, "JSONbored/gittensory", 63);
+    const result = await refreshPullRequestDetails(env, "JSONbored/loopover", 63);
 
     expect(result).toMatchObject({ status: "complete" });
     expect(urls.some((url) => url.includes("/pulls/63/reviews"))).toBe(true);
-    expect(await listPullRequestReviews(env, "JSONbored/gittensory", 63)).toEqual([expect.objectContaining({ reviewerLogin: "second-reviewer", state: "CHANGES_REQUESTED" })]);
+    expect(await listPullRequestReviews(env, "JSONbored/loopover", 63)).toEqual([expect.objectContaining({ reviewerLogin: "second-reviewer", state: "CHANGES_REQUESTED" })]);
   });
 
   it("REGRESSION (gate finding): a FAILED review fetch never advances reviewsSyncedAt, so the next sync retries instead of trusting a false cache hit", async () => {
     const env = createTestEnv({ GITHUB_PUBLIC_TOKEN: "public-token" });
     await seedRegisteredRepo(env);
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", {
       number: 65,
       title: "Open PR, review fetch fails on first sync",
       state: "open",
@@ -237,14 +237,14 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     // stub — any unstubbed URL, including the GraphQL fallback, falls through to a 404).
     const firstPassUrls = stubFetchTracking((url) => (url.includes("/pulls/65/reviews") ? new Response("review failure", { status: 503 }) : Response.json([])));
 
-    const firstResult = await refreshPullRequestDetails(env, "JSONbored/gittensory", 65);
+    const firstResult = await refreshPullRequestDetails(env, "JSONbored/loopover", 65);
 
     expect(firstResult.status).toBe("partial");
     expect(firstPassUrls.some((url) => url.includes("/pulls/65/reviews"))).toBe(true);
     // The FAILED attempt must NOT advance reviewsSyncedAt — a stored value here (as the pre-fix code produced,
     // stamping it unconditionally regardless of success) would let the next pass wrongly treat the failed
     // fetch as a valid cache hit and never retry.
-    expect((await getPullRequestDetailSyncState(env, "JSONbored/gittensory", 65))?.reviewsSyncedAt).toBeFalsy();
+    expect((await getPullRequestDetailSyncState(env, "JSONbored/loopover", 65))?.reviewsSyncedAt).toBeFalsy();
 
     // Second pass: reviews now succeed — since reviewsSyncedAt is still unset, this MUST be treated as a cache
     // miss and genuinely refetched (not skipped).
@@ -254,19 +254,19 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
         : Response.json([]),
     );
 
-    const secondResult = await refreshPullRequestDetails(env, "JSONbored/gittensory", 65);
+    const secondResult = await refreshPullRequestDetails(env, "JSONbored/loopover", 65);
 
     expect(secondResult.status).toBe("complete");
     expect(secondPassUrls.some((url) => url.includes("/pulls/65/reviews"))).toBe(true);
-    expect(await listPullRequestReviews(env, "JSONbored/gittensory", 65)).toEqual([expect.objectContaining({ reviewerLogin: "late-reviewer" })]);
+    expect(await listPullRequestReviews(env, "JSONbored/loopover", 65)).toEqual([expect.objectContaining({ reviewerLogin: "late-reviewer" })]);
     // The now-successful sync DOES advance reviewsSyncedAt.
-    expect((await getPullRequestDetailSyncState(env, "JSONbored/gittensory", 65))?.reviewsSyncedAt).toBeTruthy();
+    expect((await getPullRequestDetailSyncState(env, "JSONbored/loopover", 65))?.reviewsSyncedAt).toBeTruthy();
   });
 
   it("REGRESSION (gate finding, TOCTOU race): a pull_request_review webhook racing in DURING a sync still forces a retry on the next pass", async () => {
     const env = createTestEnv({ GITHUB_PUBLIC_TOKEN: "public-token" });
     await seedRegisteredRepo(env);
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", {
       number: 68,
       title: "Open PR, invalidation races in mid-sync",
       state: "open",
@@ -283,18 +283,18 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     let racingInvalidationDone = false;
     const urls = stubFetchTracking(async (url) => {
       if (url.includes("/pulls/68/reviews")) {
-        await markPullRequestReviewsInvalidated(env, "JSONbored/gittensory", 68);
+        await markPullRequestReviewsInvalidated(env, "JSONbored/loopover", 68);
         racingInvalidationDone = true;
         return Response.json([{ id: 1, user: { login: "reviewer" }, state: "APPROVED", author_association: "NONE", submitted_at: "2026-05-22T00:00:00.000Z" }]);
       }
       return Response.json([]);
     });
 
-    await refreshPullRequestDetails(env, "JSONbored/gittensory", 68);
+    await refreshPullRequestDetails(env, "JSONbored/loopover", 68);
 
     expect(racingInvalidationDone).toBe(true);
     expect(urls.some((url) => url.includes("/pulls/68/reviews"))).toBe(true);
-    const stateAfterRace = await getPullRequestDetailSyncState(env, "JSONbored/gittensory", 68);
+    const stateAfterRace = await getPullRequestDetailSyncState(env, "JSONbored/loopover", 68);
     expect(stateAfterRace?.reviewsSyncedAt).toBeTruthy();
     expect(stateAfterRace?.reviewsInvalidatedAt).toBeTruthy();
     // The stored reviewsSyncedAt was captured BEFORE the fetch started (and therefore no later than the
@@ -313,10 +313,10 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
         : Response.json([]),
     );
 
-    await refreshPullRequestDetails(env, "JSONbored/gittensory", 68);
+    await refreshPullRequestDetails(env, "JSONbored/loopover", 68);
 
     expect(followUpUrls.some((url) => url.includes("/pulls/68/reviews"))).toBe(true);
-    expect(await listPullRequestReviews(env, "JSONbored/gittensory", 68)).toEqual(
+    expect(await listPullRequestReviews(env, "JSONbored/loopover", 68)).toEqual(
       expect.arrayContaining([expect.objectContaining({ reviewerLogin: "second-reviewer", state: "CHANGES_REQUESTED" })]),
     );
   });
@@ -328,7 +328,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-20T01:00:00.000Z"));
     await seedRegisteredRepo(env);
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", {
       number: 66,
       title: "Open PR, prior FILES failure only",
       state: "open",
@@ -338,8 +338,8 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
       body: "",
     });
     await upsertPullRequestReview(env, {
-      id: "JSONbored/gittensory#66#1",
-      repoFullName: "JSONbored/gittensory",
+      id: "JSONbored/loopover#66#1",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 66,
       reviewerLogin: "maintainer",
       state: "APPROVED",
@@ -348,7 +348,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
       payload: { id: 1 },
     });
     await upsertPullRequestDetailSyncState(env, {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 66,
       status: "partial",
       // headSha intentionally omitted/mismatched so files remain "not up to date" too — the point of this
@@ -358,11 +358,11 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     });
     const urls = stubFetchTracking((url) => (url.includes("/pulls/66/reviews") ? new Response("must not be called", { status: 500 }) : Response.json([])));
 
-    const result = await refreshPullRequestDetails(env, "JSONbored/gittensory", 66);
+    const result = await refreshPullRequestDetails(env, "JSONbored/loopover", 66);
 
     expect(result).toMatchObject({ status: "complete" });
     expect(urls.some((url) => url.includes("/pulls/66/reviews"))).toBe(false);
-    expect(await listPullRequestReviews(env, "JSONbored/gittensory", 66)).toEqual([expect.objectContaining({ reviewerLogin: "maintainer" })]);
+    expect(await listPullRequestReviews(env, "JSONbored/loopover", 66)).toEqual([expect.objectContaining({ reviewerLogin: "maintainer" })]);
   });
 
   it("REGRESSION: a head SHA change alone does not invalidate cached reviews (reviews are independent of the head, unlike files)", async () => {
@@ -372,7 +372,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-20T01:00:00.000Z"));
     await seedRegisteredRepo(env);
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", {
       number: 64,
       title: "Open PR, new commit pushed",
       state: "open",
@@ -382,8 +382,8 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
       body: "",
     });
     await upsertPullRequestReview(env, {
-      id: "JSONbored/gittensory#64#1",
-      repoFullName: "JSONbored/gittensory",
+      id: "JSONbored/loopover#64#1",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 64,
       reviewerLogin: "maintainer",
       state: "APPROVED",
@@ -394,7 +394,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     // Sync state was stamped for a DIFFERENT (older) head SHA — files caching would treat this as stale, but
     // reviews caching must not, since reviews.reviewsSyncedAt has no head-SHA gate at all.
     await upsertPullRequestDetailSyncState(env, {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 64,
       status: "complete",
       headSha: "head-old",
@@ -409,14 +409,14 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
           : Response.json([]),
     );
 
-    const result = await refreshPullRequestDetails(env, "JSONbored/gittensory", 64);
+    const result = await refreshPullRequestDetails(env, "JSONbored/loopover", 64);
 
     expect(result).toMatchObject({ status: "complete" });
     // Files WERE refetched (head changed)...
     expect(urls.some((url) => url.includes("/pulls/64/files"))).toBe(true);
     // ...but reviews were NOT — the core distinction from the files cache.
     expect(urls.some((url) => url.includes("/pulls/64/reviews"))).toBe(false);
-    expect(await listPullRequestReviews(env, "JSONbored/gittensory", 64)).toEqual([expect.objectContaining({ reviewerLogin: "maintainer", state: "APPROVED" })]);
+    expect(await listPullRequestReviews(env, "JSONbored/loopover", 64)).toEqual([expect.objectContaining({ reviewerLogin: "maintainer", state: "APPROVED" })]);
   });
 
   it("REGRESSION (gate finding): a manual force-files refresh does not also force an unrelated reviews refetch", async () => {
@@ -426,7 +426,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-20T01:00:00.000Z"));
     await seedRegisteredRepo(env);
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", {
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", {
       number: 67,
       title: "Open PR, manual force-files refresh",
       state: "open",
@@ -436,8 +436,8 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
       body: "",
     });
     await upsertPullRequestReview(env, {
-      id: "JSONbored/gittensory#67#1",
-      repoFullName: "JSONbored/gittensory",
+      id: "JSONbored/loopover#67#1",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 67,
       reviewerLogin: "maintainer",
       state: "APPROVED",
@@ -450,7 +450,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     // skipped the whole sync-state row lookup whenever `forceFiles && headSha`, which zeroed out
     // `reviewsUpToDate` too and forced an unrelated reviews refetch on every manual files-only force).
     await upsertPullRequestDetailSyncState(env, {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 67,
       status: "complete",
       headSha: "head-67",
@@ -465,24 +465,24 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
           : Response.json([]),
     );
 
-    const result = await refreshPullRequestDetails(env, "JSONbored/gittensory", 67, { force: true });
+    const result = await refreshPullRequestDetails(env, "JSONbored/loopover", 67, { force: true });
 
     expect(result).toMatchObject({ status: "complete" });
     // Files WERE refetched (force: true)...
     expect(urls.some((url) => url.includes("/pulls/67/files"))).toBe(true);
     // ...but reviews were NOT — forceFiles must never bleed into the (unrelated) reviews cache decision.
     expect(urls.some((url) => url.includes("/pulls/67/reviews"))).toBe(false);
-    expect(await listPullRequestReviews(env, "JSONbored/gittensory", 67)).toEqual([expect.objectContaining({ reviewerLogin: "maintainer", state: "APPROVED" })]);
+    expect(await listPullRequestReviews(env, "JSONbored/loopover", 67)).toEqual([expect.objectContaining({ reviewerLogin: "maintainer", state: "APPROVED" })]);
   });
 
   describe("markPullRequestReviewsInvalidated", () => {
     it("creates a sync-state row if none exists yet", async () => {
       const env = createTestEnv();
-      expect(await getPullRequestDetailSyncState(env, "JSONbored/gittensory", 70)).toBeNull();
+      expect(await getPullRequestDetailSyncState(env, "JSONbored/loopover", 70)).toBeNull();
 
-      await markPullRequestReviewsInvalidated(env, "JSONbored/gittensory", 70);
+      await markPullRequestReviewsInvalidated(env, "JSONbored/loopover", 70);
 
-      const state = await getPullRequestDetailSyncState(env, "JSONbored/gittensory", 70);
+      const state = await getPullRequestDetailSyncState(env, "JSONbored/loopover", 70);
       expect(state).not.toBeNull();
       expect(state?.reviewsInvalidatedAt).toBeTruthy();
     });
@@ -490,7 +490,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
     it("updates ONLY reviewsInvalidatedAt when a row already exists, leaving filesSyncedAt/reviewsSyncedAt/checksSyncedAt/headSha unchanged", async () => {
       const env = createTestEnv();
       await upsertPullRequestDetailSyncState(env, {
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         pullNumber: 71,
         status: "complete",
         headSha: "sha-preserved",
@@ -500,9 +500,9 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
         errorSummary: "prior warning",
       });
 
-      await markPullRequestReviewsInvalidated(env, "JSONbored/gittensory", 71);
+      await markPullRequestReviewsInvalidated(env, "JSONbored/loopover", 71);
 
-      const state = await getPullRequestDetailSyncState(env, "JSONbored/gittensory", 71);
+      const state = await getPullRequestDetailSyncState(env, "JSONbored/loopover", 71);
       expect(state).toMatchObject({
         status: "complete",
         headSha: "sha-preserved",
@@ -534,10 +534,10 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
         return realPrepare(sql);
       });
 
-      await markPullRequestReviewsInvalidated(env, "JSONbored/gittensory", 72);
+      await markPullRequestReviewsInvalidated(env, "JSONbored/loopover", 72);
 
       expect(calls).toBeGreaterThan(2);
-      const state = await getPullRequestDetailSyncState(env, "JSONbored/gittensory", 72);
+      const state = await getPullRequestDetailSyncState(env, "JSONbored/loopover", 72);
       expect(state?.reviewsInvalidatedAt).toBeTruthy();
     });
 
@@ -554,7 +554,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
           }) as unknown as ReturnType<typeof env.DB.prepare>,
       );
 
-      await expect(markPullRequestReviewsInvalidated(env, "JSONbored/gittensory", 73)).rejects.toThrow();
+      await expect(markPullRequestReviewsInvalidated(env, "JSONbored/loopover", 73)).rejects.toThrow();
     });
   });
 

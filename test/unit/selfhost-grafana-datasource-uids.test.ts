@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 // one-time migration of that already-deployed instance's own DB row, Grafana's datasource-provisioning
 // module hard-fails on boot ("Datasource provisioning error: data source not found") -- crash-looping the
 // ENTIRE Grafana container, not just showing one broken panel. This actually happened live: `sqlite.yml`'s
-// `LoopoverDB` datasource was renamed `gittensory-db` -> `loopover-db` as part of the loopover rebrand, but
+// `LoopoverDB` datasource was renamed `loopover-db` -> `loopover-db` as part of the loopover rebrand, but
 // an already-running box's Grafana DB still had it registered under the old uid, and the very next
 // container recreate crashed it outright. Fixed with a one-time `UPDATE data_source SET uid = ...` on that
 // instance (not a code change, and not reproducible from a fresh install). This test pins the uids so a

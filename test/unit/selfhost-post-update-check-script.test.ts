@@ -19,7 +19,7 @@ function writeExecutable(path: string, contents: string) {
 }
 
 function createSandbox() {
-  const base = mkdtempSync(join(tmpdir(), "gittensory-selfhost-post-update-"));
+  const base = mkdtempSync(join(tmpdir(), "loopover-selfhost-post-update-"));
   sandboxDirs.push(base);
   const bin = join(base, "bin");
   mkdirSync(bin, { recursive: true });
@@ -40,7 +40,7 @@ if [ "$1" = "inspect" ] && [ "$2" = "--format" ]; then
   if [[ "$3" == *'.State.Health'* ]]; then
     printf 'healthy\\n'
   else
-    printf 'ghcr.io/jsonbored/gittensory-selfhost:test\\n'
+    printf 'ghcr.io/jsonbored/loopover-selfhost:test\\n'
   fi
   exit 0
 fi
@@ -80,7 +80,7 @@ function run(env: Record<string, string>) {
 
 describe("selfhost-post-update-check.sh", () => {
   it("falls back for non-numeric readiness retry settings without evaluating them as Bash arithmetic", () => {
-    const marker = join(tmpdir(), `gittensory-ready-injection-${process.pid}`);
+    const marker = join(tmpdir(), `loopover-ready-injection-${process.pid}`);
     rmSync(marker, { force: true });
 
     const result = run({

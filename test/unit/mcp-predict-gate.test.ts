@@ -11,7 +11,7 @@ async function connect(env: Env, identity?: AuthIdentity) {
   const server = (identity ? new LoopoverMcp(env, identity) : new LoopoverMcp(env)).createServer();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
-  const client = new Client({ name: "gittensory-predict-gate-test", version: "0.1.0" }, { capabilities: {} });
+  const client = new Client({ name: "loopover-predict-gate-test", version: "0.1.0" }, { capabilities: {} });
   await client.connect(clientTransport);
   return client;
 }
@@ -20,7 +20,7 @@ describe("MCP loopover_predict_gate", () => {
   afterEach(() => setLocalManifestReader(null));
   it("predicts the gate from public config on an unregistered repo under oss-anti-slop", async () => {
     const env = createTestEnv();
-    // A non-Gittensor repo: app-installed (so gittensory has "seen" it) but NOT Gittensor-registered, with
+    // A non-Gittensor repo: app-installed (so loopover has "seen" it) but NOT Gittensor-registered, with
     // public config only (gate.pack oss-anti-slop, linked-issue blocks any author).
     await upsertRepositoryFromGitHub(env, { name: "widgets", full_name: "acme/widgets" });
     await upsertRepoFocusManifest(env, "acme/widgets", { gate: { pack: "oss-anti-slop", linkedIssue: "block" } }, "repo_file");

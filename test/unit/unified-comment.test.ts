@@ -134,7 +134,7 @@ describe("renderUnifiedReviewComment", () => {
     footerMarkdown: "Checked by LoopOver.",
   };
 
-  it("renders the ready/auto-merged state in the gittensory shape", () => {
+  it("renders the ready/auto-merged state in the loopover shape", () => {
     const md = renderUnifiedReviewComment(
       { ...base, decision: "merge", merged: true, readiness: { ciState: "passed" }, nits: ["Document the new property."] },
       ctx,

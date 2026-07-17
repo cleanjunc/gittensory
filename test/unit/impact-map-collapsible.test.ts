@@ -130,7 +130,7 @@ describe("buildUnifiedCommentBody impactMap wiring (#2185)", () => {
     const body = buildUnifiedCommentBody({
       ...base,
       impactMap: entries,
-      beforeAfter: [{ path: "/", afterUrl: "https://api.example.dev/gittensory/shot?key=gittensory/shots/x.png" }],
+      beforeAfter: [{ path: "/", afterUrl: "https://api.example.dev/loopover/shot?key=loopover/shots/x.png" }],
     });
     expect(body).toContain("Impact map");
     expect(body).toContain("Visual preview");

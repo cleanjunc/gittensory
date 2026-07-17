@@ -116,7 +116,7 @@ describe("aiCiRefutationActive compatibility helper", () => {
 
 // ── buildCheckAggregate (CI summary source) ──────────────────────────────────────────────────────
 
-describe("buildCheckAggregate maps gittensory check summaries → the grounding aggregate", () => {
+describe("buildCheckAggregate maps loopover check summaries → the grounding aggregate", () => {
   it("returns undefined when there are no checks (no CI signal to assert)", () => {
     expect(buildCheckAggregate([])).toBeUndefined();
   });

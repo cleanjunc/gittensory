@@ -14,22 +14,22 @@ import type {
 
 describe("loopover-miner calibration types scaffold (#2332)", () => {
   const predicted: PredictedVerdictRecord = {
-    targetId: "pr:JSONbored/gittensory#42",
-    project: "JSONbored/gittensory",
+    targetId: "pr:JSONbored/loopover#42",
+    project: "JSONbored/loopover",
     predictedDecision: "merge",
     recordedAt: "2026-07-06T00:00:00.000Z",
     source: "reviewbot",
   };
 
   const observed: ObservedOutcomeRecord = {
-    targetId: "pr:JSONbored/gittensory#42",
-    project: "JSONbored/gittensory",
+    targetId: "pr:JSONbored/loopover#42",
+    project: "JSONbored/loopover",
     outcomeDecision: "merged",
     recordedAt: "2026-07-06T01:00:00.000Z",
   };
 
   const row: CalibrationRow = {
-    project: "JSONbored/gittensory",
+    project: "JSONbored/loopover",
     wouldMerge: 10,
     mergeConfirmed: 8,
     mergeFalse: 2,

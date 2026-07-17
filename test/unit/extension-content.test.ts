@@ -8,31 +8,31 @@ describe("extension content script", () => {
   it("detects GitHub pull request and issue routes while only mounting pull overlays", () => {
     const internals = loadContentInternals();
 
-    expect(internals.matchGitHubPageTarget("/JSONbored/gittensory/pull/146")).toEqual({
+    expect(internals.matchGitHubPageTarget("/JSONbored/loopover/pull/146")).toEqual({
       kind: "pull_request",
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       pullNumber: 146,
     });
-    expect(internals.matchGitHubPageTarget("/JSONbored/gittensory/issues/145")).toEqual({
+    expect(internals.matchGitHubPageTarget("/JSONbored/loopover/issues/145")).toEqual({
       kind: "issue",
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       issueNumber: 145,
     });
-    expect(internals.matchGitHubPageTarget("/JSONbored/gittensory/pulls")).toBeNull();
-    expect(internals.matchPullRequestTarget("/JSONbored/gittensory/pull/146")).toEqual({
+    expect(internals.matchGitHubPageTarget("/JSONbored/loopover/pulls")).toBeNull();
+    expect(internals.matchPullRequestTarget("/JSONbored/loopover/pull/146")).toEqual({
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       pullNumber: 146,
     });
-    expect(internals.matchPullRequestTarget("/JSONbored/gittensory/pull/146/files")).toEqual({
+    expect(internals.matchPullRequestTarget("/JSONbored/loopover/pull/146/files")).toEqual({
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       pullNumber: 146,
     });
-    expect(internals.matchPullRequestTarget("/JSONbored/gittensory/issues/146")).toBeNull();
-    expect(internals.matchPullRequestTarget("/JSONbored/gittensory")).toBeNull();
+    expect(internals.matchPullRequestTarget("/JSONbored/loopover/issues/146")).toBeNull();
+    expect(internals.matchPullRequestTarget("/JSONbored/loopover")).toBeNull();
   });
 
   it("renders private pull-context sections and escapes API text", () => {
@@ -75,7 +75,7 @@ describe("extension content script", () => {
 function loadContentInternals() {
   const context: Record<string, unknown> = {
     __LOOPOVER_EXTENSION_TEST__: true,
-    location: { pathname: "/JSONbored/gittensory/issues/146" },
+    location: { pathname: "/JSONbored/loopover/issues/146" },
     document: {
       querySelector: vi.fn(() => null),
       createElement: vi.fn(() => {

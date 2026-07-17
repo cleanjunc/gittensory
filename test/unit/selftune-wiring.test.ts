@@ -74,7 +74,7 @@ describe("isSelfTuneEnabled — default OFF, truthy convention", () => {
 
 // ── Eval mapping (pure) — tightening-only by construction ──────────────────────────────────────────────────
 
-describe("evalRowFromCalibration — gittensory outcome data → ported GateEvalRow (tightening-only)", () => {
+describe("evalRowFromCalibration — loopover outcome data → ported GateEvalRow (tightening-only)", () => {
   it("maps the recommendation positive/negative split onto the would-MERGE side only", () => {
     const row = evalRowFromCalibration("owner/repo", 7, 5);
     expect(row).toMatchObject({
@@ -150,7 +150,7 @@ describe("0047 self-improve tunables migration — round-trip on the 3 tables", 
 
 const ACTING_AUTONOMY = JSON.stringify({ review: "auto" }); // opts the repo into the acting-autonomy surface
 
-describe("runSelfTune — shadow-soak over gittensory's own outcome data", () => {
+describe("runSelfTune — shadow-soak over loopover's own outcome data", () => {
   it("FLAG-ON: a low-precision repo gets a TIGHTENING override SHADOW-SOAKED (not live yet) + audited", async () => {
     const env = createTestEnv({ LOOPOVER_REVIEW_SELFTUNE: "true" });
     await seedRegisteredRepo(env, "owner/repo", ACTING_AUTONOMY);

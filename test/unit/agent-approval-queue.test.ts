@@ -1216,7 +1216,7 @@ describe("agent approval queue (#779)", () => {
     // mergeableState reads "clean" (the default mock). This row predates closeRequiresMergeableState entirely
     // (never planned with it, so it's undefined, NOT explicitly false) -- its original justification is
     // unknown, so a strict `=== true` scoping would silently skip the live recheck and execute unchecked. The
-    // fix must fail toward "revalidate" for the unknown/legacy case, not "skip" (the exact gap the gittensory
+    // fix must fail toward "revalidate" for the unknown/legacy case, not "skip" (the exact gap the loopover
     // orb flagged: undefined must not be treated the same as the explicit `false` case above).
     const { action } = await createPendingAgentActionIfAbsent(env, {
       repoFullName: "owner/repo",

@@ -7,7 +7,7 @@ import {
   parseFocusManifestContent,
 } from "../../packages/loopover-engine/src/focus-manifest";
 
-describe("gittensory-engine focus-manifest barrel exports (#2280)", () => {
+describe("loopover-engine focus-manifest barrel exports (#2280)", () => {
   it("re-exports the focus-manifest parse/compile API from the package barrel", async () => {
     const barrel = await import("../../packages/loopover-engine/src/index");
     expect(typeof barrel.parseFocusManifest).toBe("function");

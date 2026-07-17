@@ -17,7 +17,7 @@ async function connectTestClient(capabilities: ClientCapabilities) {
   const mcpServer = new LoopoverMcp(createTestEnv()).createServer();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await mcpServer.connect(serverTransport);
-  const client = new Client({ name: "gittensory-planning-elicitation-test", version: "0.1.0" }, { capabilities });
+  const client = new Client({ name: "loopover-planning-elicitation-test", version: "0.1.0" }, { capabilities });
   await client.connect(clientTransport);
   return { client, mcpServer };
 }
@@ -62,7 +62,7 @@ describe("MCP planning elicitation", () => {
     const choices = planningChoicesFromElicitationResult({
       action: "accept",
       content: {
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         contributionLane: "direct_pr",
         timeHorizon: "this_week",
         riskAppetite: "medium",
@@ -72,7 +72,7 @@ describe("MCP planning elicitation", () => {
       },
     });
     expect(choices).toEqual({
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       contributionLane: "direct_pr",
       timeHorizon: "this_week",
       riskAppetite: "medium",
@@ -111,12 +111,12 @@ describe("MCP planning elicitation", () => {
     expect(
       applyMcpPlanningChoices(
         { login: "oktofeesh1" },
-        { repoFullName: "JSONbored/gittensory" },
+        { repoFullName: "JSONbored/loopover" },
       ),
     ).toMatchObject({
       login: "oktofeesh1",
-      repoFullName: "JSONbored/gittensory",
-      objective: expect.stringContaining("repo JSONbored/gittensory"),
+      repoFullName: "JSONbored/loopover",
+      objective: expect.stringContaining("repo JSONbored/loopover"),
     });
     expect(applyMcpPlanningChoices({ login: "oktofeesh1" }, {})).toEqual({ login: "oktofeesh1" });
     expect(applyMcpPlanningChoices({ login: "oktofeesh1" }, { cleanupFirst: false })).toMatchObject({
@@ -128,7 +128,7 @@ describe("MCP planning elicitation", () => {
     expect(
       buildMcpPlanningElicitationAudit(
         { supported: true, requested: true, accepted: true },
-        { repoFullName: "JSONbored/gittensory", cleanupFirst: false },
+        { repoFullName: "JSONbored/loopover", cleanupFirst: false },
       ),
     ).toEqual({
       supported: true,
@@ -146,7 +146,7 @@ describe("MCP planning elicitation", () => {
       return {
         action: "accept",
         content: {
-          repoFullName: "JSONbored/gittensory",
+          repoFullName: "JSONbored/loopover",
           contributionLane: "cleanup",
           timeHorizon: "today",
           riskAppetite: "low",
@@ -166,7 +166,7 @@ describe("MCP planning elicitation", () => {
       accepted: true,
       fields: ["repoFullName", "contributionLane", "timeHorizon", "riskAppetite", "cleanupFirst"],
     });
-    expect(data.planningChoices).toMatchObject({ repoFullName: "JSONbored/gittensory", cleanupFirst: true });
+    expect(data.planningChoices).toMatchObject({ repoFullName: "JSONbored/loopover", cleanupFirst: true });
     expect(JSON.stringify(data.planningChoices)).not.toMatch(/hotkey|should-be-ignored/i);
     await mcpServer.close();
   });
@@ -175,13 +175,13 @@ describe("MCP planning elicitation", () => {
     const { client, mcpServer } = await connectTestClient({ elicitation: {} });
     client.setRequestHandler(ElicitRequestSchema, async () => ({
       action: "accept",
-      content: { repoFullName: "JSONbored/gittensory" },
+      content: { repoFullName: "JSONbored/loopover" },
     }));
     const result = await client.callTool({ name: "loopover_agent_plan_next_work", arguments: { login: "oktofeesh1" } });
     expect(result.isError, JSON.stringify(result.content)).toBeFalsy();
     const data = result.structuredContent as Record<string, unknown>;
     expect(data.planningElicitation).toMatchObject({ supported: true, requested: true, accepted: true });
-    expect(data.planningChoices).toEqual({ repoFullName: "JSONbored/gittensory" });
+    expect(data.planningChoices).toEqual({ repoFullName: "JSONbored/loopover" });
     await mcpServer.close();
   });
 
@@ -194,7 +194,7 @@ describe("MCP planning elicitation", () => {
     });
     const result = await client.callTool({
       name: "loopover_agent_plan_next_work",
-      arguments: { login: "oktofeesh1", objective: "Use explicit context.", repoFullName: "JSONbored/gittensory" },
+      arguments: { login: "oktofeesh1", objective: "Use explicit context.", repoFullName: "JSONbored/loopover" },
     });
     expect(result.isError, JSON.stringify(result.content)).toBeFalsy();
     const data = result.structuredContent as Record<string, unknown>;

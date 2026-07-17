@@ -25,7 +25,7 @@ import { initEventLedger } from "../../packages/loopover-miner/lib/event-ledger.
 const roots: string[] = [];
 
 function tempLedgerPath() {
-  const root = mkdtempSync(join(tmpdir(), "gittensory-miner-calibration-"));
+  const root = mkdtempSync(join(tmpdir(), "loopover-miner-calibration-"));
   roots.push(root);
   return join(root, "event-ledger.sqlite3");
 }
@@ -85,7 +85,7 @@ describe("miner Phase 7 calibration loop (#4248)", () => {
           repoFullName: "acme/widgets",
         });
 
-        // Deliverable: the snapshot is queryable via the EXISTING `gittensory-miner ledger list --type` tooling.
+        // Deliverable: the snapshot is queryable via the EXISTING `loopover-miner ledger list --type` tooling.
         const typed = filterLedgerEvents(reopened.readEvents(), { type: MINER_CALIBRATION_SNAPSHOT_EVENT });
         expect(typed).toHaveLength(1);
 

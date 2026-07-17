@@ -16,7 +16,7 @@ let apiUrl: string;
 let capturedRequests: Array<{ url: string; method: string }>;
 
 async function connect() {
-  configDir = mkdtempSync(join(tmpdir(), "gittensory-label-audit-"));
+  configDir = mkdtempSync(join(tmpdir(), "loopover-label-audit-"));
   capturedRequests = [];
   apiUrl = await startFixtureServer({
     onApiRequest: (request) => {

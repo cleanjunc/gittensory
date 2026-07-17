@@ -37,9 +37,9 @@ describe("parseGitHubIssueUrl", () => {
       name: "repo",
       number: 123,
     });
-    expect(parseGitHubIssueUrl("https://github.com/JSONbored/gittensory/issues/1719")).toEqual({
+    expect(parseGitHubIssueUrl("https://github.com/JSONbored/loopover/issues/1719")).toEqual({
       owner: "JSONbored",
-      name: "gittensory",
+      name: "loopover",
       number: 1719,
     });
   });

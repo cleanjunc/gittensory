@@ -352,7 +352,7 @@ NOVELTY_BONUS_SCALAR = 3
     expect(refreshed.warnings.join(" ")).toMatch(/recognized active-model indicator/i);
   });
 
-  it("flags upstream scoring constants gittensory does not model (staleness visibility)", () => {
+  it("flags upstream scoring constants loopover does not model (staleness visibility)", () => {
     // SRC_TOK_SATURATION_SCALE and the TIME_DECAY_* constants are now modeled (#703); a hypothetical new
     // upstream dimension is NOT — so only that surfaces as unmodeled drift.
     const unmodeled = findUnmodeledUpstreamConstants(

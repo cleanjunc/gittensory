@@ -18,7 +18,7 @@ const FORBIDDEN =
 
 function readyFixture(overrides: Partial<RegistrationReadinessPayload> = {}): RegistrationReadinessPayload {
   return {
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     generatedAt: "2026-06-01T00:00:00.000Z",
     ready: true,
     recommendedRegistrationMode: "direct_pr",
@@ -81,7 +81,7 @@ function readyFixture(overrides: Partial<RegistrationReadinessPayload> = {}): Re
 
 function configFixture(): GittensorConfigRecommendationPayload {
   return {
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     generatedAt: "2026-06-01T00:00:00.000Z",
     privateOnly: true,
     current: { maintainerCut: 0 },
@@ -124,7 +124,7 @@ describe("registration workspace UI helpers", () => {
 
   it("stale data fixture marks freshness degraded and keeps warnings", () => {
     const freshness = resolveRegistrationWorkspaceFreshness(
-      { status: "degraded", partial: true, warnings: ["Burden forecast unavailable for JSONbored/gittensory."] },
+      { status: "degraded", partial: true, warnings: ["Burden forecast unavailable for JSONbored/loopover."] },
       { status: "complete", partial: false, warnings: [] },
     );
     expect(freshness.status).toBe("degraded");
@@ -482,7 +482,7 @@ describe("registration workspace UI helpers", () => {
   });
 
   it("splitRepoFullName validates owner/repo slugs for the owner panel", () => {
-    expect(splitRepoFullName("JSONbored/gittensory")).toEqual({ owner: "JSONbored", repo: "gittensory" });
+    expect(splitRepoFullName("JSONbored/loopover")).toEqual({ owner: "JSONbored", repo: "loopover" });
     expect(splitRepoFullName("bad")).toBeNull();
   });
 

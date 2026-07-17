@@ -48,12 +48,12 @@ describe("unmodeled scoring constant drift", () => {
     await syncUnmodeledScoringConstantDrift(env, { unmodeledConstants: ["ALPHA"] });
     await updateUpstreamDriftReportIssue(env, fingerprint, {
       number: 811,
-      url: "https://github.com/JSONbored/gittensory/issues/811",
+      url: "https://github.com/JSONbored/loopover/issues/811",
     });
     const updated = await syncUnmodeledScoringConstantDrift(env, { unmodeledConstants: ["ALPHA", "BETA"] });
     expect(updated).toMatchObject({
       issueNumber: 811,
-      issueUrl: "https://github.com/JSONbored/gittensory/issues/811",
+      issueUrl: "https://github.com/JSONbored/loopover/issues/811",
       payload: expect.objectContaining({ unmodeledUpstreamConstants: ["ALPHA", "BETA"] }),
     });
   });
@@ -116,7 +116,7 @@ describe("unmodeled scoring constant drift", () => {
       ...opened!,
       updatedAt: "2020-01-01T00:00:00.000Z",
       issueNumber: 811,
-      issueUrl: "https://github.com/JSONbored/gittensory/issues/811",
+      issueUrl: "https://github.com/JSONbored/loopover/issues/811",
     });
     for (let index = 0; index < 51; index++) {
       await upsertUpstreamDriftReport(env, {
@@ -143,7 +143,7 @@ describe("unmodeled scoring constant drift", () => {
       fingerprint,
       status: "open",
       issueNumber: 811,
-      issueUrl: "https://github.com/JSONbored/gittensory/issues/811",
+      issueUrl: "https://github.com/JSONbored/loopover/issues/811",
       payload: expect.objectContaining({ unmodeledUpstreamConstants: ["ALPHA", "BETA"] }),
     });
 

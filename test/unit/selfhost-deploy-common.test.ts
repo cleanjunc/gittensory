@@ -15,7 +15,7 @@ function readOptional(path: string): string {
 }
 
 function createHarness() {
-  const dir = mkdtempSync(join(tmpdir(), "gittensory-selfhost-deploy-common-"));
+  const dir = mkdtempSync(join(tmpdir(), "loopover-selfhost-deploy-common-"));
   const binDir = join(dir, "bin");
   const infisicalLog = join(dir, "infisical-calls.log");
   mkdirSync(binDir);

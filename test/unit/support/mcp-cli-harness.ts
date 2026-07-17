@@ -96,7 +96,7 @@ export function createPacketRepo() {
   git(cwd, "config", "user.email", "test@example.com");
   git(cwd, "config", "user.name", "LoopOver Test");
   git(cwd, "config", "commit.gpgsign", "false");
-  git(cwd, "remote", "add", "origin", "git@github.com:JSONbored/gittensory.git");
+  git(cwd, "remote", "add", "origin", "git@github.com:JSONbored/loopover.git");
   writeFileSync(join(cwd, "README.md"), "fixture\n");
   git(cwd, "add", "README.md");
   git(cwd, "commit", "-m", "initial commit");
@@ -275,7 +275,7 @@ export async function startFixtureServer(
       response.end(JSON.stringify({ ...openPrMonitorFixture(), ...(options.openPrMonitor ?? {}) }));
       return;
     }
-    if (request.url === "/v1/contributors/JSONbored/repos/JSONbored/gittensory/decision" && request.method === "GET") {
+    if (request.url === "/v1/contributors/JSONbored/repos/JSONbored/loopover/decision" && request.method === "GET") {
       if (options.repoDecisionStatus && options.repoDecisionStatus >= 400) {
         response.statusCode = options.repoDecisionStatus;
         if (options.repoDecisionErrorContentType) response.setHeader("content-type", options.repoDecisionErrorContentType);
@@ -287,7 +287,7 @@ export async function startFixtureServer(
         JSON.stringify({
           status: "ready",
           login: "JSONbored",
-          repoFullName: "JSONbored/gittensory",
+          repoFullName: "JSONbored/loopover",
           decision: options.terminalInjection ? { ...repoDecision, nextActions: [options.terminalInjection] } : repoDecision,
           ...(options.terminalInjection ? { cache: { rerunGuidance: options.terminalInjection } } : {}),
         }),
@@ -374,11 +374,11 @@ export async function startFixtureServer(
       const lane = body.goalSpec?.lane ?? "default";
       const minRank = body.goalSpec?.minRankScore ?? 0;
       const candidates = [
-        { owner: "JSONbored", repo: "gittensory", issueNumber: 100, title: "Improve REES test retry", rankScore: 85, laneFit: lane, freshness: 0.9, dupRisk: 0.1, aiPolicyAllowed: true },
-        { owner: "JSONbored", repo: "gittensory", issueNumber: 101, title: "Add label-audit coverage", rankScore: 72, laneFit: lane, freshness: 0.7, dupRisk: 0.2, aiPolicyAllowed: true },
-        { owner: "JSONbored", repo: "gittensory", issueNumber: 102, title: "Fix flaky buildBrief test", rankScore: 68, laneFit: lane, freshness: 0.5, dupRisk: 0.3, aiPolicyAllowed: true },
-        { owner: "JSONbored", repo: "gittensory", issueNumber: 103, title: "Normalize path matchers", rankScore: 55, laneFit: lane, freshness: 0.4, dupRisk: 0.1, aiPolicyAllowed: true },
-        { owner: "JSONbored", repo: "gittensory", issueNumber: 104, title: "Document score breakdown", rankScore: 45, laneFit: lane, freshness: 0.3, dupRisk: 0.1, aiPolicyAllowed: true },
+        { owner: "JSONbored", repo: "loopover", issueNumber: 100, title: "Improve REES test retry", rankScore: 85, laneFit: lane, freshness: 0.9, dupRisk: 0.1, aiPolicyAllowed: true },
+        { owner: "JSONbored", repo: "loopover", issueNumber: 101, title: "Add label-audit coverage", rankScore: 72, laneFit: lane, freshness: 0.7, dupRisk: 0.2, aiPolicyAllowed: true },
+        { owner: "JSONbored", repo: "loopover", issueNumber: 102, title: "Fix flaky buildBrief test", rankScore: 68, laneFit: lane, freshness: 0.5, dupRisk: 0.3, aiPolicyAllowed: true },
+        { owner: "JSONbored", repo: "loopover", issueNumber: 103, title: "Normalize path matchers", rankScore: 55, laneFit: lane, freshness: 0.4, dupRisk: 0.1, aiPolicyAllowed: true },
+        { owner: "JSONbored", repo: "loopover", issueNumber: 104, title: "Document score breakdown", rankScore: 45, laneFit: lane, freshness: 0.3, dupRisk: 0.1, aiPolicyAllowed: true },
       ];
       const ranked = candidates.filter((c) => c.rankScore >= minRank).slice(0, limit);
       response.end(JSON.stringify({ ranked, totalCandidates: candidates.length, appliedLane: lane, appliedMinRankScore: minRank }));
@@ -629,7 +629,7 @@ export function agentPacketFixture(markdown = "# Public-safe PR packet\n\n## Lin
 export function localBranchAnalysisFixture() {
   return {
     login: "JSONbored",
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     generatedAt: "2026-06-01T00:00:00.000Z",
     summary: "Local branch preflight fixture.",
     nextActions: [{ actionKind: "prepare_pr_packet", whyThisHelps: ["Keeps public packet safe."] }],
@@ -670,11 +670,11 @@ export function openPrMonitorFixture() {
     registeredRepoCount: 2,
     cleanupFirst: true,
     summary: "1 open PR needs attention before starting new work.",
-    guidance: ["Clear the failing check on JSONbored/gittensory#42 before opening anything new."],
+    guidance: ["Clear the failing check on JSONbored/loopover#42 before opening anything new."],
     pendingScenarios: [],
     pullRequests: [
       {
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         number: 42,
         title: "fix(queue): drain stale entries",
         classification: "failing_checks",
@@ -709,16 +709,16 @@ export function decisionPackFixture() {
     opportunities: [],
     repoDecisions: [
       {
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         recommendation: "pursue",
         nextActions: ["Pick one narrow change."],
         changedFiles: [{ path: "src/cache.ts", content: "must stay local" }],
         localPath: "/tmp/source/private.ts",
       },
     ],
-    topActions: [{ actionKind: "open_new_direct_pr", repoFullName: "JSONbored/gittensory", priorityScore: 50 }],
+    topActions: [{ actionKind: "open_new_direct_pr", repoFullName: "JSONbored/loopover", priorityScore: 50 }],
     cleanupFirst: [],
-    pursueRepos: [{ repoFullName: "JSONbored/gittensory", recommendation: "pursue" }],
+    pursueRepos: [{ repoFullName: "JSONbored/loopover", recommendation: "pursue" }],
     avoidRepos: [],
     maintainerLaneRepos: [],
     scoreBlockers: [],

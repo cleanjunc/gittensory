@@ -52,7 +52,7 @@ async function connect(env: Env, identity?: AuthIdentity) {
   const server = new LoopoverMcp(env, identity).createServer();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
-  const client = new Client({ name: "gittensory-find-opportunities-test", version: "0.1.0" }, { capabilities: {} });
+  const client = new Client({ name: "loopover-find-opportunities-test", version: "0.1.0" }, { capabilities: {} });
   await client.connect(clientTransport);
   return client;
 }

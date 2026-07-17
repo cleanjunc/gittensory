@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 const tmpRoots: string[] = [];
 
 function tmpRoot(): string {
-  const dir = mkdtempSync(join(tmpdir(), "gittensory-docker-prune-"));
+  const dir = mkdtempSync(join(tmpdir(), "loopover-docker-prune-"));
   tmpRoots.push(dir);
   return dir;
 }

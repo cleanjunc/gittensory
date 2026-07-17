@@ -146,13 +146,13 @@ describe("loopover-mcp CLI — basics", () => {
       LOOPOVER_TOKEN: "session-token",
       LOOPOVER_SKIP_NPM_VERSION_CHECK: "true",
     };
-    const jsonOutput = await runAsync(["preflight", "--login", "JSONbored", "--cwd", tempDir, "--repo", "JSONbored/gittensory", "--json"], env);
+    const jsonOutput = await runAsync(["preflight", "--login", "JSONbored", "--cwd", tempDir, "--repo", "JSONbored/loopover", "--json"], env);
     const payload = JSON.parse(jsonOutput) as { workspaceIntelligence: { blockers: { accountState: string[] }; rerunWhen: string } };
     expect(payload.workspaceIntelligence.blockers.accountState).toEqual([]);
     expect(payload.workspaceIntelligence.rerunWhen).toBe("Rerun after any branch, base, or PR state changes before opening/submitting.");
     expect(jsonOutput).not.toMatch(/Open PR count|Credibility|account\/queue maturity|projected score/i);
 
-    const humanOutput = await runAsync(["preflight", "--login", "JSONbored", "--cwd", tempDir, "--repo", "JSONbored/gittensory"], env);
+    const humanOutput = await runAsync(["preflight", "--login", "JSONbored", "--cwd", tempDir, "--repo", "JSONbored/loopover"], env);
     expect(humanOutput).not.toContain("Account/queue blockers:");
     expect(humanOutput).not.toMatch(/Open PR count|Credibility|account\/queue maturity|projected score/i);
   });

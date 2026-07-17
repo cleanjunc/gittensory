@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-// #5667: the deny-hook pure logic now lives in gittensory-engine. This suite drives it through the ENGINE's
+// #5667: the deny-hook pure logic now lives in loopover-engine. This suite drives it through the ENGINE's
 // public barrel ALONE (no @loopover/miner, no SQLite in the import graph), proving portability, and exercises
 // every branch of the extracted evaluator + synthesizer so the moved code carries its own coverage.
 import {

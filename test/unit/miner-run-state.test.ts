@@ -57,7 +57,7 @@ describe("loopover-miner run-state store (#2289)", () => {
     try {
       expect(existsSync(dbPath)).toBe(true);
       expect(statSync(dbPath).mode & 0o077).toBe(0);
-      expect(store.getRunState("JSONbored/gittensory")).toBeNull();
+      expect(store.getRunState("JSONbored/loopover")).toBeNull();
 
       const db = new DatabaseSync(dbPath, { readOnly: true });
       try {
@@ -78,11 +78,11 @@ describe("loopover-miner run-state store (#2289)", () => {
     const store = initRunStateStore(dbPath);
     try {
       for (const state of RUN_STATES) {
-        const write = store.setRunState(" JSONbored/gittensory ", state);
-        expect(write.repoFullName).toBe("JSONbored/gittensory");
+        const write = store.setRunState(" JSONbored/loopover ", state);
+        expect(write.repoFullName).toBe("JSONbored/loopover");
         expect(write.state).toBe(state);
         expect(Date.parse(write.updatedAt)).not.toBeNaN();
-        expect(store.getRunState("JSONbored/gittensory")).toBe(state);
+        expect(store.getRunState("JSONbored/loopover")).toBe(state);
       }
     } finally {
       store.close();

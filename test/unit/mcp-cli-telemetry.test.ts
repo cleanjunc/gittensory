@@ -69,7 +69,7 @@ describe("loopover-mcp CLI — telemetry opt-in", () => {
     // Default-off surfaces everywhere.
     const statusOff = JSON.parse(await runAsync(["status", "--json"], env)) as { telemetry: { enabled: boolean } };
     const configOff = JSON.parse(await runAsync(["config", "--json"], env)) as { telemetry: { enabled: boolean } };
-    const doctorOff = JSON.parse(await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/gittensory", "--json"], env)) as {
+    const doctorOff = JSON.parse(await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/loopover", "--json"], env)) as {
       telemetry: { enabled: boolean };
       checklist: Array<{ id: string; checks?: Array<{ name: string; status: string }> }>;
       checks: Array<{ name: string; status: string; detail: string }>;
@@ -88,7 +88,7 @@ describe("loopover-mcp CLI — telemetry opt-in", () => {
     await runAsync(["telemetry", "enable", "--json"], env);
     const statusOn = JSON.parse(await runAsync(["status", "--json"], env)) as { telemetry: { enabled: boolean } };
     const configOn = JSON.parse(await runAsync(["config", "--json"], env)) as { telemetry: { enabled: boolean } };
-    const doctorOn = JSON.parse(await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/gittensory", "--json"], env)) as {
+    const doctorOn = JSON.parse(await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/loopover", "--json"], env)) as {
       telemetry: { enabled: boolean };
       checks: Array<{ name: string; status: string; detail: string }>;
     };

@@ -616,7 +616,7 @@ describe("api route guards and error branches", () => {
           queued.push(message);
         },
       } as unknown as Queue,
-      LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/gittensory",
+      LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/loopover",
     });
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
       const url = input.toString();
@@ -690,14 +690,14 @@ describe("api route guards and error branches", () => {
     const agentBlockers = await app.request("/v1/agent/explain-blockers", {
       method: "POST",
       headers: apiHeaders(env),
-      body: JSON.stringify({ login: "oktofeesh1", repoFullName: "JSONbored/gittensory" }),
+      body: JSON.stringify({ login: "oktofeesh1", repoFullName: "JSONbored/loopover" }),
     }, env);
     expect(agentBlockers.status).toBe(202);
     await expect(agentBlockers.json()).resolves.toMatchObject({ run: { status: "needs_snapshot_refresh" } });
 
     const localAgentPayload = {
       login: "oktofeesh1",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       baseRef: "origin/main",
       headRef: "feature/base-agent",
       branchName: "feature/base-agent",
@@ -805,61 +805,61 @@ describe("api route guards and error branches", () => {
 
     const queuedRecap = await app.request(
       "/v1/internal/jobs/generate-review-recap",
-      { method: "POST", headers: internalHeaders(env), body: JSON.stringify({ repoFullName: "JSONbored/gittensory", windowDays: 999 }) },
+      { method: "POST", headers: internalHeaders(env), body: JSON.stringify({ repoFullName: "JSONbored/loopover", windowDays: 999 }) },
       env,
     );
     expect(queuedRecap.status).toBe(202);
-    await expect(queuedRecap.json()).resolves.toMatchObject({ status: "queued", repoFullName: "JSONbored/gittensory", windowDays: 90 });
-    expect(queued).toEqual(expect.arrayContaining([expect.objectContaining({ type: "generate-review-recap", repoFullName: "JSONbored/gittensory", windowDays: 90 })]));
+    await expect(queuedRecap.json()).resolves.toMatchObject({ status: "queued", repoFullName: "JSONbored/loopover", windowDays: 90 });
+    expect(queued).toEqual(expect.arrayContaining([expect.objectContaining({ type: "generate-review-recap", repoFullName: "JSONbored/loopover", windowDays: 90 })]));
 
     const queuedRecapDefaultWindow = await app.request(
       "/v1/internal/jobs/generate-review-recap",
-      { method: "POST", headers: internalHeaders(env), body: JSON.stringify({ repoFullName: "JSONbored/gittensory" }) },
+      { method: "POST", headers: internalHeaders(env), body: JSON.stringify({ repoFullName: "JSONbored/loopover" }) },
       env,
     );
     expect(queuedRecapDefaultWindow.status).toBe(202);
     const queuedRecapDefaultWindowBody = await queuedRecapDefaultWindow.json();
-    expect(queuedRecapDefaultWindowBody).toMatchObject({ status: "queued", repoFullName: "JSONbored/gittensory" });
+    expect(queuedRecapDefaultWindowBody).toMatchObject({ status: "queued", repoFullName: "JSONbored/loopover" });
     expect(queuedRecapDefaultWindowBody).not.toHaveProperty("windowDays");
-    expect(queued).toEqual(expect.arrayContaining([expect.objectContaining({ type: "generate-review-recap", repoFullName: "JSONbored/gittensory" })]));
+    expect(queued).toEqual(expect.arrayContaining([expect.objectContaining({ type: "generate-review-recap", repoFullName: "JSONbored/loopover" })]));
 
     // /run respects reviewRecap.enabled even for an explicit maintainer-triggered call (default-off, fail-safe).
     const skippedRecapRun = await app.request(
       "/v1/internal/jobs/generate-review-recap/run",
-      { method: "POST", headers: internalHeaders(env), body: JSON.stringify({ repoFullName: "JSONbored/gittensory" }) },
+      { method: "POST", headers: internalHeaders(env), body: JSON.stringify({ repoFullName: "JSONbored/loopover" }) },
       env,
     );
     expect(skippedRecapRun.status).toBe(200);
     await expect(skippedRecapRun.json()).resolves.toMatchObject({ ok: false, status: "skipped" });
 
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { reviewRecap: { enabled: true, cadenceDays: 3 } });
+    await upsertRepoFocusManifest(env, "JSONbored/loopover", { reviewRecap: { enabled: true, cadenceDays: 3 } });
     const immediateRecapRun = await app.request(
       "/v1/internal/jobs/generate-review-recap/run",
-      { method: "POST", headers: internalHeaders(env), body: JSON.stringify({ repoFullName: "JSONbored/gittensory" }) },
+      { method: "POST", headers: internalHeaders(env), body: JSON.stringify({ repoFullName: "JSONbored/loopover" }) },
       env,
     );
     expect(immediateRecapRun.status).toBe(200);
-    await expect(immediateRecapRun.json()).resolves.toMatchObject({ ok: true, recap: expect.objectContaining({ repoFullName: "JSONbored/gittensory", windowDays: 3 }), delivery: expect.objectContaining({ sent: false }) });
+    await expect(immediateRecapRun.json()).resolves.toMatchObject({ ok: true, recap: expect.objectContaining({ repoFullName: "JSONbored/loopover", windowDays: 3 }), delivery: expect.objectContaining({ sent: false }) });
 
     // An explicit windowDays on /run overrides the manifest's cadenceDays default.
     const immediateRecapRunExplicitWindow = await app.request(
       "/v1/internal/jobs/generate-review-recap/run",
-      { method: "POST", headers: internalHeaders(env), body: JSON.stringify({ repoFullName: "JSONbored/gittensory", windowDays: 14 }) },
+      { method: "POST", headers: internalHeaders(env), body: JSON.stringify({ repoFullName: "JSONbored/loopover", windowDays: 14 }) },
       env,
     );
     expect(immediateRecapRunExplicitWindow.status).toBe(200);
-    await expect(immediateRecapRunExplicitWindow.json()).resolves.toMatchObject({ ok: true, recap: expect.objectContaining({ repoFullName: "JSONbored/gittensory", windowDays: 14 }) });
+    await expect(immediateRecapRunExplicitWindow.json()).resolves.toMatchObject({ ok: true, recap: expect.objectContaining({ repoFullName: "JSONbored/loopover", windowDays: 14 }) });
 
     expect(
       (
         await app.request("/v1/internal/jobs/backfill-registered-repos", {
           method: "POST",
           headers: internalHeaders(env),
-          body: JSON.stringify({ repoFullName: "JSONbored/gittensory" }),
+          body: JSON.stringify({ repoFullName: "JSONbored/loopover" }),
         }, env)
       ).status,
     ).toBe(202);
-    expect(queued).toEqual(expect.arrayContaining([expect.objectContaining({ type: "backfill-registered-repos", repoFullName: "JSONbored/gittensory" })]));
+    expect(queued).toEqual(expect.arrayContaining([expect.objectContaining({ type: "backfill-registered-repos", repoFullName: "JSONbored/loopover" })]));
 
     const queuedAllBackfill = await app.request("/v1/internal/jobs/backfill-registered-repos", {
       method: "POST",
@@ -950,10 +950,10 @@ describe("api route guards and error branches", () => {
     const queuedSignals = await app.request("/v1/internal/jobs/generate-signal-snapshots", {
       method: "POST",
       headers: internalHeaders(env),
-      body: JSON.stringify({ repoFullName: "JSONbored/gittensory" }),
+      body: JSON.stringify({ repoFullName: "JSONbored/loopover" }),
     }, env);
     expect(queuedSignals.status).toBe(202);
-    expect(queued).toEqual(expect.arrayContaining([expect.objectContaining({ type: "generate-signal-snapshots", repoFullName: "JSONbored/gittensory" })]));
+    expect(queued).toEqual(expect.arrayContaining([expect.objectContaining({ type: "generate-signal-snapshots", repoFullName: "JSONbored/loopover" })]));
 
     const queuedScoring = await app.request("/v1/internal/jobs/refresh-scoring-model", { method: "POST", headers: internalHeaders(env) }, env);
     expect(queuedScoring.status).toBe(202);
@@ -970,7 +970,7 @@ describe("api route guards and error branches", () => {
     expect(disabledDriftIssuesRun.status).toBe(200);
     await expect(disabledDriftIssuesRun.json()).resolves.toEqual({ status: "disabled", created: 0, updated: 0, skipped: 0 });
 
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { upstreamDriftIssues: { enabled: true } });
+    await upsertRepoFocusManifest(env, "JSONbored/loopover", { upstreamDriftIssues: { enabled: true } });
     const enabledDriftIssuesRun = await app.request("/v1/internal/jobs/file-upstream-drift-issues/run", { method: "POST", headers: internalHeaders(env) }, env);
     expect(enabledDriftIssuesRun.status).toBe(200);
     await expect(enabledDriftIssuesRun.json()).resolves.toMatchObject({ status: "skipped", reason: "missing_issue_token" });
@@ -999,13 +999,13 @@ describe("api route guards and error branches", () => {
     const queuedContributorRefresh = await app.request("/v1/internal/jobs/refresh-contributor-activity", {
       method: "POST",
       headers: internalHeaders(env),
-      body: JSON.stringify({ login: "jsonbored", repoFullName: "JSONbored/gittensory" }),
+      body: JSON.stringify({ login: "jsonbored", repoFullName: "JSONbored/loopover" }),
     }, env);
     expect(queuedContributorRefresh.status).toBe(202);
     const queuedForecasts = await app.request("/v1/internal/jobs/build-burden-forecasts", {
       method: "POST",
       headers: internalHeaders(env),
-      body: JSON.stringify({ repoFullName: "JSONbored/gittensory" }),
+      body: JSON.stringify({ repoFullName: "JSONbored/loopover" }),
     }, env);
     expect(queuedForecasts.status).toBe(202);
 
@@ -1021,8 +1021,8 @@ describe("api route guards and error branches", () => {
         expect.objectContaining({ type: "file-upstream-drift-issues" }),
         expect.objectContaining({ type: "build-contributor-evidence", login: "oktofeesh1" }),
         expect.objectContaining({ type: "build-contributor-decision-packs", login: "oktofeesh1" }),
-        expect.objectContaining({ type: "refresh-contributor-activity", login: "jsonbored", repoFullName: "JSONbored/gittensory" }),
-        expect.objectContaining({ type: "build-burden-forecasts", repoFullName: "JSONbored/gittensory" }),
+        expect.objectContaining({ type: "refresh-contributor-activity", login: "jsonbored", repoFullName: "JSONbored/loopover" }),
+        expect.objectContaining({ type: "build-burden-forecasts", repoFullName: "JSONbored/loopover" }),
       ]),
     );
 
@@ -1032,7 +1032,7 @@ describe("api route guards and error branches", () => {
         await app.request("/v1/internal/jobs/backfill-registered-repos/run", {
           method: "POST",
           headers: internalHeaders(env),
-          body: JSON.stringify({ repoFullName: "JSONbored/gittensory" }),
+          body: JSON.stringify({ repoFullName: "JSONbored/loopover" }),
         }, env)
       ).status,
     ).toBe(200);
@@ -1108,7 +1108,7 @@ describe("api route guards and error branches", () => {
     // reviewCheckMode is gone from repositorySettingsSchema entirely (#6444) -- probe a still-real field instead.
     expect(
       (
-        await app.request("/v1/internal/repos/JSONbored/gittensory/settings", {
+        await app.request("/v1/internal/repos/JSONbored/loopover/settings", {
           method: "POST",
           headers: internalHeaders(env),
           body: JSON.stringify({ gatePack: "bad" }),
@@ -1123,7 +1123,7 @@ describe("api route guards and error branches", () => {
     await persistRegistrySnapshot(
       asCloudEnv(env),
       normalizeRegistryPayload(
-        { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
+        { "JSONbored/loopover": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
         "2026-05-23T00:00:00.000Z",
       ),
@@ -1136,7 +1136,7 @@ describe("api route guards and error branches", () => {
     const rawRequest = new Request("http://localhost/mcp", {
       method: "POST",
       headers: { authorization: `Bearer ${defensiveSessionToken}`, "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: "raw-failure", method: "tools/call", params: { name: "loopover_get_repo_context", arguments: { owner: "JSONbored", repo: "gittensory" } } }),
+      body: JSON.stringify({ jsonrpc: "2.0", id: "raw-failure", method: "tools/call", params: { name: "loopover_get_repo_context", arguments: { owner: "JSONbored", repo: "loopover" } } }),
     });
     let rawReads = 0;
     await expect(
@@ -1190,12 +1190,12 @@ describe("api route guards and error branches", () => {
     const snapshot = await app.request("/v1/registry/snapshot", { headers: apiHeaders(env) }, env);
     expect(snapshot.status).toBe(200);
 
-    const repo = await app.request("/v1/repos/JSONbored/gittensory", { headers: apiHeaders(env) }, env);
+    const repo = await app.request("/v1/repos/JSONbored/loopover", { headers: apiHeaders(env) }, env);
     expect(repo.status).toBe(200);
-    await expect(repo.json()).resolves.toMatchObject({ fullName: "JSONbored/gittensory" });
+    await expect(repo.json()).resolves.toMatchObject({ fullName: "JSONbored/loopover" });
 
     const updated = await app.request(
-      "/v1/internal/repos/JSONbored/gittensory/settings",
+      "/v1/internal/repos/JSONbored/loopover/settings",
       {
         method: "POST",
         headers: internalHeaders(env),
@@ -1213,7 +1213,7 @@ describe("api route guards and error branches", () => {
     const app = createApp();
     const env = createTestEnv();
     const storage = env as unknown as StorageEnv;
-    const fullName = "JSONbored/gittensory";
+    const fullName = "JSONbored/loopover";
 
     // Seed a live override + two audit rows for the repo the operator will inspect/clear.
     await writeLiveOverride(storage, fullName, { confidenceFloor: 0.95, scopeCap: { files: 3, lines: 120 } });

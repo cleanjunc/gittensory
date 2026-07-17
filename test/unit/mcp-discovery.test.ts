@@ -17,7 +17,7 @@ let transport: StdioClientTransport;
 let configDir: string;
 
 async function connect() {
-  configDir = mkdtempSync(join(tmpdir(), "gittensory-discovery-"));
+  configDir = mkdtempSync(join(tmpdir(), "loopover-discovery-"));
   transport = new StdioClientTransport({
     command: "node",
     args: [bin, "--stdio"],
@@ -39,7 +39,7 @@ async function disconnect() {
 
 describe("MCP workspace root boundaries", () => {
   it("applies client-advertised roots to structured local status cwd requests", async () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), "gittensory-roots-"));
+    const tempRoot = mkdtempSync(join(tmpdir(), "loopover-roots-"));
     const advertisedWorkspace = join(tempRoot, "advertised-workspace");
     const privateRepo = join(tempRoot, "private-repo-outside-root");
     const localConfigDir = join(tempRoot, "config");

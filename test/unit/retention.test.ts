@@ -31,7 +31,7 @@ async function insertSignalSnapshot(env: Env, id: string, signalType: string, ta
   await env.DB.prepare(
     "INSERT INTO signal_snapshots (id, signal_type, target_key, repo_full_name, payload_json, generated_at) VALUES (?,?,?,?,?,?)",
   )
-    .bind(id, signalType, targetKey, "JSONbored/gittensory", "{}", generatedAt)
+    .bind(id, signalType, targetKey, "JSONbored/loopover", "{}", generatedAt)
     .run();
 }
 
@@ -69,7 +69,7 @@ describe("pruneExpiredRecords", () => {
     await env.DB.prepare(
       `INSERT INTO audit_events (id, event_type, target_key, outcome, created_at)
        VALUES
-         ('published-old', 'github_app.pr_public_surface_published', 'JSONbored/gittensory#1', 'completed', ?),
+         ('published-old', 'github_app.pr_public_surface_published', 'JSONbored/loopover#1', 'completed', ?),
          ('rate-limit-old', 'rate_limit.denied', 'actor', 'completed', ?),
          ('rate-limit-recent', 'rate_limit.denied', 'actor', 'completed', ?)`,
     )
@@ -138,8 +138,8 @@ describe("dedupeSignalSnapshots", () => {
 
   it("dry-run counts duplicates per signal_type without deleting anything", async () => {
     const env = createTestEnv();
-    await insertSignalSnapshot(env, "s-1", "repo-culture-profile", "JSONbored/gittensory", "2026-06-01T00:00:00.000Z");
-    await insertSignalSnapshot(env, "s-2", "repo-culture-profile", "JSONbored/gittensory", "2026-06-02T00:00:00.000Z");
+    await insertSignalSnapshot(env, "s-1", "repo-culture-profile", "JSONbored/loopover", "2026-06-01T00:00:00.000Z");
+    await insertSignalSnapshot(env, "s-2", "repo-culture-profile", "JSONbored/loopover", "2026-06-02T00:00:00.000Z");
     await insertSignalSnapshot(env, "s-3", "repo-culture-profile", "other/repo", "2026-06-01T00:00:00.000Z"); // distinct key, not a duplicate
     const results = await dedupeSignalSnapshots(env, { dryRun: true });
     expect(results).toEqual([{ signalType: "repo-culture-profile", deleted: 1 }]);
@@ -148,10 +148,10 @@ describe("dedupeSignalSnapshots", () => {
 
   it("keeps only the highest-rowid row for latest-only signal types and preserves historical signal types", async () => {
     const env = createTestEnv();
-    await insertSignalSnapshot(env, "s-1", "repo-culture-profile", "JSONbored/gittensory", "2026-06-01T00:00:00.000Z");
-    await insertSignalSnapshot(env, "s-2", "repo-culture-profile", "JSONbored/gittensory", "2026-06-02T00:00:00.000Z");
-    await insertSignalSnapshot(env, "s-3", "repo-culture-profile", "JSONbored/gittensory", "2026-06-03T00:00:00.000Z"); // latest, kept
-    await insertSignalSnapshot(env, "s-4", "queue-health", "JSONbored/gittensory", "2026-06-01T00:00:00.000Z"); // historical type, not deduped
+    await insertSignalSnapshot(env, "s-1", "repo-culture-profile", "JSONbored/loopover", "2026-06-01T00:00:00.000Z");
+    await insertSignalSnapshot(env, "s-2", "repo-culture-profile", "JSONbored/loopover", "2026-06-02T00:00:00.000Z");
+    await insertSignalSnapshot(env, "s-3", "repo-culture-profile", "JSONbored/loopover", "2026-06-03T00:00:00.000Z"); // latest, kept
+    await insertSignalSnapshot(env, "s-4", "queue-health", "JSONbored/loopover", "2026-06-01T00:00:00.000Z"); // historical type, not deduped
 
     const results = await dedupeSignalSnapshots(env);
     expect(results.find((r) => r.signalType === "repo-culture-profile")?.deleted).toBe(2);
@@ -164,10 +164,10 @@ describe("dedupeSignalSnapshots", () => {
 
   it("dedupes private and public focus-manifest cache snapshots (regression for storage exhaustion)", async () => {
     const env = createTestEnv();
-    await insertSignalSnapshot(env, "private-old", REPO_FOCUS_MANIFEST_SIGNAL, "JSONbored/gittensory", "2026-06-01T00:00:00.000Z");
-    await insertSignalSnapshot(env, "private-latest", REPO_FOCUS_MANIFEST_SIGNAL, "JSONbored/gittensory", "2026-06-02T00:00:00.000Z");
-    await insertSignalSnapshot(env, "public-old", REPO_PUBLIC_FOCUS_MANIFEST_SIGNAL, "JSONbored/gittensory", "2026-06-01T00:00:00.000Z");
-    await insertSignalSnapshot(env, "public-latest", REPO_PUBLIC_FOCUS_MANIFEST_SIGNAL, "JSONbored/gittensory", "2026-06-02T00:00:00.000Z");
+    await insertSignalSnapshot(env, "private-old", REPO_FOCUS_MANIFEST_SIGNAL, "JSONbored/loopover", "2026-06-01T00:00:00.000Z");
+    await insertSignalSnapshot(env, "private-latest", REPO_FOCUS_MANIFEST_SIGNAL, "JSONbored/loopover", "2026-06-02T00:00:00.000Z");
+    await insertSignalSnapshot(env, "public-old", REPO_PUBLIC_FOCUS_MANIFEST_SIGNAL, "JSONbored/loopover", "2026-06-01T00:00:00.000Z");
+    await insertSignalSnapshot(env, "public-latest", REPO_PUBLIC_FOCUS_MANIFEST_SIGNAL, "JSONbored/loopover", "2026-06-02T00:00:00.000Z");
 
     const results = await dedupeSignalSnapshots(env);
 
@@ -185,8 +185,8 @@ describe("dedupeSignalSnapshots", () => {
     const env = createTestEnv();
     await insertSignalSnapshot(env, "decision-prev", "contributor-decision-pack", "alice", "2026-06-01T00:00:00.000Z");
     await insertSignalSnapshot(env, "decision-current", "contributor-decision-pack", "alice", "2026-06-02T00:00:00.000Z");
-    await insertSignalSnapshot(env, "queue-old", "queue-health", "JSONbored/gittensory", "2026-06-01T00:00:00.000Z");
-    await insertSignalSnapshot(env, "queue-current", "queue-health", "JSONbored/gittensory", "2026-06-02T00:00:00.000Z");
+    await insertSignalSnapshot(env, "queue-old", "queue-health", "JSONbored/loopover", "2026-06-01T00:00:00.000Z");
+    await insertSignalSnapshot(env, "queue-current", "queue-health", "JSONbored/loopover", "2026-06-02T00:00:00.000Z");
 
     expect(await dedupeSignalSnapshots(env)).toEqual([]);
 
@@ -197,7 +197,7 @@ describe("dedupeSignalSnapshots", () => {
   it("deletes across multiple batches per signal_type and stops at the per-type cap", async () => {
     const env = createTestEnv();
     for (let i = 0; i < 6; i++) {
-      await insertSignalSnapshot(env, `s-${i}`, "repo-culture-profile", "JSONbored/gittensory", `2026-06-0${i + 1}T00:00:00.000Z`);
+      await insertSignalSnapshot(env, `s-${i}`, "repo-culture-profile", "JSONbored/loopover", `2026-06-0${i + 1}T00:00:00.000Z`);
     }
     // The 6th insert (highest generated_at, inserted last so it also has the highest rowid) is kept, leaving 5
     // duplicates; batchSize 2 forces multiple full (changes === batchSize) delete iterations before maxPerType 4
@@ -252,8 +252,8 @@ describe("runRetentionPrune + processJob", () => {
   it("processJob prune-retention deletes, dedupes signal_snapshots, and audits both", async () => {
     const env = createTestEnv();
     await seed(env);
-    await insertSignalSnapshot(env, "s-1", "repo-culture-profile", "JSONbored/gittensory", "2026-06-01T00:00:00.000Z");
-    await insertSignalSnapshot(env, "s-2", "repo-culture-profile", "JSONbored/gittensory", "2026-06-02T00:00:00.000Z");
+    await insertSignalSnapshot(env, "s-1", "repo-culture-profile", "JSONbored/loopover", "2026-06-01T00:00:00.000Z");
+    await insertSignalSnapshot(env, "s-2", "repo-culture-profile", "JSONbored/loopover", "2026-06-02T00:00:00.000Z");
     await processJob(env, { type: "prune-retention", requestedBy: "schedule" });
     expect(await countWebhook(env)).toBe(3);
     expect(await countSignalSnapshots(env, "repo-culture-profile")).toBe(1);
@@ -268,8 +268,8 @@ describe("retention preview route", () => {
     const app = createApp();
     const env = createTestEnv();
     await seed(env);
-    await insertSignalSnapshot(env, "s-1", "repo-culture-profile", "JSONbored/gittensory", "2026-06-01T00:00:00.000Z");
-    await insertSignalSnapshot(env, "s-2", "repo-culture-profile", "JSONbored/gittensory", "2026-06-02T00:00:00.000Z");
+    await insertSignalSnapshot(env, "s-1", "repo-culture-profile", "JSONbored/loopover", "2026-06-01T00:00:00.000Z");
+    await insertSignalSnapshot(env, "s-2", "repo-culture-profile", "JSONbored/loopover", "2026-06-02T00:00:00.000Z");
     const res = await app.request("/v1/internal/retention/preview", { headers: { authorization: `Bearer ${env.INTERNAL_JOB_TOKEN}` } }, env);
     expect(res.status).toBe(200);
     const body = (await res.json()) as {

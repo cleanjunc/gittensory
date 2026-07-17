@@ -17,16 +17,16 @@ describe("worker entrypoint", () => {
 
   it("delegates fetch requests to the Hono app", async () => {
     const env = createTestEnv();
-    const response = await worker.fetch(new Request("https://gittensory.test/health"), env);
+    const response = await worker.fetch(new Request("https://loopover.test/health"), env);
     expect(response.status).toBe(200);
   });
 
-  it("routes gittensory-jobs-dlq batches to the DLQ consumer (acks without retrying)", async () => {
+  it("routes loopover-jobs-dlq batches to the DLQ consumer (acks without retrying)", async () => {
     const env = createTestEnv();
     const acked: string[] = [];
     const retried: string[] = [];
     const batch = {
-      queue: "gittensory-jobs-dlq",
+      queue: "loopover-jobs-dlq",
       messages: [
         {
           id: "dlq-msg-1",
@@ -43,12 +43,12 @@ describe("worker entrypoint", () => {
     expect(retried).toEqual([]);
   });
 
-  it("routes the webhook lane's gittensory-webhooks-dlq batches to the DLQ consumer too (#1276)", async () => {
+  it("routes the webhook lane's loopover-webhooks-dlq batches to the DLQ consumer too (#1276)", async () => {
     const env = createTestEnv();
     const acked: string[] = [];
     const retried: string[] = [];
     const batch = {
-      queue: "gittensory-webhooks-dlq",
+      queue: "loopover-webhooks-dlq",
       messages: [
         {
           id: "wh-dlq-1",
@@ -72,7 +72,7 @@ describe("worker entrypoint", () => {
     env.WEBHOOKS = { send: async (message: import("../../src/types").JobMessage) => void sent.push(message) } as unknown as Queue;
     const acked: string[] = [];
     const batch = {
-      queue: "gittensory-webhooks-dlq",
+      queue: "loopover-webhooks-dlq",
       messages: [
         {
           id: "wh-dlq-broker-only",
@@ -604,9 +604,9 @@ describe("worker entrypoint", () => {
     });
     await (env.DB as unknown as { prepare: (s: string) => { bind: (...v: unknown[]) => { run: () => Promise<unknown> } } })
       .prepare("INSERT INTO repositories (full_name, owner, name, is_installed, is_registered) VALUES (?, ?, ?, 1, 0)")
-      .bind("JSONbored/gittensory", "JSONbored", "gittensory")
+      .bind("JSONbored/loopover", "JSONbored", "loopover")
       .run();
-    await (await import("../../src/signals/focus-manifest-loader")).upsertRepoFocusManifest(env, "JSONbored/gittensory", { experimental: { gittensor: true } });
+    await (await import("../../src/signals/focus-manifest-loader")).upsertRepoFocusManifest(env, "JSONbored/loopover", { experimental: { gittensor: true } });
     const waitUntil: Promise<unknown>[] = [];
 
     await worker.scheduled(controllerFor("2026-05-25T05:00:00.000Z"), env, executionContext(waitUntil));
@@ -771,9 +771,9 @@ describe("worker entrypoint", () => {
           sent.push(message);
         },
       } as unknown as Queue,
-      LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/gittensory",
+      LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/loopover",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { ops: { enabled: true } });
+    await upsertRepoFocusManifest(env, "JSONbored/loopover", { ops: { enabled: true } });
     const waitUntil: Promise<unknown>[] = [];
     await worker.scheduled(controllerFor("2026-05-25T05:00:00.000Z"), env, executionContext(waitUntil));
     await Promise.all(waitUntil);
@@ -789,9 +789,9 @@ describe("worker entrypoint", () => {
           sent.push(message);
         },
       } as unknown as Queue,
-      LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/gittensory",
+      LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/loopover",
     });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { ops: { enabled: false } });
+    await upsertRepoFocusManifest(env, "JSONbored/loopover", { ops: { enabled: false } });
     const waitUntil: Promise<unknown>[] = [];
     await worker.scheduled(controllerFor("2026-05-25T05:00:00.000Z"), env, executionContext(waitUntil));
     await Promise.all(waitUntil);

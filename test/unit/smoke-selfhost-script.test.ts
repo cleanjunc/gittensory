@@ -37,7 +37,7 @@ esac
 `,
   );
 
-  const result = spawnSync("bash", [SCRIPT_PATH, "gittensory:rc-candidate"], {
+  const result = spawnSync("bash", [SCRIPT_PATH, "loopover:rc-candidate"], {
     cwd: process.cwd(),
     env: {
       ...process.env,

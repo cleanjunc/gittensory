@@ -31,7 +31,7 @@ describe("small adapters and normalizers", () => {
         {},
         {
           id: 33,
-          repository_full_name: "JSONbored/gittensory",
+          repository_full_name: "JSONbored/loopover",
           issue_number: 12,
           status: "Completed",
           bounty_amount: 0.5,
@@ -42,13 +42,13 @@ describe("small adapters and normalizers", () => {
         },
         {
           id: "35",
-          repository_full_name: "JSONbored/gittensory",
+          repository_full_name: "JSONbored/loopover",
           issue_number: 13,
           status: "Active",
           bounty_alpha: "1.2500",
         },
-        { id: 34, repository_full_name: "JSONbored/gittensory", status: "Active" },
-        { id: 36, repository_full_name: "JSONbored/gittensory", issue_number: 14, status: "Cancelled", active: undefined },
+        { id: 34, repository_full_name: "JSONbored/loopover", status: "Active" },
+        { id: 36, repository_full_name: "JSONbored/loopover", issue_number: 14, status: "Cancelled", active: undefined },
       ],
     });
 

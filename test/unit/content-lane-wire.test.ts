@@ -138,7 +138,7 @@ describe("applySurfaceGate", () => {
       code: "ai_consensus_defect",
       title: "AI reviewers agree on a likely critical defect",
       severity: "critical",
-      detail: "provider is set to \"gittensory\" (an unrelated tool's slug) instead of \"gittensor\"",
+      detail: "provider is set to \"loopover\" (an unrelated tool's slug) instead of \"gittensor\"",
     };
     const genericAiOnly = gate({ conclusion: "failure", blockers: [providerMisattribution], warnings: [] });
     const surfaceMerge = gate({ conclusion: "success", title: "Surface", summary: "structurally valid entry" });
@@ -408,7 +408,7 @@ describe("evaluateWithSurfaceLane (the processor seam helper)", () => {
       code: "ai_consensus_defect",
       title: "AI reviewers agree on a likely critical defect",
       severity: "critical",
-      detail: "provider is set to \"gittensory\" instead of \"gittensor\"",
+      detail: "provider is set to \"loopover\" instead of \"gittensor\"",
     };
     const advisory = { findings: [providerMisattribution] };
     const genericAiOnly = gate({ conclusion: "failure", blockers: [providerMisattribution], warnings: [] });

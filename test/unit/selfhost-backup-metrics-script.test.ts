@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 const tmpRoots: string[] = [];
 
 function tmpRoot(): string {
-  const dir = mkdtempSync(join(tmpdir(), "gittensory-backup-metrics-"));
+  const dir = mkdtempSync(join(tmpdir(), "loopover-backup-metrics-"));
   tmpRoots.push(dir);
   return dir;
 }
@@ -43,9 +43,9 @@ afterEach(() => {
 describe("backup-metrics.sh", () => {
   it("exports newest retained backup timestamps and file counts by target", () => {
     const root = tmpRoot();
-    writeBackup(root, "postgres", "gittensory-older.dump", "2026-07-01T01:00:00Z");
-    const newestPostgres = writeBackup(root, "postgres", "gittensory-newer.dump", "2026-07-01T02:00:00Z");
-    const sqlite = writeBackup(root, "sqlite", "gittensory.sqlite.gz", "2026-07-01T03:00:00Z");
+    writeBackup(root, "postgres", "loopover-older.dump", "2026-07-01T01:00:00Z");
+    const newestPostgres = writeBackup(root, "postgres", "loopover-newer.dump", "2026-07-01T02:00:00Z");
+    const sqlite = writeBackup(root, "sqlite", "loopover.sqlite.gz", "2026-07-01T03:00:00Z");
     const qdrant = writeBackup(root, "qdrant", "snapshot", "2026-07-01T04:00:00Z");
 
     const metrics = runExporterOnce(root);

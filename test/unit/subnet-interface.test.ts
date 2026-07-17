@@ -4,7 +4,7 @@ import { buildSubnetInterfaceDescriptor, GITTENSOR_NETUID } from "../../src/serv
 describe("buildSubnetInterfaceDescriptor", () => {
   it("declares LoopOver as gittensor SN74's contribution interface", () => {
     const descriptor = buildSubnetInterfaceDescriptor({
-      origin: "https://gittensory-api.aethereal.dev/",
+      origin: "https://loopover-api.aethereal.dev/",
       generatedAt: "2026-06-14T00:00:00.000Z",
       upstreamRepo: "entrius/gittensor",
     });
@@ -13,7 +13,7 @@ describe("buildSubnetInterfaceDescriptor", () => {
     expect(descriptor.subnet).toMatchObject({ netuid: 74, name: "gittensor", upstreamRepo: "entrius/gittensor" });
     expect(descriptor.provider).toMatchObject({ name: "LoopOver", role: "contribution_interface" });
     // Trailing slash on origin is normalized before appending /mcp.
-    expect(descriptor.interfaces.mcp.endpoint).toBe("https://gittensory-api.aethereal.dev/mcp");
+    expect(descriptor.interfaces.mcp.endpoint).toBe("https://loopover-api.aethereal.dev/mcp");
     expect(descriptor.interfaces.mcp.transport).toBe("http");
     // The publicly installable App slug is a stable hardcoded product identity, not derived from any Worker
     // var (the old review App's GITHUB_APP_SLUG was removed; loopover-orb is the real, current, installable App).

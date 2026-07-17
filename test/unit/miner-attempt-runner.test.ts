@@ -202,7 +202,7 @@ describe("runMinerAttempt (#2337) — the real create->review->gate->submit pipe
     expect(claimLedgerListClaims).not.toHaveBeenCalled();
   });
 
-  it("REGRESSION (#5395, gittensory review #5437): a real hard budget-ceiling breach abandons through the full real runMinerAttempt pipeline, even though the driver's own result would otherwise pass self-review", async () => {
+  it("REGRESSION (#5395, loopover review #5437): a real hard budget-ceiling breach abandons through the full real runMinerAttempt pipeline, even though the driver's own result would otherwise pass self-review", async () => {
     const claimLedgerListClaims = vi.fn();
     const deps = baseDeps({ claimLedger: { listClaims: claimLedgerListClaims } });
     // okDriverResult()'s default turnsUsed (5) immediately breaches this maxTurns:1 ceiling on iteration 1,

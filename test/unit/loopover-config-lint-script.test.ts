@@ -42,7 +42,7 @@ describe("formatLintReport (#2906)", () => {
 
 describe("readManifestTextForLint (#2923 regression)", () => {
   function withTempDir(run: (dir: string) => void): void {
-    const dir = mkdtempSync(join(tmpdir(), "gittensory-config-lint-"));
+    const dir = mkdtempSync(join(tmpdir(), "loopover-config-lint-"));
     try {
       run(dir);
     } finally {

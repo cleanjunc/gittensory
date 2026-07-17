@@ -7,7 +7,7 @@ import {
   resolveRejection,
 } from "../../packages/loopover-miner/lib/rejection-state-machine.js";
 
-const CONTEXT = { repoFullName: "JSONbored/gittensory", prNumber: 4278 } as const;
+const CONTEXT = { repoFullName: "JSONbored/loopover", prNumber: 4278 } as const;
 const closedUnmerged = { state: "closed", merged: false, merged_at: null, closed_at: "2026-07-09T18:00:00Z" };
 
 describe("loopover-miner rejection state machine (#4278)", () => {
@@ -58,7 +58,7 @@ describe("loopover-miner rejection state machine (#4278)", () => {
       expect(result).not.toBeNull();
       expect(result?.outcome).toBe(DISENGAGED_OUTCOME);
       expect(result?.reason).toBe(reason);
-      expect(result?.note).toContain("JSONbored/gittensory");
+      expect(result?.note).toContain("JSONbored/loopover");
       expect(result?.note).toContain("#4278");
       expect(result?.note).not.toMatch(/\{[^}]+\}/); // renderer left no unresolved placeholder
     }

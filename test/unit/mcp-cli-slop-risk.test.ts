@@ -116,7 +116,7 @@ describe("loopover-mcp CLI — slop-risk", () => {
     const e = await env();
     await expect(runAsync(["slop-risk", "--changed-file", ":1:2"], e)).rejects.toThrow(/Invalid --changed-file/);
     await expect(runAsync(["slop-risk", "--changed-file", "src/a.ts:-1"], e)).rejects.toThrow(/Invalid additions/);
-    await expect(runAsync(["slop-risk", "--description-file", "/tmp/missing-gittensory-slop-description.md"], e)).rejects.toThrow(/Description file not found/);
+    await expect(runAsync(["slop-risk", "--description-file", "/tmp/missing-loopover-slop-description.md"], e)).rejects.toThrow(/Description file not found/);
     const help = run(["slop-risk", "--help"]);
     expect(help).toMatch(/Usage: loopover-mcp slop-risk/);
     expect(help).toMatch(/loopover_check_slop_risk/);

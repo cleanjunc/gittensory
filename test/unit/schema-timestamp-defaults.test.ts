@@ -31,7 +31,7 @@ describe("timestamp column defaults", () => {
   it("keeps orb relay pending coalesce keys wired through the drizzle schema", async () => {
     const env = createTestEnv();
     const db = getDb(env.DB);
-    const coalesceKey = `github-webhook:ci-completed:jsonbored/gittensory@${"a".repeat(40)}#1838`;
+    const coalesceKey = `github-webhook:ci-completed:jsonbored/loopover@${"a".repeat(40)}#1838`;
     await db.insert(orbRelayPending).values({
       deliveryId: "relay-schema-1",
       installationId: 1838,

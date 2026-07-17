@@ -64,9 +64,9 @@ describe("loopover-miner claim ledger (#2314)", () => {
 
   it("records a claim and lists it back", () => {
     const ledger = tempLedger();
-    const claim = ledger.recordClaim({ repoFullName: "JSONbored/gittensory", issueNumber: 2314, note: "mine" });
+    const claim = ledger.recordClaim({ repoFullName: "JSONbored/loopover", issueNumber: 2314, note: "mine" });
     expect(claim).toMatchObject({
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       issueNumber: 2314,
       status: "active",
       note: "mine",

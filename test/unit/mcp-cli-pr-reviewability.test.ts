@@ -16,7 +16,7 @@ let apiUrl: string;
 let capturedRequests: Array<{ url: string; method: string }>;
 
 async function connect() {
-  configDir = mkdtempSync(join(tmpdir(), "gittensory-pr-reviewability-"));
+  configDir = mkdtempSync(join(tmpdir(), "loopover-pr-reviewability-"));
   capturedRequests = [];
   apiUrl = await startFixtureServer({
     onApiRequest: (request) => {

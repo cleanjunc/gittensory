@@ -17,7 +17,7 @@ const defaultImage = "ghcr.io/jsonbored/loopover-selfhost:latest";
 // already-published tags/digests keep resolving forever -- an operator who pinned it explicitly (CLI
 // arg, env var, or .env value) must keep resolving to that exact string unmodified, even though
 // DEFAULT_IMAGE above now points at the new name.
-const legacyPinnedImage = "ghcr.io/jsonbored/gittensory-selfhost:orb-v0.1.0";
+const legacyPinnedImage = "ghcr.io/jsonbored/loopover-selfhost:orb-v0.1.0";
 
 interface RunOptions {
   args?: string[];
@@ -28,7 +28,7 @@ interface RunOptions {
 }
 
 function createHarness() {
-  const dir = mkdtempSync(join(tmpdir(), "gittensory-selfhost-image-"));
+  const dir = mkdtempSync(join(tmpdir(), "loopover-selfhost-image-"));
   const binDir = join(dir, "bin");
   const dockerCalls = join(dir, "docker-calls.log");
   const dockerImages = join(dir, "docker-images.log");
@@ -147,21 +147,21 @@ describe("self-host image deploy script", () => {
   it.each([
     {
       name: "CLI argument",
-      args: ["ghcr.io/jsonbored/gittensory-selfhost:cli"],
-      env: { LOOPOVER_IMAGE: "ghcr.io/jsonbored/gittensory-selfhost:env" },
-      envFile: "LOOPOVER_IMAGE=ghcr.io/jsonbored/gittensory-selfhost:file\n",
-      expected: "ghcr.io/jsonbored/gittensory-selfhost:cli",
+      args: ["ghcr.io/jsonbored/loopover-selfhost:cli"],
+      env: { LOOPOVER_IMAGE: "ghcr.io/jsonbored/loopover-selfhost:env" },
+      envFile: "LOOPOVER_IMAGE=ghcr.io/jsonbored/loopover-selfhost:file\n",
+      expected: "ghcr.io/jsonbored/loopover-selfhost:cli",
     },
     {
       name: "environment variable",
-      env: { LOOPOVER_IMAGE: "ghcr.io/jsonbored/gittensory-selfhost:env" },
-      envFile: "LOOPOVER_IMAGE=ghcr.io/jsonbored/gittensory-selfhost:file\n",
-      expected: "ghcr.io/jsonbored/gittensory-selfhost:env",
+      env: { LOOPOVER_IMAGE: "ghcr.io/jsonbored/loopover-selfhost:env" },
+      envFile: "LOOPOVER_IMAGE=ghcr.io/jsonbored/loopover-selfhost:file\n",
+      expected: "ghcr.io/jsonbored/loopover-selfhost:env",
     },
     {
       name: ".env value",
-      envFile: "LOOPOVER_IMAGE=ghcr.io/jsonbored/gittensory-selfhost:file\n",
-      expected: "ghcr.io/jsonbored/gittensory-selfhost:file",
+      envFile: "LOOPOVER_IMAGE=ghcr.io/jsonbored/loopover-selfhost:file\n",
+      expected: "ghcr.io/jsonbored/loopover-selfhost:file",
     },
     {
       name: "default image",
@@ -188,7 +188,7 @@ describe("self-host image deploy script", () => {
   });
 
   // REGRESSION (#4777): DEFAULT_IMAGE moved to the new "loopover-selfhost" name, but a self-hoster who
-  // explicitly pinned the pre-rename "gittensory-selfhost" image (as a CLI argument, LOOPOVER_IMAGE env
+  // explicitly pinned the pre-rename "loopover-selfhost" image (as a CLI argument, LOOPOVER_IMAGE env
   // var, or .env value) must keep resolving to that exact string, unmodified -- GHCR keeps already-published
   // tags/digests resolving forever with no server-side alias needed, and this script must not rewrite an
   // operator's existing pin either way.
@@ -204,7 +204,7 @@ describe("self-host image deploy script", () => {
   });
 
   it("persists the image only after the service reports healthy", () => {
-    const image = "ghcr.io/jsonbored/gittensory-selfhost:ordered";
+    const image = "ghcr.io/jsonbored/loopover-selfhost:ordered";
     const { harness, result } = runHarness({ args: [image], envFile: "EXISTING=1\n" });
     try {
       expect(result.status, result.stderr).toBe(0);
@@ -218,7 +218,7 @@ describe("self-host image deploy script", () => {
   });
 
   it("does not persist the image when health times out", () => {
-    const image = "ghcr.io/jsonbored/gittensory-selfhost:bad-health";
+    const image = "ghcr.io/jsonbored/loopover-selfhost:bad-health";
     const { harness, result } = runHarness({
       args: [image],
       envFile: "EXISTING=1\n",
@@ -237,9 +237,9 @@ describe("self-host image deploy script", () => {
   });
 
   it.each([
-    "registry.example/gittensory:${GITHUB_OAUTH_CLIENT_SECRET}",
-    "registry.example/gittensory:$GITHUB_OAUTH_CLIENT_SECRET",
-    "registry.example/gittensory:{GITHUB_OAUTH_CLIENT_SECRET}",
+    "registry.example/loopover:${GITHUB_OAUTH_CLIENT_SECRET}",
+    "registry.example/loopover:$GITHUB_OAUTH_CLIENT_SECRET",
+    "registry.example/loopover:{GITHUB_OAUTH_CLIENT_SECRET}",
   ])("rejects compose interpolation characters in image %s", (image) => {
     const { harness, result } = runHarness({ args: [image], envFile: "EXISTING=1\n" });
     try {

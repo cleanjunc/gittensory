@@ -494,7 +494,7 @@ describe("gate treats secret_leak as a hard blocker", () => {
   });
 });
 
-// #5346: gittensory PR #5346 was auto-closed on a "possible leaked secret" that was really two inert
+// #5346: loopover PR #5346 was auto-closed on a "possible leaked secret" that was really two inert
 // test-fixture strings matching the generic_secret_assignment SHAPE heuristic. This heuristic (unlike every
 // concrete-format kind above) is no longer an unconditional hard blocker — it surfaces as an advisory finding
 // that a human/AI reviewer can verify, matching how REES's own copy of this rule already rates it

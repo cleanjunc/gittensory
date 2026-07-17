@@ -330,7 +330,7 @@ describe("buildSelfDogfoodRegistrationPack", () => {
   });
 
   it("public wording regression stays free of forbidden language", () => {
-    const repo = repoFor("JSONbored/gittensory", configFor({ repo: "JSONbored/gittensory" }));
+    const repo = repoFor("JSONbored/loopover", configFor({ repo: "JSONbored/loopover" }));
     const pack = packFromRepo(repo);
     expect(JSON.stringify(pack)).not.toMatch(FORBIDDEN_PUBLIC_LANGUAGE);
   });

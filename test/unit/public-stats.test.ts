@@ -9,7 +9,7 @@ import {
   resolvePublicStatsManifestOverride,
 } from "../../src/review/public-stats";
 
-const SELF_REPO = "JSONbored/gittensory";
+const SELF_REPO = "JSONbored/loopover";
 
 type Row = Record<string, unknown>;
 
@@ -26,7 +26,7 @@ function stubEnv(handler: (sql: string, args: unknown[]) => Row[]): Env {
   return {
     DB: { prepare: (sql: string) => make(sql, []) },
     LOOPOVER_PUBLIC_STATS_REPOS:
-      "JSONbored/gittensory,JSONbored/awesome-claude,JSONbored/metagraphed",
+      "JSONbored/loopover,JSONbored/awesome-claude,JSONbored/metagraphed",
   } as unknown as Env;
 }
 
@@ -164,7 +164,7 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
           inReview: 80,
         },
         {
-          project: "JSONbored/gittensory",
+          project: "JSONbored/loopover",
           reviewed: 315,
           merged: 24,
           closed: 24,
@@ -176,7 +176,7 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
       return [
         { project: "JSONbored/awesome-claude", reversed: 20 },
         { project: "JSONbored/metagraphed", reversed: 10 },
-        { project: "JSONbored/gittensory", reversed: 3 },
+        { project: "JSONbored/loopover", reversed: 3 },
       ];
     }
     return [];
@@ -203,7 +203,7 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
     expect(out.byProject.map((p) => p.project)).toEqual([
       "JSONbored/awesome-claude",
       "JSONbored/metagraphed",
-      "JSONbored/gittensory",
+      "JSONbored/loopover",
     ]);
     expect(out.updatedAt).toBe(out.generatedAt);
   });
@@ -232,7 +232,7 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
 
   // #2070: mixed ledgers must COALESCE missing per-PR estimates to MINUTES_SAVED_PER_PR, not AVG-skip them.
   it("sums mixed per-PR effort with fallback when one published PR lacks reviewEffortMinutes", async () => {
-    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/gittensory" });
+    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/loopover" });
     const db = env.DB;
 
     await db
@@ -242,13 +242,13 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
       )
       .bind(
         "pr-a",
-        "JSONbored/gittensory",
+        "JSONbored/loopover",
         10,
         "small fix",
         "closed",
         "2026-06-01T00:00:00.000Z",
         "pr-b",
-        "JSONbored/gittensory",
+        "JSONbored/loopover",
         11,
         "legacy publish",
         "closed",
@@ -263,12 +263,12 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
       .bind(
         "published-a",
         "github_app.pr_public_surface_published",
-        "JSONbored/gittensory#10",
+        "JSONbored/loopover#10",
         "completed",
         JSON.stringify({ reviewEffortMinutes: 4 }),
         "published-b",
         "github_app.pr_public_surface_published",
-        "JSONbored/gittensory#11",
+        "JSONbored/loopover#11",
         "completed",
         "{}",
       )
@@ -335,11 +335,11 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
   });
 
   it("clamps review accuracy to 0 when reopened auto-closes push reversals above the decided count", async () => {
-    // JSONbored/gittensory: 1 auto-merge that held, plus 2 auto-closes that were reopened (now open, so out
+    // JSONbored/loopover: 1 auto-merge that held, plus 2 auto-closes that were reopened (now open, so out
     // of merged+closed but still counted as reversals). decided=1, reversed=2 → an unclamped 1 - 2/1 = -100%.
     const handler = (sql: string): Row[] => {
-      if (isDispositions(sql)) return [{ project: "JSONbored/gittensory", reviewed: 3, merged: 1, closed: 0, inReview: 2 }];
-      if (isReversal(sql)) return [{ project: "JSONbored/gittensory", reversed: 2 }];
+      if (isDispositions(sql)) return [{ project: "JSONbored/loopover", reviewed: 3, merged: 1, closed: 0, inReview: 2 }];
+      if (isReversal(sql)) return [{ project: "JSONbored/loopover", reversed: 2 }];
       return [];
     };
     const out = await getPublicStats(stubEnv(handler), NOW);
@@ -352,14 +352,14 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
       stubEnv((sql, args) => {
         if (isReversal(sql)) {
           return [
-            { project: "JSONbored/gittensory", reversed: 1 },
+            { project: "JSONbored/loopover", reversed: 1 },
             { project: "CustomerCo/stealth-product", reversed: 1 },
           ].filter((row) => args.includes(String(row.project).toLowerCase()));
         }
         if (isWeekly(sql)) {
           const allowed = args.slice(2); // [sinceIso, sinceIso, ...projects]
           const weeklyRows = [
-            { project: "JSONbored/gittensory", reviewed: 2, merged: 1 },
+            { project: "JSONbored/loopover", reviewed: 2, merged: 1 },
             { project: "CustomerCo/stealth-product", reviewed: 3, merged: 3 },
           ].filter((row) =>
             allowed.includes(String(row.project).toLowerCase()),
@@ -377,7 +377,7 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
         if (isDispositions(sql)) {
           return [
             {
-              project: "JSONbored/gittensory",
+              project: "JSONbored/loopover",
               reviewed: 2,
               merged: 1,
               closed: 1,
@@ -402,12 +402,12 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
     expect(out.totals.reversed).toBe(1);
     expect(out.weekly).toEqual({ reviewed: 2, merged: 1 });
     expect(out.byProject.map((p) => p.project)).toEqual([
-      "JSONbored/gittensory",
+      "JSONbored/loopover",
     ]);
   });
 
   it("excludes dry-run terminal actions from live reversal counts", async () => {
-    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/gittensory" });
+    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/loopover" });
     const db = env.DB;
 
     await db
@@ -417,13 +417,13 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
       )
       .bind(
         "pr-real",
-        "JSONbored/gittensory",
+        "JSONbored/loopover",
         1,
         "real auto-closed PR",
         "closed",
         null,
         "pr-dry-run",
-        "JSONbored/gittensory",
+        "JSONbored/loopover",
         2,
         "dry-run close shadow",
         "open",
@@ -438,22 +438,22 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
       .bind(
         "published-real",
         "github_app.pr_public_surface_published",
-        "JSONbored/gittensory#1",
+        "JSONbored/loopover#1",
         "completed",
         "{}",
         "published-dry-run",
         "github_app.pr_public_surface_published",
-        "JSONbored/gittensory#2",
+        "JSONbored/loopover#2",
         "completed",
         "{}",
         "live-close",
         "agent.action.close",
-        "JSONbored/gittensory#1",
+        "JSONbored/loopover#1",
         "completed",
         JSON.stringify({ mode: "live" }),
         "dry-run-close",
         "agent.action.close",
-        "JSONbored/gittensory#2",
+        "JSONbored/loopover#2",
         "completed",
         JSON.stringify({ mode: "dry_run" }),
       )
@@ -470,7 +470,7 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
   // #1955/#2070: end-to-end over REAL D1/SQLite — published reviewEffortMinutes round-trip through
   // json_extract/SUM(COALESCE(...)) into minutesSaved.
   it("averages a real reviewEffortMinutes value out of metadata_json via json_extract (real D1)", async () => {
-    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/gittensory" });
+    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/loopover" });
     const db = env.DB;
 
     await db
@@ -480,13 +480,13 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
       )
       .bind(
         "pr-a",
-        "JSONbored/gittensory",
+        "JSONbored/loopover",
         10,
         "small fix",
         "closed",
         "2026-06-01T00:00:00.000Z",
         "pr-b",
-        "JSONbored/gittensory",
+        "JSONbored/loopover",
         11,
         "bigger change",
         "closed",
@@ -501,12 +501,12 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
       .bind(
         "published-a",
         "github_app.pr_public_surface_published",
-        "JSONbored/gittensory#10",
+        "JSONbored/loopover#10",
         "completed",
         JSON.stringify({ reviewEffortMinutes: 4 }),
         "published-b",
         "github_app.pr_public_surface_published",
-        "JSONbored/gittensory#11",
+        "JSONbored/loopover#11",
         "completed",
         JSON.stringify({ reviewEffortMinutes: 96 }),
       )
@@ -521,7 +521,7 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
   });
 
   it("deduplicates repeated public-surface publishes before averaging reviewEffortMinutes (real D1)", async () => {
-    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/gittensory" });
+    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/loopover" });
     const db = env.DB;
 
     await db
@@ -531,13 +531,13 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
       )
       .bind(
         "pr-republished",
-        "JSONbored/gittensory",
+        "JSONbored/loopover",
         20,
         "republished large review",
         "closed",
         "2026-06-01T00:00:00.000Z",
         "pr-single",
-        "JSONbored/gittensory",
+        "JSONbored/loopover",
         21,
         "single tiny review",
         "closed",
@@ -552,22 +552,22 @@ describe("getPublicStats — live aggregate over the review ledger", () => {
       .bind(
         "published-republished-a",
         "github_app.pr_public_surface_published",
-        "JSONbored/gittensory#20",
+        "JSONbored/loopover#20",
         "completed",
         JSON.stringify({ reviewEffortMinutes: 100 }),
         "published-republished-b",
         "github_app.pr_public_surface_published",
-        "JSONbored/gittensory#20",
+        "JSONbored/loopover#20",
         "completed",
         JSON.stringify({ reviewEffortMinutes: 100 }),
         "published-republished-c",
         "github_app.pr_public_surface_published",
-        "JSONbored/gittensory#20",
+        "JSONbored/loopover#20",
         "completed",
         JSON.stringify({ reviewEffortMinutes: 100 }),
         "published-single",
         "github_app.pr_public_surface_published",
-        "JSONbored/gittensory#21",
+        "JSONbored/loopover#21",
         "completed",
         JSON.stringify({ reviewEffortMinutes: 1 }),
       )

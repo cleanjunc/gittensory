@@ -5,7 +5,7 @@ describe("miner dashboard command actions", () => {
   it("builds copyable miner commands for an authenticated repo context", () => {
     const commands = buildMinerCommandActions({
       login: "JSONbored",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
     });
 
     expect(commands.map((command) => command.id)).toEqual([
@@ -28,13 +28,13 @@ describe("miner dashboard command actions", () => {
       commands.find((command) => command.id === "preflight"),
     ).toMatchObject({
       command:
-        "loopover-mcp preflight --login JSONbored --repo JSONbored/gittensory --base origin/main --json",
+        "loopover-mcp preflight --login JSONbored --repo JSONbored/loopover --base origin/main --json",
       state: "ready",
       copyable: true,
     });
     expect(commands.find((command) => command.id === "packet")).toMatchObject({
       command:
-        "loopover-mcp agent packet --login JSONbored --repo JSONbored/gittensory --base origin/main --json",
+        "loopover-mcp agent packet --login JSONbored --repo JSONbored/loopover --base origin/main --json",
       state: "ready",
       copyable: true,
     });

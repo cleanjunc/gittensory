@@ -35,7 +35,7 @@ describe("secret-patterns — shared secret-detection primitives (#4608)", () =>
       expect(HARD_SECRET_KINDS.has("seed_or_mnemonic")).toBe(false);
       expect(HARD_SECRET_KINDS.has("bittensor_key")).toBe(false);
       // generic_secret_assignment is a keyword-plus-quoted-value SHAPE heuristic, not a concrete credential
-      // format -- gittensory PR #5346 auto-closed a legitimate contributor PR over two inert test-fixture
+      // format -- loopover PR #5346 auto-closed a legitimate contributor PR over two inert test-fixture
       // strings that matched this shape but weren't real secrets. Split out into ADVISORY_ONLY_SECRET_KINDS
       // below (regression guard for that incident).
       expect(HARD_SECRET_KINDS.has("generic_secret_assignment")).toBe(false);
@@ -166,7 +166,7 @@ describe("secret-patterns — shared secret-detection primitives (#4608)", () =>
       expect(isPlaceholderSecretValue("aK9xQ2mZw7Ln4Rv8Pt3Bh6")).toBe(false);
     });
 
-    it("flags the two real false-positive fixture values from gittensory PR #5346/#5341 (regression)", () => {
+    it("flags the two real false-positive fixture values from loopover PR #5346/#5341 (regression)", () => {
       // Neither contains a PLACEHOLDER_VALUE_PATTERN keyword (no "fake"/"dummy"/"sample"/etc.), so before
       // looksLikeDescriptivePlaceholderPhrase these both slipped through as "looks like a secret" and
       // hard-closed a legitimate contributor PR twice in a row.
@@ -176,7 +176,7 @@ describe("secret-patterns — shared secret-detection primitives (#4608)", () =>
   });
 
   describe("looksLikeDescriptivePlaceholderPhrase", () => {
-    it("flags the two real false-positive fixture values from gittensory PR #5346/#5341 (regression)", () => {
+    it("flags the two real false-positive fixture values from loopover PR #5346/#5341 (regression)", () => {
       expect(looksLikeDescriptivePlaceholderPhrase("present-value-not-a-real-token")).toBe(true);
       expect(looksLikeDescriptivePlaceholderPhrase("test-value-should-never-appear-in-doctor-output")).toBe(true);
     });
@@ -225,7 +225,7 @@ describe("secret-patterns — shared secret-detection primitives (#4608)", () =>
       expect(hasGenericSecretAssignment('benign prose first.\nsecret = "aK9xQ2mZw7Ln4Rv8Pt3Bh6"')).toBe(true);
     });
 
-    it("returns false for the two real false-positive assignments from gittensory PR #5346/#5341 (regression)", () => {
+    it("returns false for the two real false-positive assignments from loopover PR #5346/#5341 (regression)", () => {
       expect(hasGenericSecretAssignment('GITHUB_TOKEN: "present-value-not-a-real-token"')).toBe(false);
       expect(
         hasGenericSecretAssignment('const secretToken = "test-value-should-never-appear-in-doctor-output";'),

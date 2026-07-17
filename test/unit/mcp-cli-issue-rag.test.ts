@@ -16,7 +16,7 @@ let apiUrl: string;
 let capturedRequests: Array<{ url: string; method: string; body: string }>;
 
 async function connect() {
-  configDir = mkdtempSync(join(tmpdir(), "gittensory-issue-rag-"));
+  configDir = mkdtempSync(join(tmpdir(), "loopover-issue-rag-"));
   capturedRequests = [];
   apiUrl = await startFixtureServer({
     onApiRequest: (request) => {
@@ -69,7 +69,7 @@ describe("loopover_retrieve_issue_context stdio proxy", () => {
       name: "loopover_retrieve_issue_context",
       arguments: {
         owner: "JSONbored",
-        repo: "gittensory",
+        repo: "loopover",
         title: "Improve SQLite backup readiness checks",
         labels: ["selfhost"],
         topK: 6,
@@ -88,7 +88,7 @@ describe("loopover_retrieve_issue_context stdio proxy", () => {
       body?: string;
     };
     expect(parsedBody.owner).toBe("JSONbored");
-    expect(parsedBody.repo).toBe("gittensory");
+    expect(parsedBody.repo).toBe("loopover");
     expect(parsedBody.title).toBe("Improve SQLite backup readiness checks");
     expect(parsedBody.labels).toEqual(["selfhost"]);
     expect(parsedBody.topK).toBe(6);
@@ -100,7 +100,7 @@ describe("loopover_retrieve_issue_context stdio proxy", () => {
       name: "loopover_retrieve_issue_context",
       arguments: {
         owner: "JSONbored",
-        repo: "gittensory",
+        repo: "loopover",
         title: "Improve SQLite backup readiness checks",
       },
     });

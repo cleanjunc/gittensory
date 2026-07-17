@@ -5,7 +5,7 @@ import type { PullRequestFileRecord } from "../../src/types";
 
 function file(path: string, previousFilename?: string | null): PullRequestFileRecord {
   return {
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     pullNumber: 42,
     path,
     previousFilename,

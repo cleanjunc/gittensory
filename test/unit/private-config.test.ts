@@ -540,27 +540,27 @@ describe("makeLocalReviewContextReader (#review-skills)", () => {
 
   it("reads the owner-qualified review/AGENTS.md + skills/*.md (sorted, .md only)", async () => {
     const dir = mkdtempSync(join(tmpdir(), "gt-review-"));
-    const rev = join(dir, "jsonbored__gittensory", "review");
+    const rev = join(dir, "jsonbored__loopover", "review");
     mkdirSync(join(rev, "skills"), { recursive: true });
-    writeFileSync(join(rev, "AGENTS.md"), "Review gittensory carefully.\n");
+    writeFileSync(join(rev, "AGENTS.md"), "Review loopover carefully.\n");
     writeFileSync(join(rev, "CLAUDE.md"), "Legacy guide should not win.\n");
     writeFileSync(join(rev, "skills", "b-second.md"), "---\nname: second\nwhen: always\n---\nSecond.\n");
     writeFileSync(join(rev, "skills", "a-first.md"), "First with no frontmatter.\n");
     writeFileSync(join(rev, "skills", "notes.txt"), "ignored — not .md\n");
     const reader = makeLocalReviewContextReader(dir)!;
-    const ctx = await reader("JSONbored/gittensory");
-    expect(ctx.guide).toContain("Review gittensory carefully.");
+    const ctx = await reader("JSONbored/loopover");
+    expect(ctx.guide).toContain("Review loopover carefully.");
     expect(ctx.guide).not.toContain("Legacy guide should not win.");
     expect(ctx.skills.map((s) => s.name)).toEqual(["a-first", "second"]); // sorted by filename; .txt ignored
   });
 
   it("omits a skill whose frontmatter sets enabled: false", async () => {
     const dir = mkdtempSync(join(tmpdir(), "gt-review-"));
-    const rev = join(dir, "jsonbored__gittensory", "review");
+    const rev = join(dir, "jsonbored__loopover", "review");
     mkdirSync(join(rev, "skills"), { recursive: true });
     writeFileSync(join(rev, "skills", "a-active.md"), "---\nname: active\nwhen: always\n---\nActive rubric.\n");
     writeFileSync(join(rev, "skills", "b-disabled.md"), "---\nname: disabled\nenabled: false\n---\nParked rubric.\n");
-    const ctx = await makeLocalReviewContextReader(dir)!("JSONbored/gittensory");
+    const ctx = await makeLocalReviewContextReader(dir)!("JSONbored/loopover");
     expect(ctx.skills.map((s) => s.name)).toEqual(["active"]); // the disabled skill is dropped, not deleted
   });
 

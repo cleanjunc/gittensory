@@ -234,10 +234,10 @@ describe("compileFocusManifestPolicy — public-safe output boundaries", () => {
       preferredLabels: ["feature", "settings"],
       publicNotes: ["Keep PRs narrow and tied to accepted scope."],
     });
-    const policy = compileFocusManifestPolicy("JSONbored/gittensory", manifest, { generatedAt: FIXED_DATE });
+    const policy = compileFocusManifestPolicy("JSONbored/loopover", manifest, { generatedAt: FIXED_DATE });
 
     expect(policy.present).toBe(true);
-    expect(policy.repoFullName).toBe("JSONbored/gittensory");
+    expect(policy.repoFullName).toBe("JSONbored/loopover");
     expect(policy.generatedAt).toBe(FIXED_DATE);
     expect(policy.publicSafe.labelPolicy.preferredLabels).toContain("feature");
     expect(policy.publicSafe.validation.linkedIssuePolicy).toBe("required");
@@ -251,7 +251,7 @@ describe("compileFocusManifestPolicy — public-safe output boundaries", () => {
       maintainerNotes: ["Internal: hotkey validation context only visible to maintainers."],
       publicNotes: ["Contribute only to accepted scope."],
     });
-    const policy = compileFocusManifestPolicy("JSONbored/gittensory", manifest, { generatedAt: FIXED_DATE });
+    const policy = compileFocusManifestPolicy("JSONbored/loopover", manifest, { generatedAt: FIXED_DATE });
 
     expect(JSON.stringify(policy.publicSafe)).not.toMatch(/hotkey/i);
     expect(policy.authenticated.privateNoteCount).toBe(1);
@@ -263,7 +263,7 @@ describe("compileFocusManifestPolicy — public-safe output boundaries", () => {
       wantedPaths: ["src/"],
       publicNotes: ["wallet setup guidance for contributors", "Keep PRs focused."],
     });
-    const policy = compileFocusManifestPolicy("JSONbored/gittensory", manifest, { generatedAt: FIXED_DATE });
+    const policy = compileFocusManifestPolicy("JSONbored/loopover", manifest, { generatedAt: FIXED_DATE });
 
     expect(policy.publicSafe.publicNotes).not.toContain("wallet setup guidance for contributors");
     expect(policy.publicSafe.publicNotes).toContain("Keep PRs focused.");
@@ -272,14 +272,14 @@ describe("compileFocusManifestPolicy — public-safe output boundaries", () => {
 
   it("emits readiness warnings when scope and validation are missing", () => {
     const manifest = parseFocusManifest({ issueDiscoveryPolicy: "neutral" });
-    const policy = compileFocusManifestPolicy("JSONbored/gittensory", manifest, { generatedAt: FIXED_DATE });
+    const policy = compileFocusManifestPolicy("JSONbored/loopover", manifest, { generatedAt: FIXED_DATE });
     expect(policy.present).toBe(false);
     expect(policy.publicSafe.readinessWarnings).toEqual([]);
   });
 
   it("treats legacy blocked-only manifests as absent", () => {
     const manifest = parseFocusManifest({ blockedPaths: ["migrations/"], wantedPaths: [], preferredLabels: [], testExpectations: [] });
-    const policy = compileFocusManifestPolicy("JSONbored/gittensory", manifest, { generatedAt: FIXED_DATE });
+    const policy = compileFocusManifestPolicy("JSONbored/loopover", manifest, { generatedAt: FIXED_DATE });
     expect(policy.present).toBe(false);
     expect(policy.publicSafe.readinessWarnings).toEqual([]);
     expect(JSON.stringify(policy.publicSafe)).not.toMatch(FORBIDDEN_POLICY_PATTERN);
@@ -287,7 +287,7 @@ describe("compileFocusManifestPolicy — public-safe output boundaries", () => {
 
   it("produces an absent policy for an empty manifest with no parse warnings", () => {
     const manifest = parseFocusManifest(null);
-    const policy = compileFocusManifestPolicy("JSONbored/gittensory", manifest, { generatedAt: FIXED_DATE });
+    const policy = compileFocusManifestPolicy("JSONbored/loopover", manifest, { generatedAt: FIXED_DATE });
     expect(policy.present).toBe(false);
     expect(policy.publicSafe.contributionLanes).toEqual([]);
     expect(policy.authenticated.parseWarnings).toEqual([]);
@@ -295,7 +295,7 @@ describe("compileFocusManifestPolicy — public-safe output boundaries", () => {
 
   it("records parse warnings in authenticated context without leaking to publicSafe", () => {
     const manifest = parseFocusManifest({ wantedPaths: "src/" });
-    const policy = compileFocusManifestPolicy("JSONbored/gittensory", manifest, { generatedAt: FIXED_DATE });
+    const policy = compileFocusManifestPolicy("JSONbored/loopover", manifest, { generatedAt: FIXED_DATE });
     expect(policy.authenticated.manifestWarningCount).toBeGreaterThan(0);
     expect(policy.authenticated.parseWarnings.length).toBeGreaterThan(0);
     expect(JSON.stringify(policy.publicSafe)).not.toMatch(/wantedPaths.*must be a list/i);

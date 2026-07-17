@@ -21,7 +21,7 @@ describe("scanForSecrets", () => {
   });
 
   // #4284: AWS's own officially published documentation placeholder caused 4 false-positive closes in
-  // gittensory's own subprocess-env-redaction-helper epic before this exclusion existed. Assembled from
+  // loopover's own subprocess-env-redaction-helper epic before this exclusion existed. Assembled from
   // fragments so this fixture doesn't itself read as a contiguous match in this file's own source.
   it("does NOT flag AWS's own officially published documentation example key", () => {
     expect(scanForSecrets("AKIA" + "IOSFODNN7EXAMPLE").kinds).not.toContain("aws_access_key");
@@ -144,7 +144,7 @@ describe("scanForSecrets", () => {
   });
 
   // #4579-followup: confirmed live false positives (awesome-claude#4758 "embedded_secret:
-  // unsafe_install_or_secret"; the same known fixture shape as metagraphed/gittensory#4524's
+  // unsafe_install_or_secret"; the same known fixture shape as metagraphed/loopover#4524's
   // "token: default-session-token") -- these exact literals are enum/fixture names, not credentials.
   it.each([
     ["session-token fixture", 'token: "default-session-token"'],

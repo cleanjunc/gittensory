@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildPredictedGateVerdict, type PredictedGateInput } from "../../packages/loopover-engine/src/predicted-gate";
 
-describe("gittensory-engine predicted-gate barrel exports (#2283)", () => {
+describe("loopover-engine predicted-gate barrel exports (#2283)", () => {
   it("re-exports predicted-gate symbols from the package barrel", async () => {
     const barrel = await import("../../packages/loopover-engine/src/index");
     expect(typeof barrel.buildPredictedGateVerdict).toBe("function");

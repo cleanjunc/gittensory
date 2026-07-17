@@ -9,8 +9,8 @@
 // no meaningful way to fake generic SQL execution for an arbitrary CREATE TABLE/INSERT/SELECT -- so it
 // follows the exact same PG_TEST_URL gate test/integration/selfhost-pg.test.ts already established: unset in
 // CI (skipped, not failed), set locally against a real Postgres to actually exercise it:
-//   docker run -d -e POSTGRES_PASSWORD=devpw -e POSTGRES_DB=gittensory -p 55432:5432 postgres:16
-//   PG_TEST_URL=postgres://postgres:devpw@localhost:55432/gittensory npx vitest run test/contract/selfhost-d1-database.test.ts
+//   docker run -d -e POSTGRES_PASSWORD=devpw -e POSTGRES_DB=loopover -p 55432:5432 postgres:16
+//   PG_TEST_URL=postgres://postgres:devpw@localhost:55432/loopover npx vitest run test/contract/selfhost-d1-database.test.ts
 // Every statement here uses only PG-native column types (INTEGER/TEXT) and `?`-style placeholders with
 // explicit values (never relying on SQLite ROWID auto-assignment), which pg-dialect.ts's translateDdl/
 // translateSql already pass through/translate unchanged (see its own doc comments) -- so the same SQL text is

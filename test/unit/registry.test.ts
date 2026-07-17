@@ -138,7 +138,7 @@ describe("registry normalization", () => {
   it("normalizes repository-list and array payload shapes defensively", () => {
     const fromObjectMap = normalizeRegistryPayload(
       {
-        "JSONbored/gittensory": { emission_share: 0.03 },
+        "JSONbored/loopover": { emission_share: 0.03 },
         "ignored/null": null,
         "ignored/array": [],
       },
@@ -169,7 +169,7 @@ describe("registry normalization", () => {
     const fromArray = normalizeRegistryPayload(
       [
         {
-          repository_full_name: "JSONbored/gittensory",
+          repository_full_name: "JSONbored/loopover",
           emission_share: 0.03,
           issue_discovery_share: 0,
           maintainer_cut: 0.1,
@@ -193,12 +193,12 @@ describe("registry normalization", () => {
       labelMultipliers: { bug: 1.2 },
       trustedLabelPipeline: true,
     });
-    expect(fromObjectMap.repositories.map((repo) => repo.repo)).toEqual(["JSONbored/gittensory"]);
+    expect(fromObjectMap.repositories.map((repo) => repo.repo)).toEqual(["JSONbored/loopover"]);
     expect(fromObjectMap.repositories[0]).toMatchObject({
-      repo: "JSONbored/gittensory",
+      repo: "JSONbored/loopover",
       issueDiscoveryShare: DEFAULT_ISSUE_DISCOVERY_SHARE,
     });
-    expect(fromArray.repositories.map((repo) => repo.repo)).toEqual(["JSONbored/gittensory", "bad/numbers"]);
+    expect(fromArray.repositories.map((repo) => repo.repo)).toEqual(["JSONbored/loopover", "bad/numbers"]);
     expect(fromArray.repositories.find((repo) => repo.repo === "bad/numbers")).toMatchObject({
       emissionShare: 0,
       issueDiscoveryShare: DEFAULT_ISSUE_DISCOVERY_SHARE,
@@ -209,7 +209,7 @@ describe("registry normalization", () => {
   it("persists and reads the latest snapshot from D1", async () => {
     const env = createTestEnv();
     const snapshot = normalizeRegistryPayload(
-      { "JSONbored/gittensory": { emission_share: 0.02, issue_discovery_share: 0.5 } },
+      { "JSONbored/loopover": { emission_share: 0.02, issue_discovery_share: 0.5 } },
       { kind: "raw-github", url: "https://example.test/master_repositories.json" },
       "2026-05-22T00:00:00.000Z",
     );
@@ -217,7 +217,7 @@ describe("registry normalization", () => {
     await persistRegistrySnapshot(env, snapshot);
     const latest = await getLatestRegistrySnapshot(env);
 
-    expect(latest?.repositories[0]?.repo).toBe("JSONbored/gittensory");
+    expect(latest?.repositories[0]?.repo).toBe("JSONbored/loopover");
     expect(latest?.source.kind).toBe("raw-github");
   });
 
@@ -227,7 +227,7 @@ describe("registry normalization", () => {
       env,
       normalizeRegistryPayload(
         {
-          "JSONbored/gittensory": { emission_share: 0.02, issue_discovery_share: 0 },
+          "JSONbored/loopover": { emission_share: 0.02, issue_discovery_share: 0 },
           "JSONbored/awesome-claude": { emission_share: 0.01, issue_discovery_share: 0 },
         },
         { kind: "raw-github", url: "fixture://old-registry" },
@@ -245,7 +245,7 @@ describe("registry normalization", () => {
       ),
     );
 
-    await expect(getRepository(env, "JSONbored/gittensory")).resolves.toMatchObject({
+    await expect(getRepository(env, "JSONbored/loopover")).resolves.toMatchObject({
       isRegistered: false,
       registryConfig: null,
     });
@@ -258,39 +258,39 @@ describe("registry normalization", () => {
   it("updates an existing case-variant repo row instead of inserting a duplicate", async () => {
     const env = createCloudTestEnv();
     // A GitHub-sourced row already exists under canonical casing.
-    await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } });
+    await upsertRepositoryFromGitHub(env, { name: "loopover", full_name: "JSONbored/loopover", private: false, owner: { login: "JSONbored" } });
 
     // The registry supplies the same repo with different casing.
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
-        { "jsonbored/gittensory": { emission_share: 0.02, issue_discovery_share: 0 } },
+        { "jsonbored/loopover": { emission_share: 0.02, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "fixture://registry" },
         "2026-05-22T00:00:00.000Z",
       ),
     );
 
     // The existing canonical row is updated to registered -- no duplicate primary-key row.
-    await expect(getRepository(env, "JSONbored/gittensory")).resolves.toMatchObject({ isRegistered: true });
-    const rows = await env.DB.prepare("SELECT full_name FROM repositories WHERE lower(full_name) = ?").bind("jsonbored/gittensory").all();
+    await expect(getRepository(env, "JSONbored/loopover")).resolves.toMatchObject({ isRegistered: true });
+    const rows = await env.DB.prepare("SELECT full_name FROM repositories WHERE lower(full_name) = ?").bind("jsonbored/loopover").all();
     expect(rows.results).toHaveLength(1);
-    expect((rows.results[0] as { full_name: string }).full_name).toBe("JSONbored/gittensory");
+    expect((rows.results[0] as { full_name: string }).full_name).toBe("JSONbored/loopover");
   });
 
   it("does not de-register a repo whose snapshot casing differs from the stored row", async () => {
     const env = createCloudTestEnv();
     await persistRegistrySnapshot(
       env,
-      normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.02, issue_discovery_share: 0 } }, { kind: "raw-github", url: "fixture://old" }, "2026-05-22T00:00:00.000Z"),
+      normalizeRegistryPayload({ "JSONbored/loopover": { emission_share: 0.02, issue_discovery_share: 0 } }, { kind: "raw-github", url: "fixture://old" }, "2026-05-22T00:00:00.000Z"),
     );
     // The next snapshot uses different casing for the same repo.
     await persistRegistrySnapshot(
       env,
-      normalizeRegistryPayload({ "jsonbored/gittensory": { emission_share: 0.02, issue_discovery_share: 0 } }, { kind: "raw-github", url: "fixture://new" }, "2026-05-23T00:00:00.000Z"),
+      normalizeRegistryPayload({ "jsonbored/loopover": { emission_share: 0.02, issue_discovery_share: 0 } }, { kind: "raw-github", url: "fixture://new" }, "2026-05-23T00:00:00.000Z"),
     );
 
-    await expect(getRepository(env, "JSONbored/gittensory")).resolves.toMatchObject({ isRegistered: true });
-    const rows = await env.DB.prepare("SELECT full_name FROM repositories WHERE lower(full_name) = ?").bind("jsonbored/gittensory").all();
+    await expect(getRepository(env, "JSONbored/loopover")).resolves.toMatchObject({ isRegistered: true });
+    const rows = await env.DB.prepare("SELECT full_name FROM repositories WHERE lower(full_name) = ?").bind("jsonbored/loopover").all();
     expect(rows.results).toHaveLength(1);
   });
 
@@ -298,11 +298,11 @@ describe("registry normalization", () => {
     const env = createCloudTestEnv();
     await persistRegistrySnapshot(
       env,
-      normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.02, issue_discovery_share: 0 } }, { kind: "raw-github", url: "fixture://seed" }, "2026-05-22T00:00:00.000Z"),
+      normalizeRegistryPayload({ "JSONbored/loopover": { emission_share: 0.02, issue_discovery_share: 0 } }, { kind: "raw-github", url: "fixture://seed" }, "2026-05-22T00:00:00.000Z"),
     );
     // An empty snapshot (e.g. a failed/empty registry fetch) must preserve registrations, not wipe them.
     await persistRegistrySnapshot(env, normalizeRegistryPayload({}, { kind: "raw-github", url: "fixture://empty" }, "2026-05-23T00:00:00.000Z"));
-    await expect(getRepository(env, "JSONbored/gittensory")).resolves.toMatchObject({ isRegistered: true });
+    await expect(getRepository(env, "JSONbored/loopover")).resolves.toMatchObject({ isRegistered: true });
   });
 
   it("collapses case-variant duplicates within a single snapshot to one row", async () => {
@@ -311,23 +311,23 @@ describe("registry normalization", () => {
       env,
       normalizeRegistryPayload(
         {
-          "JSONbored/gittensory": { emission_share: 0.02, issue_discovery_share: 0 },
-          "jsonbored/gittensory": { emission_share: 0.03, issue_discovery_share: 0 },
+          "JSONbored/loopover": { emission_share: 0.02, issue_discovery_share: 0 },
+          "jsonbored/loopover": { emission_share: 0.03, issue_discovery_share: 0 },
         },
         { kind: "raw-github", url: "fixture://dup-casing" },
         "2026-05-22T00:00:00.000Z",
       ),
     );
-    const rows = await env.DB.prepare("SELECT full_name FROM repositories WHERE lower(full_name) = ?").bind("jsonbored/gittensory").all();
+    const rows = await env.DB.prepare("SELECT full_name FROM repositories WHERE lower(full_name) = ?").bind("jsonbored/loopover").all();
     expect(rows.results).toHaveLength(1);
-    await expect(getRepository(env, "JSONbored/gittensory")).resolves.toMatchObject({ isRegistered: true });
+    await expect(getRepository(env, "JSONbored/loopover")).resolves.toMatchObject({ isRegistered: true });
   });
 
   it("falls back to raw GitHub when registry API probes fail", async () => {
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
       const url = input.toString();
       if (url.includes("raw.githubusercontent.com")) {
-        return Response.json({ "JSONbored/gittensory": { emission_share: 0.02, issue_discovery_share: 0.5 } });
+        return Response.json({ "JSONbored/loopover": { emission_share: 0.02, issue_discovery_share: 0.5 } });
       }
       return new Response("not found", { status: 404 });
     });
@@ -336,6 +336,6 @@ describe("registry normalization", () => {
 
     expect(snapshot.source.kind).toBe("raw-github");
     expect(snapshot.warnings.length).toBeGreaterThan(0);
-    expect(snapshot.repositories[0]?.repo).toBe("JSONbored/gittensory");
+    expect(snapshot.repositories[0]?.repo).toBe("JSONbored/loopover");
   });
 });

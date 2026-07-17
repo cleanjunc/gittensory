@@ -523,7 +523,7 @@ describe("pack-aware prediction (#693)", () => {
     const result = buildPredictedGateVerdict({
       input: { ...BASE_INPUT, body: "no issue", linkedIssues: [] },
       manifest: parseFocusManifest({ gate: { pack: "oss-anti-slop", linkedIssue: "block" } }),
-      // App-installed but NOT Gittensor-registered: a real repo record (not null → gittensory has "seen" it).
+      // App-installed but NOT Gittensor-registered: a real repo record (not null → loopover has "seen" it).
       repo: { ...REPO, isRegistered: false },
       issues: [],
       pullRequests: [],

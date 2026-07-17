@@ -28,7 +28,7 @@ async function connect(env: Env, identity?: AuthIdentity) {
   const server = (identity ? new LoopoverMcp(env, identity) : new LoopoverMcp(env)).createServer();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
-  const client = new Client({ name: "gittensory-refresh-repo-docs-test", version: "0.1.0" }, { capabilities: {} });
+  const client = new Client({ name: "loopover-refresh-repo-docs-test", version: "0.1.0" }, { capabilities: {} });
   await client.connect(clientTransport);
   return client;
 }

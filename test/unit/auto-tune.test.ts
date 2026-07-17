@@ -62,9 +62,9 @@ function stubFlags(over: Partial<FlagStore> = {}): {
 
 describe("planAutoTune (#self-improve) — circuit-breaker is one-directional", () => {
   it("engages when merge precision drops below the floor over a real sample", () => {
-    const a = planAutoTune(report([row({ project: "gittensory", decided: 20, wouldMerge: 12, mergeConfirmed: 8, mergePrecision: 0.66 })]));
+    const a = planAutoTune(report([row({ project: "loopover", decided: 20, wouldMerge: 12, mergeConfirmed: 8, mergePrecision: 0.66 })]));
     expect(a).toHaveLength(1);
-    expect(a[0]?.project).toBe("gittensory");
+    expect(a[0]?.project).toBe("loopover");
     expect(a[0]?.message).toMatch(/Auto-merge DISABLED/);
   });
   it("does NOT engage on a thin sample (< min decided)", () => {
@@ -221,11 +221,11 @@ describe("shouldAutoClear — #2348 weighted anti-gaming cutover", () => {
 
 describe("planCloseAutoTune (#close-precision-breaker) — tightening-only, close direction", () => {
   it("engages when CLOSE precision drops below the floor over a real sample", () => {
-    const a = planCloseAutoTune(report([row({ project: "gittensory", decided: 20, wouldClose: 12, closeConfirmed: 8, closePrecision: 0.66 })]));
+    const a = planCloseAutoTune(report([row({ project: "loopover", decided: 20, wouldClose: 12, closeConfirmed: 8, closePrecision: 0.66 })]));
     expect(a).toHaveLength(1);
-    expect(a[0]?.project).toBe("gittensory");
+    expect(a[0]?.project).toBe("loopover");
     expect(a[0]?.message).toMatch(/Auto-CLOSE DISABLED/);
-    expect(a[0]?.message).toContain("closehold:gittensory");
+    expect(a[0]?.message).toContain("closehold:loopover");
   });
   it("does NOT engage on a thin would-close sample even with enough total decided PRs", () => {
     expect(planCloseAutoTune(report([row({ project: "p", decided: 20, wouldClose: 1, closeConfirmed: 0, closePrecision: 0 })]))).toHaveLength(0);
@@ -379,7 +379,7 @@ describe("shouldAutoClearClose — #2348 weighted anti-gaming cutover", () => {
 
 describe("computeTuningRecommendations (#self-improve)", () => {
   it("says READY when merge precision is high over a real sample with no false closes", () => {
-    const recs = computeTuningRecommendations(report([row({ project: "gittensory", decided: 20, wouldMerge: 18, mergeConfirmed: 18, mergePrecision: 1.0 })]));
+    const recs = computeTuningRecommendations(report([row({ project: "loopover", decided: 20, wouldMerge: 18, mergeConfirmed: 18, mergePrecision: 1.0 })]));
     expect(recs).toHaveLength(1);
     expect(recs[0]?.severity).toBe("good");
     expect(recs[0]?.message).toMatch(/ready to flip live/i);

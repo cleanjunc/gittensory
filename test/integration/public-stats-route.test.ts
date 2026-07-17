@@ -12,9 +12,9 @@ import { PUBLIC_REVIEW_VOLUME_TREND_WEEKS } from "../../src/services/public-revi
 async function seed(env: Env) {
   // [repo, number, state, mergedAt] — merged (merged_at set) / closed (state closed, no merge) / open (in review).
   const prs: Array<[string, number, string, string | null]> = [
-    ["JSONbored/gittensory", 1, "closed", "2026-06-20T00:00:00Z"], // merged
-    ["JSONbored/gittensory", 2, "closed", null], // closed without merge
-    ["JSONbored/gittensory", 3, "open", null], // still in review
+    ["JSONbored/loopover", 1, "closed", "2026-06-20T00:00:00Z"], // merged
+    ["JSONbored/loopover", 2, "closed", null], // closed without merge
+    ["JSONbored/loopover", 3, "open", null], // still in review
     ["JSONbored/awesome-claude", 5, "closed", "2026-06-20T00:00:00Z"], // merged
     ["JSONbored/awesome-claude", 6, "closed", "2026-06-20T00:00:00Z"], // merged
   ];
@@ -37,10 +37,10 @@ async function seed(env: Env) {
       )
       .run();
   }
-  // One live reversal: the engine CLOSED gittensory#3, but it is now reopened (state 'open') — a human overturned
+  // One live reversal: the engine CLOSED loopover#3, but it is now reopened (state 'open') — a human overturned
   // the auto-action. awesome-claude has none → exercises the per-project ?? 0 fallback.
   await env.DB.prepare(
-    `INSERT INTO audit_events (id, event_type, target_key, outcome) VALUES ('rev1', 'agent.action.close', 'JSONbored/gittensory#3', 'completed')`,
+    `INSERT INTO audit_events (id, event_type, target_key, outcome) VALUES ('rev1', 'agent.action.close', 'JSONbored/loopover#3', 'completed')`,
   ).run();
 }
 
@@ -56,15 +56,15 @@ describe("GET /v1/public/stats (#1059)", () => {
   });
 
   it("a present publicStats manifest override turns the endpoint ON even when LOOPOVER_PUBLIC_STATS is OFF (#6275)", async () => {
-    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/gittensory" }); // flag unset → OFF
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { publicStats: { enabled: true } });
+    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/loopover" }); // flag unset → OFF
+    await upsertRepoFocusManifest(env, "JSONbored/loopover", { publicStats: { enabled: true } });
     const res = await createApp().request("/v1/public/stats", {}, env);
     expect(res.status).toBe(200);
   });
 
   it("a present publicStats manifest override turns the endpoint OFF even when LOOPOVER_PUBLIC_STATS is ON (#6275)", async () => {
-    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS: "1", LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/gittensory" });
-    await upsertRepoFocusManifest(env, "JSONbored/gittensory", { publicStats: { enabled: false } });
+    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS: "1", LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/loopover" });
+    await upsertRepoFocusManifest(env, "JSONbored/loopover", { publicStats: { enabled: false } });
     const res = await createApp().request("/v1/public/stats", {}, env);
     expect(res.status).toBe(404);
   });
@@ -72,7 +72,7 @@ describe("GET /v1/public/stats (#1059)", () => {
   it("serves public-safe aggregates with no auth + a cache header when enabled", async () => {
     const env = createTestEnv({
       LOOPOVER_PUBLIC_STATS: "1",
-      LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/gittensory,JSONbored/awesome-claude",
+      LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/loopover,JSONbored/awesome-claude",
     });
     await seed(env);
     const res = await createApp().request("/v1/public/stats", {}, env);
@@ -97,8 +97,8 @@ describe("GET /v1/public/stats (#1059)", () => {
     expect(body.totals.reviewed).toBe(5); // merged 3 + closed 1 + in-review 1
     expect(body.totals.reversed).toBe(1);
     expect(body.totals.accuracyPct).toBe(75); // 1 - 1 / (3 + 1)
-    // busiest repo first: gittensory reviewed 3 (m1+c1+cm1) > awesome-claude 2 (m2+m3)
-    expect(body.byProject[0]?.project).toBe("JSONbored/gittensory");
+    // busiest repo first: loopover reviewed 3 (m1+c1+cm1) > awesome-claude 2 (m2+m3)
+    expect(body.byProject[0]?.project).toBe("JSONbored/loopover");
     expect(body.byProject.map((p) => p.project)).toContain(
       "JSONbored/awesome-claude",
     );

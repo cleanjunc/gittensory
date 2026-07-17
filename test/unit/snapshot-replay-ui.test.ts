@@ -12,7 +12,7 @@ describe("buildSnapshotReplayView", () => {
     expect(view.confidence).toBe("high");
     expect(view.freshness).toBe("fresh");
     expect(view.scoringModelId).toBe("scoring-1");
-    expect(view.target).toEqual({ repoFullName: "JSONbored/gittensory", pullNumber: 12, issueNumber: null });
+    expect(view.target).toEqual({ repoFullName: "JSONbored/loopover", pullNumber: 12, issueNumber: null });
     expect(view.sources).toEqual([
       { name: "contributor_decision_pack", freshness: "fresh", generatedAt: "2026-06-08T00:00:00.000Z" },
     ]);
@@ -58,7 +58,7 @@ describe("buildSnapshotReplayView", () => {
     expect(view.notice).toBe("This snapshot has no provenance to replay.");
     expect(view.snapshotId).toBe("recommendation:context-1:run-1:00:choose_next_work");
     expect(view.actionType).toBe("choose_next_work");
-    expect(view.target.repoFullName).toBe("JSONbored/gittensory");
+    expect(view.target.repoFullName).toBe("JSONbored/loopover");
   });
 
   it("shows private counterfactual detail for authenticated viewers", () => {
@@ -69,7 +69,7 @@ describe("buildSnapshotReplayView", () => {
     });
     expect(view.counterfactuals).toEqual([
       {
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         recommendation: "contribute_now",
         alternatives: [
           {
@@ -111,7 +111,7 @@ describe("buildSnapshotReplayView", () => {
       viewer: "authenticated",
     });
     expect(view.counterfactuals).toHaveLength(1);
-    expect(view.counterfactuals[0]?.repoFullName).toBe("JSONbored/gittensory");
+    expect(view.counterfactuals[0]?.repoFullName).toBe("JSONbored/loopover");
   });
 
   it("narrows unknown confidence/freshness and skips malformed sources and alternatives", () => {
@@ -124,7 +124,7 @@ describe("buildSnapshotReplayView", () => {
         }),
       }),
       counterfactuals: [
-        { repoFullName: "JSONbored/gittensory", recommendation: "contribute_now", rejectedAlternatives: ["x", {}, { facts: [] }] },
+        { repoFullName: "JSONbored/loopover", recommendation: "contribute_now", rejectedAlternatives: ["x", {}, { facts: [] }] },
       ],
       viewer: "authenticated",
     });
@@ -160,7 +160,7 @@ function snapshot(overrides: Record<string, unknown> = {}): Record<string, unkno
     actionType: "choose_next_work",
     generatedAt: "2026-06-08T00:00:00.000Z",
     publicSafe: true,
-    target: { repoFullName: "JSONbored/gittensory", pullNumber: 12 },
+    target: { repoFullName: "JSONbored/loopover", pullNumber: 12 },
     provenance: provenance(),
   };
   const merged = { ...base, ...overrides };
@@ -171,7 +171,7 @@ function snapshot(overrides: Record<string, unknown> = {}): Record<string, unkno
 function counterfactuals(): Array<Record<string, unknown>> {
   return [
     {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       recommendation: "contribute_now",
       rejectedAlternatives: [
         {

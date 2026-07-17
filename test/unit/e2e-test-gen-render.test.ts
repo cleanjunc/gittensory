@@ -90,8 +90,8 @@ describe("buildE2eTestGenCommentBody", () => {
   // #4613: the footer's attribution link honors a self-hoster's PUBLIC_SITE_ORIGIN instead of always
   // pointing at LOOPOVER_SITE_URL.
   it("#4613: honors env.PUBLIC_SITE_ORIGIN in the footer attribution link", () => {
-    const selfHosted = buildE2eTestGenCommentBody({ env: { PUBLIC_SITE_ORIGIN: "https://gittensory.example.org" }, actor: "maintainer", testSource: "test('x', () => {});" });
-    expect(selfHosted).toContain("Checked by [LoopOver](https://gittensory.example.org)");
+    const selfHosted = buildE2eTestGenCommentBody({ env: { PUBLIC_SITE_ORIGIN: "https://loopover.example.org" }, actor: "maintainer", testSource: "test('x', () => {});" });
+    expect(selfHosted).toContain("Checked by [LoopOver](https://loopover.example.org)");
     expect(selfHosted).not.toContain(LOOPOVER_SITE_URL);
   });
 

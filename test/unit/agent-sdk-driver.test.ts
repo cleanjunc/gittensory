@@ -97,7 +97,7 @@ describe("createAgentSdkCodingAgentDriver", () => {
     // not eliminate. Reproduced under simulated contention (16 CPU-bound processes oversubscribing a
     // 12-core machine): clean single-attempt runs ranged ~0.3-20s, with one run exceeding 30s outright.
     // 60s covers the observed range with headroom instead of relying on ambient timing.
-    const dir = await mkdtemp(join(tmpdir(), "gittensory-agent-sdk-"));
+    const dir = await mkdtemp(join(tmpdir(), "loopover-agent-sdk-"));
     const commitEnv = {
       ...process.env,
       GIT_AUTHOR_NAME: "Test User",

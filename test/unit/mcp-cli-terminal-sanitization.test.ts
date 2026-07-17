@@ -57,7 +57,7 @@ describe("loopover-mcp CLI — terminal-escape sanitization (#6261)", () => {
   });
 
   it("repo-decision: a hostile nextActions entry and rerunGuidance cannot reach the terminal", async () => {
-    const out = await runAsync(["repo-decision", "--login", "JSONbored", "--repo", "JSONbored/gittensory"], await env());
+    const out = await runAsync(["repo-decision", "--login", "JSONbored", "--repo", "JSONbored/loopover"], await env());
     expectNeutralized(out);
   });
 

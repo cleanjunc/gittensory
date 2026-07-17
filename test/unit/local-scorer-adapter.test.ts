@@ -88,7 +88,7 @@ describe("local scorer adapter", () => {
     const { buildBranchAnalysisPayload, collectLocalBranchMetadata } = await import("../../packages/loopover-mcp/lib/local-branch.js");
     const payload = buildBranchAnalysisPayload({
       cwd: process.cwd(),
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       baseRef: "HEAD",
       login: "local",
       scorePreviewCommand: fixtureCommand("scorer-nonzero.mjs"),
@@ -99,7 +99,7 @@ describe("local scorer adapter", () => {
     expect(JSON.stringify(payload)).not.toMatch(/BEGIN (RSA )?PRIVATE KEY/);
 
     process.env.LOOPOVER_UPLOAD_SOURCE = "true";
-    expect(() => collectLocalBranchMetadata({ cwd: process.cwd(), repoFullName: "JSONbored/gittensory", login: "local" })).toThrow(/not supported/);
+    expect(() => collectLocalBranchMetadata({ cwd: process.cwd(), repoFullName: "JSONbored/loopover", login: "local" })).toThrow(/not supported/);
     delete process.env.LOOPOVER_UPLOAD_SOURCE;
   });
 
@@ -121,7 +121,7 @@ describe("local scorer adapter", () => {
     previousGittensorRoot = process.env.GITTENSOR_ROOT;
     previousCommand = process.env.GITTENSOR_SCORE_PREVIEW_CMD;
     process.env.GITTENSOR_ROOT = "/secret/home/user/gittensor";
-    process.env.GITTENSOR_SCORE_PREVIEW_CMD = `/secret/opt/tools/node /secret/home/user/gittensory-mcp/scripts/gittensor-score-preview.mjs`;
+    process.env.GITTENSOR_SCORE_PREVIEW_CMD = `/secret/opt/tools/node /secret/home/user/loopover-mcp/scripts/gittensor-score-preview.mjs`;
 
     expect(redactLocalPath("/secret/home/user/gittensor")).not.toContain("/secret/home/user");
     expect(redactScorerCommand(process.env.GITTENSOR_SCORE_PREVIEW_CMD)).toBe("node <scorer-script>/gittensor-score-preview.mjs");

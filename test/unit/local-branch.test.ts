@@ -1461,7 +1461,7 @@ describe("local branch analysis", () => {
     expect(largeUnverified.preflight.localDiff.changedLineCount).toBe(0);
   });
 
-  it("keeps unregistered gittensory work in product/maintainer context instead of miner target context", () => {
+  it("keeps unregistered loopover work in product/maintainer context instead of miner target context", () => {
     const analysis = buildLocalBranchAnalysis({
       input: {
         login: "jsonbored",
@@ -1730,7 +1730,7 @@ describe("local MCP git metadata collection", () => {
   it("counts pending commits, emits CI hints, and tracks deleted or renamed paths", async () => {
     // @ts-expect-error package helper is plain JS because the local wrapper ships as a Node bin package.
     const { collectCiStatusHints, collectLocalBranchMetadata, collectPendingCommitCount } = await import("../../packages/loopover-mcp/lib/local-branch.js");
-    tempDir = mkdtempSync(join(tmpdir(), "gittensory-local-"));
+    tempDir = mkdtempSync(join(tmpdir(), "loopover-local-"));
     git(tempDir, "init");
     git(tempDir, "config", "user.email", "test@example.com");
     git(tempDir, "config", "user.name", "LoopOver Test");
@@ -1766,7 +1766,7 @@ describe("local MCP git metadata collection", () => {
   it("counts additions and deletions for cross-directory renames that share no prefix or suffix", async () => {
     // @ts-expect-error package helper is plain JS because the local wrapper ships as a Node bin package.
     const { collectLocalBranchMetadata } = await import("../../packages/loopover-mcp/lib/local-branch.js");
-    tempDir = mkdtempSync(join(tmpdir(), "gittensory-local-"));
+    tempDir = mkdtempSync(join(tmpdir(), "loopover-local-"));
     git(tempDir, "init");
     git(tempDir, "config", "user.email", "test@example.com");
     git(tempDir, "config", "user.name", "LoopOver Test");
@@ -1806,13 +1806,13 @@ describe("local MCP git metadata collection", () => {
   it("returns no lines when the git command fails", async () => {
     // @ts-expect-error package helper is plain JS because the local wrapper ships as a Node bin package.
     const { gitLines } = await import("../../packages/loopover-mcp/lib/local-branch.js");
-    expect(gitLines(join(tmpdir(), "gittensory-no-such-repo-d8f3"), ["rev-parse", "HEAD"])).toEqual([]);
+    expect(gitLines(join(tmpdir(), "loopover-no-such-repo-d8f3"), ["rev-parse", "HEAD"])).toEqual([]);
   });
 
   it("counts stats and keeps verbatim paths for non-ASCII filenames at the default core.quotePath", async () => {
     // @ts-expect-error package helper is plain JS because the local wrapper ships as a Node bin package.
     const { collectLocalBranchMetadata } = await import("../../packages/loopover-mcp/lib/local-branch.js");
-    tempDir = mkdtempSync(join(tmpdir(), "gittensory-local-"));
+    tempDir = mkdtempSync(join(tmpdir(), "loopover-local-"));
     git(tempDir, "init");
     git(tempDir, "config", "user.email", "test@example.com");
     git(tempDir, "config", "user.name", "LoopOver Test");
@@ -1921,12 +1921,12 @@ describe("local MCP git metadata collection", () => {
     // @ts-expect-error package helper is plain JS because the local wrapper ships as a Node bin package.
     const { collectLocalBranchMetadata, parseGitRemote } = await import("../../packages/loopover-mcp/lib/local-branch.js");
     expect(parseGitRemote("git@github.com:entrius/allways-ui.git")).toBe("entrius/allways-ui");
-    expect(parseGitRemote("https://github.com/JSONbored/gittensory.git")).toBe("JSONbored/gittensory");
-    expect(parseGitRemote("https://github.com/JSONbored/gittensory/")).toBe("JSONbored/gittensory");
-    expect(parseGitRemote("https://github.com/JSONbored/gittensory////")).toBe("JSONbored/gittensory");
+    expect(parseGitRemote("https://github.com/JSONbored/loopover.git")).toBe("JSONbored/loopover");
+    expect(parseGitRemote("https://github.com/JSONbored/loopover/")).toBe("JSONbored/loopover");
+    expect(parseGitRemote("https://github.com/JSONbored/loopover////")).toBe("JSONbored/loopover");
     expect(parseGitRemote(`x${"/".repeat(32_000)}x`)).toBeUndefined();
 
-    tempDir = mkdtempSync(join(tmpdir(), "gittensory-local-"));
+    tempDir = mkdtempSync(join(tmpdir(), "loopover-local-"));
     git(tempDir, "init");
     git(tempDir, "config", "user.email", "test@example.com");
     git(tempDir, "config", "user.name", "LoopOver Test");
@@ -1964,7 +1964,7 @@ describe("local MCP git metadata collection", () => {
   it("selects and validates cwd from MCP roots without leaking local paths", async () => {
     // @ts-expect-error package helper is plain JS because the local wrapper ships as a Node bin package.
     const { collectLocalBranchMetadata, normalizeMcpWorkspaceRoots, resolveWorkspaceCwd } = await import("../../packages/loopover-mcp/lib/local-branch.js");
-    tempDir = mkdtempSync(join(tmpdir(), "gittensory-local-"));
+    tempDir = mkdtempSync(join(tmpdir(), "loopover-local-"));
     const workspace = join(tempDir, "workspace");
     const outside = join(tempDir, "outside");
     mkdirSync(workspace, { recursive: true });

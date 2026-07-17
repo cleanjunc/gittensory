@@ -35,7 +35,7 @@ const LOOPOVER_MANIFEST = parseFocusManifestContent(
 
 function openIssue(number: number, title: string, body?: string): IssueRecord {
   return {
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     number,
     title,
     state: "open",
@@ -102,7 +102,7 @@ describe("contributor issue drafts", () => {
   });
 
   it("builds candidates from policy warnings, upstream drift, and wanted paths", () => {
-    const repoFullName = "JSONbored/gittensory";
+    const repoFullName = "JSONbored/loopover";
     const repo = { fullName: repoFullName, isRegistered: true } as never;
     const issues: IssueRecord[] = [];
     const pullRequests: never[] = [];
@@ -125,7 +125,7 @@ describe("contributor issue drafts", () => {
       contributorIntakeHealth,
       focusManifest: manifest,
       openIssues: [],
-      upstreamDriftWarnings: ["Upstream registry drift is open for JSONbored/gittensory: maintainerCut changed."],
+      upstreamDriftWarnings: ["Upstream registry drift is open for JSONbored/loopover: maintainerCut changed."],
     });
     expect(candidates.some((entry) => entry.topic === "policy:focus_policy_missing")).toBe(true);
     expect(candidates.some((entry) => entry.topic === "upstream:registry_drift")).toBe(true);
@@ -135,7 +135,7 @@ describe("contributor issue drafts", () => {
   it("dry-run no-create test leaves GitHub untouched", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const env = createTestEnv();
-    const result = await generateContributorIssueDrafts(env, "JSONbored/gittensory", { dryRun: true, limit: 2 });
+    const result = await generateContributorIssueDrafts(env, "JSONbored/loopover", { dryRun: true, limit: 2 });
     expect(result.dryRun).toBe(true);
     expect(result.createRequested).toBe(false);
     expect(result.created).toBe(0);
@@ -146,8 +146,8 @@ describe("contributor issue drafts", () => {
 
   it("normalizes draft limits to at least one and caps excessive values", async () => {
     const env = createTestEnv();
-    const low = await generateContributorIssueDrafts(env, "JSONbored/gittensory", { dryRun: true, limit: 0 });
-    const high = await generateContributorIssueDrafts(env, "JSONbored/gittensory", { dryRun: true, limit: 100 });
+    const low = await generateContributorIssueDrafts(env, "JSONbored/loopover", { dryRun: true, limit: 0 });
+    const high = await generateContributorIssueDrafts(env, "JSONbored/loopover", { dryRun: true, limit: 100 });
     expect(low.drafts.length).toBeLessThanOrEqual(1);
     expect(high.drafts.length).toBeLessThanOrEqual(20);
   });
@@ -158,7 +158,7 @@ describe("contributor issue drafts", () => {
       vi.fn(async () =>
         Response.json({
           number: 501,
-          html_url: "https://github.com/JSONbored/gittensory/issues/501",
+          html_url: "https://github.com/JSONbored/loopover/issues/501",
         }),
       ),
     );
@@ -168,21 +168,21 @@ describe("contributor issue drafts", () => {
       wantedPaths: ["src/unique-path-119/"],
       testExpectations: ["npm run test:ci"],
     };
-    const repo = { fullName: "JSONbored/gittensory", isRegistered: true } as never;
-    const collisions = buildCollisionReport("JSONbored/gittensory", [], []);
+    const repo = { fullName: "JSONbored/loopover", isRegistered: true } as never;
+    const collisions = buildCollisionReport("JSONbored/loopover", [], []);
     const policy = buildRepoPolicyReadiness({
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       focusManifest: manifest,
       settings: { requireLinkedIssue: false } as never,
-      lane: buildLaneAdvice(repo, "JSONbored/gittensory"),
-      configQuality: buildConfigQuality(repo, [], [], "JSONbored/gittensory"),
-      labelAudit: buildLabelAudit(repo, [], [], [], "JSONbored/gittensory"),
+      lane: buildLaneAdvice(repo, "JSONbored/loopover"),
+      configQuality: buildConfigQuality(repo, [], [], "JSONbored/loopover"),
+      labelAudit: buildLabelAudit(repo, [], [], [], "JSONbored/loopover"),
       queueHealth: buildQueueHealth(repo, [], [], collisions, { openIssues: 0, openPullRequests: 0 }),
-      contributorIntakeHealth: buildContributorIntakeHealth(repo, [], [], "JSONbored/gittensory", collisions, { openIssues: 0, openPullRequests: 0 }),
+      contributorIntakeHealth: buildContributorIntakeHealth(repo, [], [], "JSONbored/loopover", collisions, { openIssues: 0, openPullRequests: 0 }),
     });
     expect(policy.publicWarnings.length).toBeGreaterThan(0);
 
-    const result = await generateContributorIssueDrafts(env, "JSONbored/gittensory", {
+    const result = await generateContributorIssueDrafts(env, "JSONbored/loopover", {
       dryRun: false,
       create: true,
       limit: 1,
@@ -229,7 +229,7 @@ describe("contributor issue drafts", () => {
   });
 
   it("detects declined drafts by stable marker with wontfix and cooldown policy", async () => {
-    const fingerprint = await contributorIssueDraftFingerprint("JSONbored/gittensory", "policy:focus_policy_missing", "policy:focus_policy_missing");
+    const fingerprint = await contributorIssueDraftFingerprint("JSONbored/loopover", "policy:focus_policy_missing", "policy:focus_policy_missing");
     const marker = contributorIssueDraftMarker(fingerprint);
     const closed = (over: Partial<IssueRecord>): IssueRecord => ({
       ...openIssue(5, "feat(issues): address focus-policy-missing policy readiness for repo", marker),
@@ -350,7 +350,7 @@ describe("contributor issue drafts", () => {
     const env = createTestEnv();
     vi.spyOn(repositories, "listOpenIssues").mockResolvedValue([]);
 
-    const result = await generateContributorIssueDrafts(env, "JSONbored/gittensory", {
+    const result = await generateContributorIssueDrafts(env, "JSONbored/loopover", {
       dryRun: false,
       create: true,
       limit: 1,
@@ -365,7 +365,7 @@ describe("contributor issue drafts", () => {
     const env = createTestEnv({ LOOPOVER_CONTRIBUTOR_ISSUE_TOKEN: "token" });
     vi.spyOn(repositories, "listOpenIssues").mockResolvedValue([]);
 
-    const result = await generateContributorIssueDrafts(env, "JSONbored/gittensory", {
+    const result = await generateContributorIssueDrafts(env, "JSONbored/loopover", {
       dryRun: false,
       create: true,
       limit: 1,
@@ -380,14 +380,14 @@ describe("contributor issue drafts", () => {
       vi.fn(async () =>
         Response.json({
           number: 501,
-          html_url: "https://github.com/JSONbored/gittensory/issues/501",
+          html_url: "https://github.com/JSONbored/loopover/issues/501",
         }),
       ),
     );
     const auditSpy = vi.spyOn(repositories, "recordAuditEvent").mockResolvedValue(undefined);
     vi.spyOn(repositories, "listOpenIssues").mockResolvedValue([]);
     const env = createTestEnv({ LOOPOVER_CONTRIBUTOR_ISSUE_TOKEN: "token" });
-    const result = await generateContributorIssueDrafts(env, "JSONbored/gittensory", {
+    const result = await generateContributorIssueDrafts(env, "JSONbored/loopover", {
       dryRun: false,
       create: true,
       limit: 1,
@@ -495,7 +495,7 @@ describe("contributor issue drafts", () => {
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ html_url: "https://github.com/x/y/issues/1" })));
     const env = createTestEnv({ LOOPOVER_CONTRIBUTOR_ISSUE_TOKEN: "token" });
     vi.spyOn(repositories, "listOpenIssues").mockResolvedValue([]);
-    const result = await generateContributorIssueDrafts(env, "JSONbored/gittensory", {
+    const result = await generateContributorIssueDrafts(env, "JSONbored/loopover", {
       dryRun: false,
       create: true,
       limit: 1,
@@ -530,14 +530,14 @@ describe("contributor issue drafts", () => {
       vi.fn(async () =>
         Response.json({
           number: 502,
-          html_url: "https://github.com/JSONbored/gittensory/issues/502",
+          html_url: "https://github.com/JSONbored/loopover/issues/502",
         }),
       ),
     );
     const auditSpy = vi.spyOn(repositories, "recordAuditEvent").mockResolvedValue(undefined);
     vi.spyOn(repositories, "listOpenIssues").mockResolvedValue([]);
     const env = createTestEnv({ LOOPOVER_CONTRIBUTOR_ISSUE_TOKEN: "token" });
-    const result = await generateContributorIssueDrafts(env, "JSONbored/gittensory", {
+    const result = await generateContributorIssueDrafts(env, "JSONbored/loopover", {
       dryRun: false,
       create: true,
     });

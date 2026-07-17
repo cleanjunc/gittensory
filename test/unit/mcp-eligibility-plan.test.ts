@@ -21,7 +21,7 @@ async function connect(env: Env = createTestEnv()) {
   const server = new LoopoverMcp(env).createServer();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
-  const client = new Client({ name: "gittensory-eligibility-plan-test", version: "0.1.0" }, { capabilities: {} });
+  const client = new Client({ name: "loopover-eligibility-plan-test", version: "0.1.0" }, { capabilities: {} });
   await client.connect(clientTransport);
   return client;
 }
@@ -128,7 +128,7 @@ describe("MCP loopover_get_eligibility_plan (#2222)", () => {
     const server = new LoopoverMcp(env).createServer();
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await server.connect(serverTransport);
-    const client = new Client({ name: "gittensory-eligibility-plan-contributor-test", version: "0.1.0" }, { capabilities: {} });
+    const client = new Client({ name: "loopover-eligibility-plan-contributor-test", version: "0.1.0" }, { capabilities: {} });
     await client.connect(clientTransport);
 
     const plan = await callPlan(client, {

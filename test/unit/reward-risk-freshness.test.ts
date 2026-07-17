@@ -71,7 +71,7 @@ function toFreshnessIssues(issues: IssueRecord[]): FreshnessIssue[] {
   }));
 }
 
-describe("reward-risk freshness parity with gittensory-engine", () => {
+describe("reward-risk freshness parity with loopover-engine", () => {
   const collab = repo("owner/collab-repo");
   const profile = buildContributorProfile("dev", { login: "dev", topLanguages: [], source: "github" }, [], []);
   const history = buildContributorOutcomeHistory({

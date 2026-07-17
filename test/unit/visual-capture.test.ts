@@ -474,7 +474,7 @@ describe("mapFilesToRoutes app-folder generalization (#3611 follow-up)", () => {
 describe("review.visual.production_url (#3611 follow-up)", () => {
   it("prefers visualConfig.productionUrl over the global PUBLIC_SITE_ORIGIN env var for the 'before' shot", async () => {
     const result = await buildCapture(
-      createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://gittensory.example.com" }),
+      createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://loopover.example.com" }),
       "installation-token",
       { repoFullName: "owner/metagraphed", prNumber: 50, previewUrl: "https://preview.example.com" },
       ["apps/ui/src/routes/index.tsx"],
@@ -482,27 +482,27 @@ describe("review.visual.production_url (#3611 follow-up)", () => {
       { productionUrl: "https://metagraph.example.com" },
     );
     expect(result.routes[0]?.beforeUrl).toContain(encodeURIComponent("https://metagraph.example.com/"));
-    expect(result.routes[0]?.beforeUrl).not.toContain(encodeURIComponent("https://gittensory.example.com"));
+    expect(result.routes[0]?.beforeUrl).not.toContain(encodeURIComponent("https://loopover.example.com"));
   });
 
   it("falls back to the global PUBLIC_SITE_ORIGIN when visualConfig.productionUrl is null/unset", async () => {
     const withNull = await buildCapture(
-      createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://gittensory.example.com" }),
+      createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://loopover.example.com" }),
       "installation-token",
       { repoFullName: "owner/repo", prNumber: 51, previewUrl: "https://preview.example.com" },
       ["apps/loopover-ui/src/routes/app.index.tsx"],
       undefined,
       { productionUrl: null },
     );
-    expect(withNull.routes[0]?.beforeUrl).toContain(encodeURIComponent("https://gittensory.example.com/app"));
+    expect(withNull.routes[0]?.beforeUrl).toContain(encodeURIComponent("https://loopover.example.com/app"));
 
     const withoutConfig = await buildCapture(
-      createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://gittensory.example.com" }),
+      createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://loopover.example.com" }),
       "installation-token",
       { repoFullName: "owner/repo", prNumber: 52, previewUrl: "https://preview.example.com" },
       ["apps/loopover-ui/src/routes/app.index.tsx"],
     );
-    expect(withoutConfig.routes[0]?.beforeUrl).toContain(encodeURIComponent("https://gittensory.example.com/app"));
+    expect(withoutConfig.routes[0]?.beforeUrl).toContain(encodeURIComponent("https://loopover.example.com/app"));
   });
 
   it("degrades to an empty 'before' base (no page, no shot) when NEITHER productionUrl nor PUBLIC_SITE_ORIGIN is set at all", async () => {
@@ -1739,8 +1739,8 @@ describe("buildCapture scroll-GIF wiring (#3612)", () => {
 });
 
 describe("hasSuccessfulBotCapture (#4110)", () => {
-  const REAL_BEFORE = "https://api.example/loopover/shot?key=gittensory%2Fshots%2Fbefore.png";
-  const REAL_AFTER = "https://api.example/loopover/shot?key=gittensory%2Fshots%2Fafter.png";
+  const REAL_BEFORE = "https://api.example/loopover/shot?key=loopover%2Fshots%2Fbefore.png";
+  const REAL_AFTER = "https://api.example/loopover/shot?key=loopover%2Fshots%2Fafter.png";
   const ON_DEMAND_BEFORE = "https://api.example/loopover/shot?url=https%3A%2F%2Fprod.example%2Fapp&w=1440&h=900";
   const ON_DEMAND_AFTER = "https://api.example/loopover/shot?url=https%3A%2F%2Fpreview.example%2Fapp&w=1440&h=900";
   const LOADING_PLACEHOLDER = "https://api.example/loopover/shot?placeholder=loading";

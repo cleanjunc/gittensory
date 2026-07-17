@@ -226,7 +226,7 @@ describe("loopover-miner status/doctor (#2288)", () => {
 
   it("readInstalledEnginePackageVersionFromPaths falls back to the workspace engine package", () => {
     const root = tempRoot();
-    const workspacePkg = join(root, "gittensory-engine-package.json");
+    const workspacePkg = join(root, "loopover-engine-package.json");
     writeFileSync(workspacePkg, JSON.stringify({ version: "0.2.0" }));
     expect(readInstalledEnginePackageVersionFromPaths("/missing/entry", workspacePkg)).toBe("0.2.0");
     writeFileSync(workspacePkg, "not-json");

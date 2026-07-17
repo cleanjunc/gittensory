@@ -1,4 +1,4 @@
-// Mirror of the app suite pointed at the gittensory-engine copy so the extracted module owns its branch coverage (#2280).
+// Mirror of the app suite pointed at the loopover-engine copy so the extracted module owns its branch coverage (#2280).
 import { describe, expect, it } from "vitest";
 import { DEFAULT_TYPE_LABELS, MAX_TYPE_LABEL_CATEGORIES, MAX_TYPE_LABEL_NAME_LENGTH, deriveKindFromTitle, normalizeTypeLabelSet, resolvePrTypeLabel } from "../../packages/loopover-engine/src/settings/pr-type-label";
 import type { LinkedIssueLabelPropagationConfig } from "../../packages/loopover-engine/src/types/manifest-deps-types";

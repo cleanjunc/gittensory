@@ -12,7 +12,7 @@ vi.mock("../../src/github/app", async (importOriginal) => ({
 
 const mockedPermission = vi.mocked(getRepositoryCollaboratorPermission);
 
-const FOCUS_MANIFEST_PATH = "/v1/repos/JSONbored/gittensory/focus-manifest";
+const FOCUS_MANIFEST_PATH = "/v1/repos/JSONbored/loopover/focus-manifest";
 const OWNED_REPO_PATH = "/v1/repos/repo-owner/owned-repo/focus-manifest";
 
 function apiHeaders(env: Env): Record<string, string> {
@@ -209,11 +209,11 @@ describe("focus-manifest route auth", () => {
 
   it("returns bundled manifest and policy for authorized static-token callers", async () => {
     const app = createApp();
-    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/gittensory" });
+    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/loopover" });
     const response = await app.request(FOCUS_MANIFEST_PATH, { headers: apiHeaders(env) }, env);
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       manifest: {
         present: true,
         wantedPaths: expect.arrayContaining(["apps/loopover-ui/"]),
@@ -234,7 +234,7 @@ describe("focus-manifest route auth", () => {
 
   it("does not refresh cached manifests from GET query parameters", async () => {
     const app = createApp();
-    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/gittensory" });
+    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/loopover" });
     const headers = apiHeaders(env);
     const putResponse = await app.request(
       FOCUS_MANIFEST_PATH,
@@ -252,7 +252,7 @@ describe("focus-manifest route auth", () => {
 
   it("refreshes cached manifests from an unsafe POST endpoint", async () => {
     const app = createApp();
-    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/gittensory" });
+    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/loopover" });
     const headers = apiHeaders(env);
     const putResponse = await app.request(
       FOCUS_MANIFEST_PATH,
@@ -311,7 +311,7 @@ describe("focus-manifest route auth", () => {
     );
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       manifest: {
         present: true,
         source: "api_record",

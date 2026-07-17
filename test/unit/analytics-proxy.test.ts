@@ -35,7 +35,7 @@ describe("handleAnalyticsProxy", () => {
 
     expect(
       await handleAnalyticsProxy(
-        new Request("https://gittensory.aethereal.dev/stats/script.js"),
+        new Request("https://loopover.aethereal.dev/stats/script.js"),
       ),
     ).toBeUndefined();
     expect(calls).toHaveLength(0);
@@ -44,7 +44,7 @@ describe("handleAnalyticsProxy", () => {
   it("does not forward the visitor's cookies to the analytics upstream", async () => {
     const calls = captureUpstream();
     const response = await handleAnalyticsProxy(
-      new Request("https://gittensory.aethereal.dev/stats/api/send", {
+      new Request("https://loopover.aethereal.dev/stats/api/send", {
         method: "POST",
         headers: {
           cookie: "loopover_session=secret; gh_oauth_state=abc",
@@ -66,7 +66,7 @@ describe("handleAnalyticsProxy", () => {
   it("forwards only the trusted client IP, ignoring a spoofed x-forwarded-for", async () => {
     const calls = captureUpstream();
     await handleAnalyticsProxy(
-      new Request("https://gittensory.aethereal.dev/stats/api/send", {
+      new Request("https://loopover.aethereal.dev/stats/api/send", {
         method: "POST",
         headers: {
           "x-forwarded-for": "1.2.3.4",
@@ -86,16 +86,16 @@ describe("handleAnalyticsProxy", () => {
     captureUpstream();
     expect(
       await handleAnalyticsProxy(
-        new Request("https://gittensory.aethereal.dev/stats/api/admin"),
+        new Request("https://loopover.aethereal.dev/stats/api/admin"),
       ),
     ).toBeUndefined();
     expect(
       await handleAnalyticsProxy(
-        new Request("https://gittensory.aethereal.dev/about"),
+        new Request("https://loopover.aethereal.dev/about"),
       ),
     ).toBeUndefined();
     const notAllowed = await handleAnalyticsProxy(
-      new Request("https://gittensory.aethereal.dev/stats/api/send", {
+      new Request("https://loopover.aethereal.dev/stats/api/send", {
         method: "GET",
       }),
     );

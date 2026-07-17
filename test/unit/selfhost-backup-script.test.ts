@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 const tmpRoots: string[] = [];
 
 function tmpRoot(): string {
-  const dir = mkdtempSync(join(tmpdir(), "gittensory-backup-"));
+  const dir = mkdtempSync(join(tmpdir(), "loopover-backup-"));
   tmpRoots.push(dir);
   return dir;
 }
@@ -110,7 +110,7 @@ describe("self-host backup script", () => {
     writeFileSync(staleSqlite, "stale sqlite");
 
     const output = runBackup(root, {
-      DATABASE_URL: "postgres://gittensory:pw@postgres:5432/gittensory",
+      DATABASE_URL: "postgres://loopover:pw@postgres:5432/loopover",
       PG_DUMP_ARGS_FILE: join(root, "pg-dump.args"),
       PG_DUMP_ENV_FILE: join(root, "pg-dump.env"),
       DATABASE_PATH: staleSqlite,
@@ -131,7 +131,7 @@ describe("self-host backup script", () => {
     const envFile = join(root, "pg-dump.env");
 
     runBackup(root, {
-      DATABASE_URL: "postgresql://app_user:SuperSecret123%21@db.example:6543/gittensory",
+      DATABASE_URL: "postgresql://app_user:SuperSecret123%21@db.example:6543/loopover",
       PATH: `${pgBin}:${process.env.PATH ?? ""}`,
       PG_DUMP_ARGS_FILE: argsFile,
       PG_DUMP_ENV_FILE: envFile,
@@ -146,7 +146,7 @@ describe("self-host backup script", () => {
     expect(args).not.toContain("app_user:");
     // Host/port/dbname/user are pg_dump's connection info, not secrets -- libpq resolves them from this
     // sanitized (password-free) URL exactly as it would have from the original.
-    expect(args).toContain("postgresql://app_user@db.example:6543/gittensory");
+    expect(args).toContain("postgresql://app_user@db.example:6543/loopover");
     // The password reaches pg_dump out-of-band via a 600-permission PGPASSFILE, url-decoded. Match on the
     // basename only, not a hardcoded /tmp/ prefix: mktemp resolves under $TMPDIR, which macOS sets to a
     // per-user private directory rather than /tmp (the CI runner's Linux environment does default to /tmp,
@@ -164,13 +164,13 @@ describe("self-host backup script", () => {
     // No authority host at all -- the actual connection target is supplied entirely via the query string
     // (a valid, real-world libpq URI form for connecting over a Unix socket at a non-default path).
     runBackup(root, {
-      DATABASE_URL: "postgresql:///gittensory?host=/var/run/postgresql",
+      DATABASE_URL: "postgresql:///loopover?host=/var/run/postgresql",
       PATH: `${pgBin}:${process.env.PATH ?? ""}`,
       PG_DUMP_ARGS_FILE: argsFile,
     });
 
     const args = execFileSync("cat", [argsFile], { encoding: "utf8" });
-    expect(args).toContain("postgresql:///gittensory?host=/var/run/postgresql");
+    expect(args).toContain("postgresql:///loopover?host=/var/run/postgresql");
   });
 
   it("strips a password supplied via the libpq query-string form, not just userinfo", () => {
@@ -183,7 +183,7 @@ describe("self-host backup script", () => {
     // password -- entirely independent of the userinfo form this function already strips. Includes other
     // query parameters on both sides of `password` to prove they survive, in order, untouched.
     runBackup(root, {
-      DATABASE_URL: "postgresql://app_user@db.example:6543/gittensory?sslmode=require&password=SuperSecret123%21&application_name=app",
+      DATABASE_URL: "postgresql://app_user@db.example:6543/loopover?sslmode=require&password=SuperSecret123%21&application_name=app",
       PATH: `${pgBin}:${process.env.PATH ?? ""}`,
       PG_DUMP_ARGS_FILE: argsFile,
       PG_DUMP_ENV_FILE: envFile,
@@ -193,7 +193,7 @@ describe("self-host backup script", () => {
     const [, passfileContent] = execFileSync("cat", [envFile], { encoding: "utf8" }).trim().split("|");
     expect(args).not.toContain("SuperSecret123");
     expect(args).not.toContain("password=");
-    expect(args).toContain("postgresql://app_user@db.example:6543/gittensory?sslmode=require&application_name=app");
+    expect(args).toContain("postgresql://app_user@db.example:6543/loopover?sslmode=require&application_name=app");
     expect(passfileContent).toBe("*:*:*:*:SuperSecret123!");
   });
 
@@ -267,9 +267,9 @@ describe("self-host backup script", () => {
 
     // No userinfo here at all -- the '@' and ':' both belong to a query parameter VALUE. Userinfo can
     // only appear in the authority (before the first '/', '?', or '#'); scanning the whole remaining
-    // string for the first '@' would wrongly treat "gittensory?application_name=a:b" as userinfo and
+    // string for the first '@' would wrongly treat "loopover?application_name=a:b" as userinfo and
     // strip ":b" out as a fake password, corrupting the URL passed to pg_dump.
-    const url = "postgresql://db.example/gittensory?application_name=a:b@worker";
+    const url = "postgresql://db.example/loopover?application_name=a:b@worker";
     runBackup(root, {
       DATABASE_URL: url,
       PATH: `${pgBin}:${process.env.PATH ?? ""}`,
@@ -339,7 +339,7 @@ describe("self-host backup script", () => {
   it("keeps the SQLite online backup path when no Postgres URL is configured", () => {
     const root = tmpRoot();
     const sqliteBin = fakeSqlite(root);
-    const appDb = join(root, "gittensory.sqlite");
+    const appDb = join(root, "loopover.sqlite");
     writeFileSync(appDb, "sqlite db");
 
     const output = runBackup(root, {

@@ -24,7 +24,7 @@ function stubEnv(extra: Record<string, unknown> = {}): Env {
   const decisions = [
     { bucket: "2026-06-01", project: "awesome-claude", verdict: "merge", n: 5 },
     { bucket: "2026-06-01", project: "awesome-claude", verdict: "close", n: 3 },
-    { bucket: "2026-06-01", project: "gittensory", verdict: "comment", n: 2 },
+    { bucket: "2026-06-01", project: "loopover", verdict: "comment", n: 2 },
   ];
   const reversals = [{ bucket: "2026-06-01", project: "awesome-claude", n: 1 }];
   const gateActions = [
@@ -76,7 +76,7 @@ const NOW = Date.parse("2026-06-14T00:00:00Z");
 describe("computeStats — D1 aggregate for the dashboard", () => {
   it("returns sorted projects/verdicts, rows, reversals, and the window", async () => {
     const out = await computeStats(stubEnv(), { days: 90, bucket: "week", nowMs: NOW });
-    expect(out.projects).toEqual(["awesome-claude", "gittensory"]);
+    expect(out.projects).toEqual(["awesome-claude", "loopover"]);
     expect(out.verdicts).toEqual(["close", "comment", "merge"]);
     expect(out.rows).toHaveLength(3);
     expect(out.reversals).toEqual([{ bucket: "2026-06-01", project: "awesome-claude", n: 1 }]);
@@ -122,7 +122,7 @@ describe("computeStats — D1 aggregate for the dashboard", () => {
         computeTuningRecommendations: () => [{ project: "p", severity: "warn", message: "tighten" }],
         computeGateParity: async () => ({
           authoritative: "reviewbot",
-          shadow: "gittensory",
+          shadow: "loopover",
           hasSignal: true,
           rows: [{ project: "p", pairedSamples: 40, bothMerge: 40, bothClose: 0, bothHold: 0, disagree: 0, agreementRate: 1, unsafeDisagreements: 0, byReasonCode: [] }],
         }),
@@ -215,13 +215,13 @@ describe("computeStats — review-effort read is fail-safe", () => {
       .bind(
         "published-a",
         "github_app.pr_public_surface_published",
-        "JSONbored/gittensory#10",
+        "JSONbored/loopover#10",
         "completed",
         JSON.stringify({ reviewEffortMinutes: 4 }),
         "2026-06-10T00:00:00.000Z",
         "published-b",
         "github_app.pr_public_surface_published",
-        "JSONbored/gittensory#11",
+        "JSONbored/loopover#11",
         "completed",
         JSON.stringify({ reviewEffortMinutes: 96 }),
         "2026-06-11T00:00:00.000Z",
@@ -297,7 +297,7 @@ describe("handleStats — query-param default branches", () => {
         return { rows: [], hasSignal: false };
       },
       computeTuningRecommendations: () => [],
-      computeGateParity: async () => ({ authoritative: "reviewbot", shadow: "gittensory", hasSignal: false, rows: [] }),
+      computeGateParity: async () => ({ authoritative: "reviewbot", shadow: "loopover", hasSignal: false, rows: [] }),
     };
     // No days / bucket query params → days ?? 90, bucket ?? "day".
     const r = new Request("https://w.dev/stats/data", { method: "GET", headers: { authorization: "Bearer s3cret" } });

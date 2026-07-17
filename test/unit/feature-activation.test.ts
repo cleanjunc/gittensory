@@ -4,7 +4,7 @@ import { CONVERGED_FEATURE_KEYS, type ConvergedFeatureKey, type FocusManifest } 
 import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader";
 import { createTestEnv } from "../helpers/d1";
 
-const REPO = "JSONbored/gittensory";
+const REPO = "JSONbored/loopover";
 
 // The global env flag (master kill-switch) name for each feature, so a test can flip exactly one feature on.
 const FLAG: Record<ConvergedFeatureKey, string> = {

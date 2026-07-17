@@ -18,7 +18,7 @@ const FORBIDDEN_PUBLIC_LANGUAGE =
   /wallet|hotkey|coldkey|mnemonic|payout|reward estimate|raw trust|trust score|public score|private reviewability|private scoreability|farming/i;
 
 const POLICY_COMPILER_FIXTURE: RepoPolicyCompilerOutput = {
-  repoFullName: "JSONbored/gittensory",
+  repoFullName: "JSONbored/loopover",
   generatedAt: "2026-06-02T12:00:00.000Z",
   contributionLanes: [
     {
@@ -66,7 +66,7 @@ describe("buildRepoOnboardingPackPreview", () => {
     const preview = buildRepoOnboardingPackPreview(POLICY_COMPILER_FIXTURE);
 
     expect(preview).toMatchObject({
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       generatedAt: "2026-06-02T12:00:00.000Z",
       source: "policy_compiler",
       previewOnly: true,
@@ -120,7 +120,7 @@ describe("buildRepoOnboardingPackPreview", () => {
 
   it("drops unsafe public policy text without echoing the unsafe values", () => {
     const preview = buildRepoOnboardingPackPreview({
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       contributionLanes: [
         {
           title: "Wallet setup lane",
@@ -219,11 +219,11 @@ describe("buildRepoOnboardingPackPreview", () => {
       "repo_file",
     );
     const compiled = compileRepoPolicyCompilerOutput({
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       manifest,
     });
     const fromCompiler = buildRepoOnboardingPackPreview(compiled);
-    const fromService = buildRepoOnboardingPackPreviewFromManifest("JSONbored/gittensory", manifest);
+    const fromService = buildRepoOnboardingPackPreviewFromManifest("JSONbored/loopover", manifest);
     expect(fromService.preview.contributionLanes.length).toBe(fromCompiler.contributionLanes.length);
     expect(fromService.preview.publication.status).toBe("preview_only");
     expect(isRepoOnboardingPackPublicSafe(fromService.preview)).toBe(true);
@@ -232,7 +232,7 @@ describe("buildRepoOnboardingPackPreview", () => {
   it("uses stable defaults when optional policy sections are omitted", () => {
     const preview = buildRepoOnboardingPackPreview(
       {
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
       },
       { generatedAt: "2026-06-02T13:00:00.000Z" },
     );
@@ -306,10 +306,10 @@ describe("buildRepoOnboardingPackPreviewForRepo", () => {
     const env = createTestEnv();
     await upsertRepositoryFromGitHub(
       env,
-      { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } },
+      { name: "loopover", full_name: "JSONbored/loopover", private: false, owner: { login: "JSONbored" } },
       1,
     );
-    const response = await buildRepoOnboardingPackPreviewForRepo(env, "JSONbored/gittensory");
+    const response = await buildRepoOnboardingPackPreviewForRepo(env, "JSONbored/loopover");
     expect("error" in response).toBe(false);
     if ("error" in response) return;
     expect(response.accepted).toBe(true);

@@ -27,7 +27,7 @@ function draftEnv(overrides: Partial<Env> = {}): Env {
   });
 }
 
-const ORIGIN = "https://gittensory.aethereal.dev";
+const ORIGIN = "https://loopover.aethereal.dev";
 
 // The module's SUPPORTED_CATEGORIES is not exported; buildContributorMdx only needs the
 // submitted category present in config.categories. "skills" is the only one used here.
@@ -68,7 +68,7 @@ describe("draftFlowEnabled — default OFF, truthy convention (#6275)", () => {
 });
 
 describe("resolveDraftFlowManifestOverride — config-as-code lookup (#6275)", () => {
-  const SELF_REPO = "JSONbored/gittensory";
+  const SELF_REPO = "JSONbored/loopover";
 
   it("returns the self-repo's configured draftFlow block when present", async () => {
     const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: SELF_REPO });
@@ -144,7 +144,7 @@ describe("draft flow — flag OFF (LOOPOVER_REVIEW_DRAFT unset/false)", () => {
 });
 
 describe("draft flow — config-as-code override end-to-end (#6275)", () => {
-  const SELF_REPO = "JSONbored/gittensory";
+  const SELF_REPO = "JSONbored/loopover";
 
   it("handleDraftCreate: a present draftFlow override enables the flow even when the env var is off", async () => {
     const env = createTestEnv({ GITHUB_OAUTH_CLIENT_ID: "Iv-test-client-id", GITHUB_OAUTH_CLIENT_SECRET: "test-oauth-client-secret", DRAFT_TOKEN_ENCRYPTION_SECRET: DRAFT_SECRET, LOOPOVER_DRIFT_ISSUE_REPO: SELF_REPO });

@@ -45,7 +45,7 @@ afterEach(() => {
 });
 
 function createSandbox() {
-  const base = mkdtempSync(join(tmpdir(), "gittensory-selfhost-pre-deploy-summary-"));
+  const base = mkdtempSync(join(tmpdir(), "loopover-selfhost-pre-deploy-summary-"));
   sandboxDirs.push(base);
 
   const originDir = join(base, "origin.git");

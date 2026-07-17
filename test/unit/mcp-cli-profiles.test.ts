@@ -165,7 +165,7 @@ describe("loopover-mcp CLI — profiles", () => {
     const list = JSON.parse(await runAsync(["profile", "list", "--json"], env)) as { profiles: Array<{ name: string; authenticated: boolean; login: string | null }> };
     const betaWhoami = JSON.parse(await runAsync(["whoami", "--profile", "beta", "--json"], env)) as { profile: string; login: string };
     const missingStatus = JSON.parse(await runAsync(["status", "--profile", "missing", "--json"], env)) as { auth: { status: string }; profile: { name: string; configured: boolean; authenticated: boolean } };
-    const doctor = JSON.parse(await runAsync(["doctor", "--profile", "missing", "--cwd", tempDir, "--repo", "JSONbored/gittensory", "--json"], env)) as { profile: { name: string; configured: boolean }; checks: Array<{ name: string; status: string; detail: string }> };
+    const doctor = JSON.parse(await runAsync(["doctor", "--profile", "missing", "--cwd", tempDir, "--repo", "JSONbored/loopover", "--json"], env)) as { profile: { name: string; configured: boolean }; checks: Array<{ name: string; status: string; detail: string }> };
 
     expect(logout).toMatchObject({ status: "logged_out", profile: "alpha" });
     expect(list.profiles).toEqual(

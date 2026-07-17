@@ -92,7 +92,7 @@ describe("loopover-mcp CLI — issue-slop", () => {
 
   it("validates inputs and prints help", async () => {
     const e = await env();
-    await expect(runAsync(["issue-slop", "--body-file", "/tmp/missing-gittensory-issue-body.md"], e)).rejects.toThrow(/Body file not found/);
+    await expect(runAsync(["issue-slop", "--body-file", "/tmp/missing-loopover-issue-body.md"], e)).rejects.toThrow(/Body file not found/);
     const help = run(["issue-slop", "--help"]);
     expect(help).toMatch(/Usage: loopover-mcp issue-slop/);
     expect(help).toMatch(/loopover_check_issue_slop/);

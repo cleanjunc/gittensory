@@ -139,7 +139,7 @@ export async function startRegistryFixture(
 }
 
 export function tempEnvPrefix() {
-  return mkdtempSync(join(tmpdir(), "gittensory-miner-cli-"));
+  return mkdtempSync(join(tmpdir(), "loopover-miner-cli-"));
 }
 
 function defaultForgeIssue(number: number, owner: string, repo: string) {

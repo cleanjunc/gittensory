@@ -91,7 +91,7 @@ describe("product usage events", () => {
       eventName: "local_branch_analysis_completed",
       actor: "bob",
       repoFullName: "bob/private-tool",
-      targetKey: "bob:JSONbored/gittensory:feature-x",
+      targetKey: "bob:JSONbored/loopover:feature-x",
       metadata: {
         viewer: "bob",
         note: "for bob, but bobcat stays readable",
@@ -104,7 +104,7 @@ describe("product usage events", () => {
     expect(row).toBeDefined();
     if (!row) throw new Error("expected product usage event");
     expect(row.repoFullName).toBe("<redacted-actor>/private-tool");
-    expect(row.targetKey).toBe("<redacted-actor>:JSONbored/gittensory:feature-x");
+    expect(row.targetKey).toBe("<redacted-actor>:JSONbored/loopover:feature-x");
     expect(row.metadata).toMatchObject({
       viewer: "<redacted-actor>",
       note: "for <redacted-actor>, but bobcat stays readable",
@@ -164,8 +164,8 @@ describe("product usage events", () => {
       surface: "api",
       eventName: "local_branch_analysis_completed",
       actor: "oktofeesh1",
-      repoFullName: "JSONbored/gittensory",
-      targetKey: "JSONbored/gittensory#136",
+      repoFullName: "JSONbored/loopover",
+      targetKey: "JSONbored/loopover#136",
       metadata: {
         command: "packet",
         authorization: "Bearer github_pat_secret",
@@ -494,7 +494,7 @@ describe("product usage events", () => {
       surface: "api",
       eventName: "agent_pr_packet_completed",
       actor: "oktofeesh1",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       outcome: "success",
       route: "/v1/agent/prepare-pr-packet",
       metadata: { command: "packet" },
@@ -504,7 +504,7 @@ describe("product usage events", () => {
       surface: "github_app",
       eventName: "github_installation_created",
       actor: "repo-owner",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       outcome: "completed",
       metadata: { action: "created" },
       occurredAt: `${day}T02:00:00.000Z`,
@@ -513,7 +513,7 @@ describe("product usage events", () => {
       surface: "github_app",
       eventName: "agent_command_replied",
       actor: "repo-owner",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       outcome: "completed",
       metadata: { command: "blockers", actorKind: "maintainer" },
       occurredAt: `${day}T02:05:00.000Z`,
@@ -555,7 +555,7 @@ describe("product usage events", () => {
       surface: "control_panel",
       eventName: "command_previewed",
       actor: "late-user",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       outcome: "success",
       metadata: { command: "reviewability" },
       occurredAt: `${day}T23:55:00.000Z`,
@@ -652,7 +652,7 @@ describe("product usage events", () => {
       surface: "github_app",
       eventName: "github_installation_created",
       actor: "late-owner",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       outcome: "completed",
       occurredAt: `${day}T23:00:00.000Z`,
     });
@@ -826,7 +826,7 @@ describe("product usage events", () => {
       surface: "github_app",
       eventName: "agent_command_replied",
       actor: "maintainer-retained",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       outcome: "completed",
       metadata: { command: "blockers", actorKind: "maintainer" },
       occurredAt: `${day}T02:00:00.000Z`,
@@ -835,7 +835,7 @@ describe("product usage events", () => {
       surface: "github_app",
       eventName: "github_installation_created",
       actor: "new-owner",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       outcome: "completed",
       occurredAt: `${day}T03:00:00.000Z`,
     });
@@ -894,7 +894,7 @@ describe("product usage events", () => {
       { eventName: "pull_context_viewed", route: "/v1/extension/pull-context", actor: "extension-user", outcome: "success" },
       { eventName: "github_installation_created", route: "/v1/github/webhook", actor: "github-user", outcome: "completed" },
       { eventName: "repair_data_fidelity_completed", route: "/v1/internal/jobs/repair-data-fidelity", actor: "internal-user", outcome: "completed" },
-      { eventName: "repo_snapshot_opened", route: "/v1/repos/JSONbored/gittensory", actor: "repo-user", outcome: "success" },
+      { eventName: "repo_snapshot_opened", route: "/v1/repos/JSONbored/loopover", actor: "repo-user", outcome: "success" },
       { eventName: "api_report_viewed", route: "/v1/reports/summary", actor: "api-user", outcome: "success", metadata: { toolName: "summary" } },
       { eventName: "route_missing", actor: "unknown-user", outcome: "success" },
     ] as const;
@@ -1011,7 +1011,7 @@ describe("product usage events", () => {
           "/v1/agent/prepare-pr-packet",
           null,
           null,
-          "JSONbored/gittensory",
+          "JSONbored/loopover",
           null,
           "success",
           null,
@@ -1032,7 +1032,7 @@ describe("product usage events", () => {
       sourceEventCount: 5001,
       maxEventCapacity: 5000,
       byEvent: [{ eventName: "agent_pr_packet_completed", count: 5000 }],
-      byRepo: [{ key: "JSONbored/gittensory", count: 5000 }],
+      byRepo: [{ key: "JSONbored/loopover", count: 5000 }],
       activation: expect.objectContaining({ firstUsefulActionActors: 0 }),
     });
     await expect(getProductUsageRollupStatus(env, { nowIso: "2026-05-30T00:20:00.000Z" })).resolves.toMatchObject({

@@ -5,7 +5,7 @@ import { upsertInstallation, upsertPullRequestFromGitHub, upsertRepositoryFromGi
 import { getRepositoryCollaboratorPermission } from "../../src/github/app";
 import { createTestEnv } from "../helpers/d1";
 
-const DRAFTS_PATH = "/v1/repos/JSONbored/gittensory/contributor-issue-drafts/generate";
+const DRAFTS_PATH = "/v1/repos/JSONbored/loopover/contributor-issue-drafts/generate";
 const OWNED_REPO_PATH = "/v1/repos/repo-owner/owned-repo/contributor-issue-drafts/generate";
 
 vi.mock("../../src/github/app", async (importOriginal) => ({
@@ -185,7 +185,7 @@ describe("contributor-issue-drafts route auth", () => {
 
   it("returns dry-run drafts for authorized static-token callers", async () => {
     const app = createApp();
-    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/gittensory" });
+    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/loopover" });
     const response = await app.request(
       DRAFTS_PATH,
       { method: "POST", headers: apiHeaders(env), body: JSON.stringify({ dryRun: true, limit: 2 }) },
@@ -193,7 +193,7 @@ describe("contributor-issue-drafts route auth", () => {
     );
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       dryRun: true,
       createRequested: false,
       drafts: expect.any(Array),

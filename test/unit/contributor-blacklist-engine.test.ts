@@ -1,4 +1,4 @@
-// AUTO-GENERATED-STYLE mirror of the app suite to cover the gittensory-engine copy (#2280).
+// AUTO-GENERATED-STYLE mirror of the app suite to cover the loopover-engine copy (#2280).
 // DB round-trip cases stay in the app suite; the engine package only owns the pure normalizers.
 import { describe, expect, it } from "vitest";
 import { findBlacklistEntry, isAuthorBlacklisted, mergeContributorBlacklists, normalizeContributorBlacklist } from "../../packages/loopover-engine/src/settings/contributor-blacklist";

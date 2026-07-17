@@ -65,7 +65,7 @@ describe("data spine repositories", () => {
     expect(await listInstallations(env)).toMatchObject([{ id: 123, accountLogin: "JSONbored" }]);
 
     await upsertRepoSyncState(env, {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       status: "partial",
       sourceKind: "github",
       primaryLanguage: "TypeScript",
@@ -77,11 +77,11 @@ describe("data spine repositories", () => {
       labelsSyncedAt: "2026-05-23T00:00:00.000Z",
       warnings: ["truncated"],
     });
-    expect(await getRepoSyncState(env, "JSONbored/gittensory")).toMatchObject({ status: "partial", warnings: ["truncated"] });
+    expect(await getRepoSyncState(env, "JSONbored/loopover")).toMatchObject({ status: "partial", warnings: ["truncated"] });
     expect(await listRepoSyncStates(env)).toHaveLength(1);
 
     await upsertRepoLabel(env, {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       name: "bug",
       color: "cc0000",
       description: "Bug",
@@ -89,11 +89,11 @@ describe("data spine repositories", () => {
       observedCount: 4,
       payload: { name: "bug" },
     });
-    expect(await listRepoLabels(env, "JSONbored/gittensory")).toMatchObject([{ name: "bug", isConfigured: true, observedCount: 4 }]);
+    expect(await listRepoLabels(env, "JSONbored/loopover")).toMatchObject([{ name: "bug", isConfigured: true, observedCount: 4 }]);
 
     await persistRepoSnapshot(env, {
       id: "snapshot-1",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       snapshotKind: "github-backfill",
       sourceKind: "github",
       fetchedAt: "2026-05-23T00:00:00.000Z",
@@ -106,7 +106,7 @@ describe("data spine repositories", () => {
     });
 
     await upsertPullRequestFile(env, {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 5,
       path: "src/index.ts",
       status: "modified",
@@ -117,7 +117,7 @@ describe("data spine repositories", () => {
     });
     await upsertPullRequestReview(env, {
       id: "review-1",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 5,
       reviewerLogin: "maintainer",
       state: "APPROVED",
@@ -126,7 +126,7 @@ describe("data spine repositories", () => {
     });
     await upsertCheckSummary(env, {
       id: "check-1",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 5,
       headSha: "abc",
       name: "test",
@@ -134,10 +134,10 @@ describe("data spine repositories", () => {
       conclusion: "success",
       payload: { name: "test" },
     });
-    expect(await listPullRequestFiles(env, "JSONbored/gittensory", 5)).toMatchObject([{ path: "src/index.ts", changes: 12 }]);
+    expect(await listPullRequestFiles(env, "JSONbored/loopover", 5)).toMatchObject([{ path: "src/index.ts", changes: 12 }]);
     for (let index = 0; index < 501; index += 1) {
       await upsertPullRequestFile(env, {
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         pullNumber: 6,
         path: `docs/file-${index}.md`,
         status: "modified",
@@ -148,7 +148,7 @@ describe("data spine repositories", () => {
       });
     }
     await upsertPullRequestFile(env, {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       pullNumber: 6,
       path: "scripts/deploy.sh",
       status: "modified",
@@ -157,12 +157,12 @@ describe("data spine repositories", () => {
       changes: 1,
       payload: { filename: "scripts/deploy.sh" },
     });
-    expect(await listPullRequestFiles(env, "JSONbored/gittensory", 6)).toHaveLength(502);
-    expect(await listPullRequestReviews(env, "JSONbored/gittensory", 5)).toMatchObject([{ reviewerLogin: "maintainer" }]);
-    expect(await listCheckSummaries(env, "JSONbored/gittensory", 5)).toMatchObject([{ name: "test", conclusion: "success" }]);
+    expect(await listPullRequestFiles(env, "JSONbored/loopover", 6)).toHaveLength(502);
+    expect(await listPullRequestReviews(env, "JSONbored/loopover", 5)).toMatchObject([{ reviewerLogin: "maintainer" }]);
+    expect(await listCheckSummaries(env, "JSONbored/loopover", 5)).toMatchObject([{ name: "test", conclusion: "success" }]);
 
     await upsertRecentMergedPullRequest(env, {
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       number: 4,
       title: "Fix index handler",
       authorLogin: "oktofeesh1",
@@ -172,7 +172,7 @@ describe("data spine repositories", () => {
       changedFiles: ["src/index.ts"],
       payload: { number: 4 },
     });
-    expect(await listRecentMergedPullRequests(env, "JSONbored/gittensory")).toMatchObject([{ number: 4, linkedIssues: [2] }]);
+    expect(await listRecentMergedPullRequests(env, "JSONbored/loopover")).toMatchObject([{ number: 4, linkedIssues: [2] }]);
 
     await upsertContributor(env, {
       login: "oktofeesh1",
@@ -184,7 +184,7 @@ describe("data spine repositories", () => {
     });
     await upsertContributorRepoStat(env, {
       login: "oktofeesh1",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       pullRequests: 2,
       mergedPullRequests: 1,
       openPullRequests: 1,
@@ -194,20 +194,20 @@ describe("data spine repositories", () => {
       dominantLabels: ["bug"],
       lastActivityAt: "2026-05-23T00:00:00.000Z",
     });
-    expect(await listContributorRepoStats(env, "oktofeesh1")).toMatchObject([{ repoFullName: "JSONbored/gittensory", dominantLabels: ["bug"] }]);
-    expect(await listContributorRepoStats(env, "OKTOFEESH1")).toMatchObject([{ repoFullName: "JSONbored/gittensory", dominantLabels: ["bug"] }]);
-    expect(await listContributorRecentMergedPullRequests(env, "OKTOFEESH1")).toMatchObject([{ repoFullName: "JSONbored/gittensory", number: 4 }]);
+    expect(await listContributorRepoStats(env, "oktofeesh1")).toMatchObject([{ repoFullName: "JSONbored/loopover", dominantLabels: ["bug"] }]);
+    expect(await listContributorRepoStats(env, "OKTOFEESH1")).toMatchObject([{ repoFullName: "JSONbored/loopover", dominantLabels: ["bug"] }]);
+    expect(await listContributorRecentMergedPullRequests(env, "OKTOFEESH1")).toMatchObject([{ repoFullName: "JSONbored/loopover", number: 4 }]);
     await env.DB.prepare(
       "insert into contributor_repo_stats (id, login, repo_full_name, pull_requests, merged_pull_requests, open_pull_requests, issues, stale_pull_requests, unlinked_pull_requests, dominant_labels_json, last_activity_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
-      .bind("legacy-case-stat", "OKTOFEESH1", "JSONbored/gittensory", 9, 8, 1, 7, 0, 0, '["ci"]', "2026-05-24T00:00:00.000Z")
+      .bind("legacy-case-stat", "OKTOFEESH1", "JSONbored/loopover", 9, 8, 1, 7, 0, 0, '["ci"]', "2026-05-24T00:00:00.000Z")
       .run();
-    expect(await listContributorRepoStats(env, "oktofeesh1")).toMatchObject([{ repoFullName: "JSONbored/gittensory", pullRequests: 9, mergedPullRequests: 8, issues: 7 }]);
+    expect(await listContributorRepoStats(env, "oktofeesh1")).toMatchObject([{ repoFullName: "JSONbored/loopover", pullRequests: 9, mergedPullRequests: 8, issues: 7 }]);
 
-    await replaceCollisionEdges(env, "JSONbored/gittensory", [
+    await replaceCollisionEdges(env, "JSONbored/loopover", [
       {
         id: "edge-1",
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         leftType: "issue",
         leftNumber: 2,
         leftTitle: "Fix index handler",
@@ -219,16 +219,16 @@ describe("data spine repositories", () => {
         sharedTerms: ["index", "handler"],
       },
     ]);
-    expect(await listCollisionEdges(env, "JSONbored/gittensory")).toMatchObject([{ risk: "high", sharedTerms: ["index", "handler"] }]);
+    expect(await listCollisionEdges(env, "JSONbored/loopover")).toMatchObject([{ risk: "high", sharedTerms: ["index", "handler"] }]);
 
     await persistSignalSnapshot(env, {
       id: "signal-1",
       signalType: "queue-health",
-      targetKey: "JSONbored/gittensory",
-      repoFullName: "JSONbored/gittensory",
+      targetKey: "JSONbored/loopover",
+      repoFullName: "JSONbored/loopover",
       payload: { ok: true },
     });
-    expect(await listSignalSnapshots(env, "queue-health", "JSONbored/gittensory")).toMatchObject([{ signalType: "queue-health" }]);
+    expect(await listSignalSnapshots(env, "queue-health", "JSONbored/loopover")).toMatchObject([{ signalType: "queue-health" }]);
 
     await upsertInstallationHealth(env, {
       installationId: 123,

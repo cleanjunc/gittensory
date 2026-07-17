@@ -67,7 +67,7 @@ describe("notify-discord resolveWebhook (modular self-host fallback)", () => {
     expect(calls).toEqual([HOOK]);
   });
 
-  it("a repo secret outside the loopover/gittensory mapping (METAGRAPHED_/AWESOME_) never reads LOOPOVER_DISCORD_WEBHOOK", async () => {
+  it("a repo secret outside the loopover/loopover mapping (METAGRAPHED_/AWESOME_) never reads LOOPOVER_DISCORD_WEBHOOK", async () => {
     const calls = stubFetch();
     const NEW_HOOK = "https://discord.com/api/webhooks/456/def";
     await notify(withEnv({ METAGRAPHED_DISCORD_WEBHOOK: HOOK, LOOPOVER_DISCORD_WEBHOOK: NEW_HOOK }), "JSONbored/metagraphed");
@@ -99,7 +99,7 @@ describe("notify-discord resolveWebhook (modular self-host fallback)", () => {
     const calls = stubFetch();
     const env = withEnv({ DISCORD_WEBHOOK_URL: FALLBACK });
     // JSONbored/metagraphed is in the legacy map. If its dedicated secret is missing, posting to the global
-    // fallback sends metagraphed events into the gittensory channel.
+    // fallback sends metagraphed events into the loopover channel.
     await notify(env, "JSONbored/metagraphed");
     expect(calls).toEqual([]);
     expect(await externalNotificationAudit(env, "discord")).toEqual([expect.objectContaining({ outcome: "denied", detail: "missing_repo_webhook" })]);
@@ -142,13 +142,13 @@ describe("notify-discord resolveWebhook (modular self-host fallback)", () => {
 
   it("audits successful Discord sends without storing the webhook URL", async () => {
     const calls = stubFetch();
-    const env = withEnv({ DISCORD_REPO_WEBHOOKS: JSON.stringify({ "jsonbored/gittensory": HOOK }) });
-    await notify(env, "JSONbored/gittensory");
+    const env = withEnv({ DISCORD_REPO_WEBHOOKS: JSON.stringify({ "jsonbored/loopover": HOOK }) });
+    await notify(env, "JSONbored/loopover");
     expect(calls).toEqual([HOOK]);
     const rows = await externalNotificationAudit(env, "discord");
     expect(rows).toEqual([expect.objectContaining({ outcome: "completed", detail: "sent" })]);
     const metadata = JSON.parse(rows[0]?.metadata_json ?? "{}");
-    expect(metadata).toMatchObject({ repoFullName: "JSONbored/gittensory", pullNumber: 1, actionOutcome: "merged", source: "repo_map" });
+    expect(metadata).toMatchObject({ repoFullName: "JSONbored/loopover", pullNumber: 1, actionOutcome: "merged", source: "repo_map" });
     expect(rows[0]?.metadata_json).not.toContain("webhooks/123");
   });
 
@@ -158,8 +158,8 @@ describe("notify-discord resolveWebhook (modular self-host fallback)", () => {
       calls.push({ url: String(url), body: JSON.parse(String(init?.body ?? "{}")) });
       return new Response(null, { status: 204 });
     });
-    await notifyActionToDiscord(withEnv({ DISCORD_REPO_WEBHOOKS: JSON.stringify({ "jsonbored/gittensory": HOOK }) }), {
-      repoFullName: "JSONbored/gittensory",
+    await notifyActionToDiscord(withEnv({ DISCORD_REPO_WEBHOOKS: JSON.stringify({ "jsonbored/loopover": HOOK }) }), {
+      repoFullName: "JSONbored/loopover",
       pullNumber: 2,
       outcome: "closed",
       summary: "",
@@ -172,8 +172,8 @@ describe("notify-discord resolveWebhook (modular self-host fallback)", () => {
 
   it("REGRESSION: audits rejected Discord webhook HTTP responses as errors", async () => {
     const calls = stubFetch(429);
-    const env = withEnv({ DISCORD_REPO_WEBHOOKS: JSON.stringify({ "jsonbored/gittensory": HOOK }) });
-    await notify(env, "JSONbored/gittensory");
+    const env = withEnv({ DISCORD_REPO_WEBHOOKS: JSON.stringify({ "jsonbored/loopover": HOOK }) });
+    await notify(env, "JSONbored/loopover");
     expect(calls).toEqual([HOOK]);
     expect(await externalNotificationAudit(env, "discord")).toEqual([expect.objectContaining({ outcome: "error", detail: "discord_webhook_http_429" })]);
   });

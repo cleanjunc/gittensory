@@ -777,7 +777,7 @@ describe("buildFocusManifestGuidance", () => {
 });
 
 describe("compileFocusManifestPolicy", () => {
-  const REPO = "JSONbored/gittensory";
+  const REPO = "JSONbored/loopover";
   const GENERATED_AT = "2026-06-03T00:00:00.000Z";
   const opts = { generatedAt: GENERATED_AT };
 
@@ -2988,7 +2988,7 @@ describe("parseFocusManifest settings override + resolveEffectiveSettings", () =
     });
 
     // #4618/#5373: the RepositorySettings.gateCheckMode field (a computed read-back of reviewCheckMode) was
-    // removed entirely in #5373, including the gittensory-engine yml-parsing layer's settings.gateCheckMode
+    // removed entirely in #5373, including the loopover-engine yml-parsing layer's settings.gateCheckMode
     // back-compat key (#5373 stage 2.10) -- it is now a fully unrecognized settings key, parsed into nothing
     // and deriving nothing. resolveEffectiveSettings no longer derives or exposes the field either.
     describe("settings.gateCheckMode is a fully removed, inert key (#4618/#5373)", () => {
@@ -5009,15 +5009,15 @@ describe("review.visual.production_url (#3611 follow-up — per-repo override of
   });
 
   it("overlay: a per-repo production_url wins over a global-default value", () => {
-    const globalDefault = parseReviewConfigMapping({ visual: { production_url: "https://gittensory.aethereal.dev" } }, []);
+    const globalDefault = parseReviewConfigMapping({ visual: { production_url: "https://loopover.aethereal.dev" } }, []);
     const perRepo = parseReviewConfigMapping({ visual: { production_url: "https://metagraph.sh" } }, []);
     expect(overlayReviewConfig(globalDefault, perRepo).visual.productionUrl).toBe("https://metagraph.sh");
   });
 
   it("overlay: an unset per-repo production_url falls back to the global-default value", () => {
-    const globalDefault = parseReviewConfigMapping({ visual: { production_url: "https://gittensory.aethereal.dev" } }, []);
+    const globalDefault = parseReviewConfigMapping({ visual: { production_url: "https://loopover.aethereal.dev" } }, []);
     const perRepo = parseReviewConfigMapping({ visual: { routes: { paths: ["/app"] } } }, []);
-    expect(overlayReviewConfig(globalDefault, perRepo).visual.productionUrl).toBe("https://gittensory.aethereal.dev");
+    expect(overlayReviewConfig(globalDefault, perRepo).visual.productionUrl).toBe("https://loopover.aethereal.dev");
     expect(overlayReviewConfig(globalDefault, perRepo).visual.routes.paths).toEqual(["/app"]);
   });
 });

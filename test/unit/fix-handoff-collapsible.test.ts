@@ -104,7 +104,7 @@ describe("buildUnifiedCommentBody fixHandoff wiring (#1962)", () => {
       ...base,
       impactMap: impactEntries,
       fixHandoffBlocks: blocks,
-      beforeAfter: [{ path: "/", afterUrl: "https://api.example.dev/gittensory/shot?key=gittensory/shots/x.png" }],
+      beforeAfter: [{ path: "/", afterUrl: "https://api.example.dev/loopover/shot?key=loopover/shots/x.png" }],
     });
     expect(body).toContain("Impact map");
     expect(body).toContain("Fix handoff");
@@ -116,7 +116,7 @@ describe("buildUnifiedCommentBody fixHandoff wiring (#1962)", () => {
     // Visual preview still renders — the fix-handoff link in the collapsible chain must not drop it.
     const body = buildUnifiedCommentBody({
       ...base,
-      beforeAfter: [{ path: "/", afterUrl: "https://api.example.dev/gittensory/shot?key=gittensory/shots/x.png" }],
+      beforeAfter: [{ path: "/", afterUrl: "https://api.example.dev/loopover/shot?key=loopover/shots/x.png" }],
     });
     expect(body).toContain("Visual preview");
     expect(body).not.toContain("Fix handoff");

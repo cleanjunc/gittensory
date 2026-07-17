@@ -21,7 +21,7 @@ const BIN_DIR = resolve(MINER_DIR, "bin");
 const BIN_ENTRY = resolve(BIN_DIR, "loopover-miner.js");
 const LIB_DIR = resolve(MINER_DIR, "lib");
 // loopover-miner's coding-agent driver construction (MINER_CODING_AGENT_*) is implemented in the
-// gittensory-engine package it depends on, not under packages/loopover-miner/** -- an env var read only
+// loopover-engine package it depends on, not under packages/loopover-miner/** -- an env var read only
 // there would otherwise false-positive as undocumented-in-code. Source (not dist/, which is gitignored and
 // may not be built) so this stays accurate on a fresh checkout without a build step.
 const ENGINE_MINER_DIR = resolve(REPO_ROOT, "packages/loopover-engine/src/miner");
@@ -70,7 +70,7 @@ describe("loopover-miner DEPLOYMENT.md docs-accuracy audit (#5180)", () => {
     expect(result.failures).toEqual([]);
   });
 
-  it("REGRESSION: sees env var reads implemented in gittensory-engine's miner source, not just packages/loopover-miner/**", () => {
+  it("REGRESSION: sees env var reads implemented in loopover-engine's miner source, not just packages/loopover-miner/**", () => {
     // MINER_CODING_AGENT_CLAUDE_MODEL / MINER_CODING_AGENT_CODEX_MODEL / MINER_CODING_AGENT_TIMEOUT_MS are
     // read in packages/loopover-engine/src/miner/driver-factory.ts, a real dependency of loopover-miner
     // for coding-agent driver construction -- scanning only LIB_DIR/BIN_DIR previously false-flagged them

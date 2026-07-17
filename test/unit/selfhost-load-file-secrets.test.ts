@@ -26,7 +26,7 @@ describe("loadFileSecrets (#4403)", () => {
     errorSpy.mockRestore();
   });
 
-  it("dereferences a real gittensory secret _FILE var into its target name", () => {
+  it("dereferences a real loopover secret _FILE var into its target name", () => {
     const readFile = vi.fn(() => "s3cr3t-value\n");
     const env: Record<string, string | undefined> = { SENTRY_DSN_FILE: "/run/secrets/sentry_dsn" };
     loadFileSecrets(env, readFile);

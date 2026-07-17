@@ -280,7 +280,7 @@ function healthEnv(): Env {
   } as unknown as Env;
 }
 
-const healthConfig: OpsAgentConfig = { slug: "gittensory", confidenceFloor: 0.9, secrets: { internalSecret: "INTERNAL_SECRET" } };
+const healthConfig: OpsAgentConfig = { slug: "loopover", confidenceFloor: 0.9, secrets: { internalSecret: "INTERNAL_SECRET" } };
 
 describe("computeAgentHealth (native D1, default gate deps)", () => {
   it("computes terminal/manual-rate/reversals from the ledger; defaults to no config issues / unfrozen", async () => {

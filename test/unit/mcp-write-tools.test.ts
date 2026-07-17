@@ -8,7 +8,7 @@ async function connect() {
   const server = new LoopoverMcp(createTestEnv()).createServer();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
-  const client = new Client({ name: "gittensory-write-tools-test", version: "0.1.0" }, { capabilities: {} });
+  const client = new Client({ name: "loopover-write-tools-test", version: "0.1.0" }, { capabilities: {} });
   await client.connect(clientTransport);
   return client;
 }
@@ -16,7 +16,7 @@ async function connect() {
 type Spec = { action: string; description: string; command: string; boundary: string; inputs: Record<string, unknown> };
 
 describe("MCP miner write-tools (#780)", () => {
-  it("open_pr returns a local-execution spec; gittensory performs no write", async () => {
+  it("open_pr returns a local-execution spec; loopover performs no write", async () => {
     const client = await connect();
     const result = await client.callTool({
       name: "loopover_open_pr",
@@ -53,7 +53,7 @@ describe("MCP miner write-tools (#780)", () => {
   });
 
   // #2188 (boundary-safe test-generation slice of #1972).
-  it("generate_tests returns a local-execution spec naming the framework and target files; gittensory performs no write", async () => {
+  it("generate_tests returns a local-execution spec naming the framework and target files; loopover performs no write", async () => {
     const client = await connect();
     const result = await client.callTool({
       name: "loopover_generate_tests",

@@ -5,7 +5,7 @@ import {
 } from "../../packages/loopover-miner/lib/forge-config.js";
 
 describe("resolveForgeConfig (#4784)", () => {
-  it("returns gittensory's github.com defaults when no overrides are supplied", () => {
+  it("returns loopover's github.com defaults when no overrides are supplied", () => {
     expect(resolveForgeConfig()).toEqual({
       apiBaseUrl: "https://api.github.com",
       apiVersion: "2022-11-28",
@@ -17,7 +17,7 @@ describe("resolveForgeConfig (#4784)", () => {
       searchQualifiers: "state:open type:issue",
       tokenEnvVar: "GITHUB_TOKEN",
     });
-    // A no-override resolve must exactly equal the shared default baseline (the "unchanged gittensory path" contract).
+    // A no-override resolve must exactly equal the shared default baseline (the "unchanged loopover path" contract).
     expect(resolveForgeConfig()).toEqual({ ...DEFAULT_FORGE_CONFIG });
   });
 

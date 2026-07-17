@@ -1,6 +1,6 @@
 # Predicted Gate Parity Fixtures
 
-These fixtures are the scenario corpus for [issue #2285](https://github.com/JSONbored/gittensory/issues/2285).
+These fixtures are the scenario corpus for [issue #2285](https://github.com/JSONbored/loopover/issues/2285).
 Each file exports one complete, self-contained `buildPredictedGateVerdict` input plus the expected high-level
 surface it should produce today. The follow-up parity runner can reuse the same inputs to snapshot full outputs.
 

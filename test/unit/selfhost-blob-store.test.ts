@@ -12,26 +12,26 @@ describe("createFsBlobStore (#10 — self-host visual screenshot persistence)", 
   it("round-trips a PNG: put then get streams the same bytes back (parent dirs created)", async () => {
     const store = createFsBlobStore(dir);
     const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
-    await store.put("gittensory/shots/abc.png", png);
-    const obj = await store.get("gittensory/shots/abc.png");
+    await store.put("loopover/shots/abc.png", png);
+    const obj = await store.get("loopover/shots/abc.png");
     expect(obj).not.toBeNull();
     expect(Array.from(new Uint8Array(await new Response(obj!.body).arrayBuffer()))).toEqual(Array.from(png));
   });
 
   it("returns null on a miss", async () => {
-    expect(await createFsBlobStore(dir).get("gittensory/shots/missing.png")).toBeNull();
+    expect(await createFsBlobStore(dir).get("loopover/shots/missing.png")).toBeNull();
   });
 
   it("accepts a string value too (any R2 put body type)", async () => {
     const store = createFsBlobStore(dir);
-    await store.put("gittensory/shots/s.png", "hello");
-    expect(await new Response((await store.get("gittensory/shots/s.png"))!.body).text()).toBe("hello");
+    await store.put("loopover/shots/s.png", "hello");
+    expect(await new Response((await store.get("loopover/shots/s.png"))!.body).text()).toBe("hello");
   });
 
   it("accepts a null value (stores an empty object), satisfying the R2 put body type", async () => {
     const store = createFsBlobStore(dir);
-    await store.put("gittensory/shots/empty.png", null);
-    expect((await new Response((await store.get("gittensory/shots/empty.png"))!.body).arrayBuffer()).byteLength).toBe(0);
+    await store.put("loopover/shots/empty.png", null);
+    expect((await new Response((await store.get("loopover/shots/empty.png"))!.body).arrayBuffer()).byteLength).toBe(0);
   });
 
   it("rejects a key that escapes the base dir — put throws, get is a safe miss (no traversal)", async () => {
@@ -49,7 +49,7 @@ describe("createFsBlobStore (#10 — self-host visual screenshot persistence)", 
     const store = createFsBlobStore(dir);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
-      expect(await store.get("gittensory/shots/missing.png")).toBeNull();
+      expect(await store.get("loopover/shots/missing.png")).toBeNull();
       expect(warn).not.toHaveBeenCalled();
 
       expect(await store.get("../../etc/passwd")).toBeNull();
@@ -68,13 +68,13 @@ describe("createFsBlobStore (#10 — self-host visual screenshot persistence)", 
 
   it("delete removes a stored object — a subsequent get is a miss", async () => {
     const store = createFsBlobStore(dir);
-    await store.put("gittensory/shots/gone.png", new Uint8Array([1, 2, 3]));
-    expect(await store.get("gittensory/shots/gone.png")).not.toBeNull();
-    await store.delete("gittensory/shots/gone.png");
-    expect(await store.get("gittensory/shots/gone.png")).toBeNull();
+    await store.put("loopover/shots/gone.png", new Uint8Array([1, 2, 3]));
+    expect(await store.get("loopover/shots/gone.png")).not.toBeNull();
+    await store.delete("loopover/shots/gone.png");
+    expect(await store.get("loopover/shots/gone.png")).toBeNull();
   });
 
   it("delete on a key that was never written does not throw (idempotent, matches R2)", async () => {
-    await expect(createFsBlobStore(dir).delete("gittensory/shots/never-existed.png")).resolves.toBeUndefined();
+    await expect(createFsBlobStore(dir).delete("loopover/shots/never-existed.png")).resolves.toBeUndefined();
   });
 });

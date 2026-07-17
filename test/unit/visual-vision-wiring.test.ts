@@ -41,7 +41,7 @@ function anthropicOk(text: string) {
 }
 
 /** Routes fetch (shot PNGs) vs the AI provider call (api.anthropic.com) by URL, mirroring the shot-URL
- *  convention (`/gittensory/shot?key=...`) so a single fetch mock can serve both without a real network. */
+ *  convention (`/loopover/shot?key=...`) so a single fetch mock can serve both without a real network. */
 function stubShotsAndProvider(providerResponseText: string | null) {
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     const url = input.toString();
@@ -50,7 +50,7 @@ function stubShotsAndProvider(providerResponseText: string | null) {
         ? new Response("upstream error", { status: 500 })
         : anthropicOk(providerResponseText);
     }
-    if (url.includes("/gittensory/shot")) return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "image/png" } });
+    if (url.includes("/loopover/shot")) return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "image/png" } });
     return new Response("not found", { status: 404 });
   }));
 }
@@ -119,7 +119,7 @@ describe("runVisualVisionForAdvisory", () => {
       confirmedContributor: false,
       settings: byokSettings({ aiReviewByok: false }),
       advisory: adv,
-      routes: [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=b", afterUrl: "https://x/gittensory/shot?key=a" })],
+      routes: [route({ path: "/app", diffUrl: "https://x/loopover/shot?key=diff", beforeUrl: "https://x/loopover/shot?key=b", afterUrl: "https://x/loopover/shot?key=a" })],
     });
     expect(adv.findings).toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -139,7 +139,7 @@ describe("runVisualVisionForAdvisory", () => {
       confirmedContributor: true,
       settings: byokSettings(),
       advisory: adv,
-      routes: [route({ path: "/app", beforeUrl: "https://x/gittensory/shot?key=b", afterUrl: "https://x/gittensory/shot?key=a" })],
+      routes: [route({ path: "/app", beforeUrl: "https://x/loopover/shot?key=b", afterUrl: "https://x/loopover/shot?key=a" })],
     });
     expect(adv.findings).toEqual([]);
     // The only network activity is the (unrelated) confirmed-official-miner identity check -- never a
@@ -171,7 +171,7 @@ describe("runVisualVisionForAdvisory", () => {
       confirmedContributor: true,
       settings: byokSettings(),
       advisory: adv,
-      routes: [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=b", afterUrl: "https://x/gittensory/shot?key=a" })],
+      routes: [route({ path: "/app", diffUrl: "https://x/loopover/shot?key=diff", beforeUrl: "https://x/loopover/shot?key=b", afterUrl: "https://x/loopover/shot?key=a" })],
     });
     expect(adv.findings).toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -190,7 +190,7 @@ describe("runVisualVisionForAdvisory", () => {
       confirmedContributor: true,
       settings: byokSettings({ aiReviewByok: false }),
       advisory: adv,
-      routes: [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=b", afterUrl: "https://x/gittensory/shot?key=a" })],
+      routes: [route({ path: "/app", diffUrl: "https://x/loopover/shot?key=diff", beforeUrl: "https://x/loopover/shot?key=b", afterUrl: "https://x/loopover/shot?key=a" })],
     });
     expect(adv.findings).toEqual([]);
     expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual(["https://api.gittensor.io/miners"]);
@@ -210,7 +210,7 @@ describe("runVisualVisionForAdvisory", () => {
       confirmedContributor: false,
       settings: byokSettings(),
       advisory: adv,
-      routes: [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=b", afterUrl: "https://x/gittensory/shot?key=a" })],
+      routes: [route({ path: "/app", diffUrl: "https://x/loopover/shot?key=diff", beforeUrl: "https://x/loopover/shot?key=b", afterUrl: "https://x/loopover/shot?key=a" })],
     });
     expect(adv.findings).toEqual([]);
     expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual(["https://api.gittensor.io/miners"]);
@@ -230,7 +230,7 @@ describe("runVisualVisionForAdvisory", () => {
       confirmedContributor: true,
       settings: byokSettings({ aiReviewProvider: "openai" }),
       advisory: adv,
-      routes: [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=b", afterUrl: "https://x/gittensory/shot?key=a" })],
+      routes: [route({ path: "/app", diffUrl: "https://x/loopover/shot?key=diff", beforeUrl: "https://x/loopover/shot?key=b", afterUrl: "https://x/loopover/shot?key=a" })],
     });
     expect(adv.findings).toEqual([]);
     expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual(["https://api.gittensor.io/miners"]);
@@ -258,9 +258,9 @@ describe("runVisualVisionForAdvisory", () => {
       routes: [
         route({
           path: "/app",
-          diffUrl: "https://x/gittensory/shot?key=diff",
-          beforeUrl: "https://x/gittensory/shot?key=before",
-          afterUrl: "https://x/gittensory/shot?key=after",
+          diffUrl: "https://x/loopover/shot?key=diff",
+          beforeUrl: "https://x/loopover/shot?key=before",
+          afterUrl: "https://x/loopover/shot?key=after",
         }),
       ],
     });
@@ -303,9 +303,9 @@ describe("runVisualVisionForAdvisory", () => {
       routes: [
         route({
           path: "/app",
-          diffUrl: "https://x/gittensory/shot?key=diff",
-          beforeUrl: "https://x/gittensory/shot?key=before",
-          afterUrl: "https://x/gittensory/shot?key=after",
+          diffUrl: "https://x/loopover/shot?key=diff",
+          beforeUrl: "https://x/loopover/shot?key=before",
+          afterUrl: "https://x/loopover/shot?key=after",
         }),
       ],
     });
@@ -329,11 +329,11 @@ describe("runVisualVisionForAdvisory", () => {
       routes: [
         route({
           path: "/app",
-          diffUrl: "https://x/gittensory/shot?key=diff-desktop",
-          beforeUrl: "https://x/gittensory/shot?key=before-desktop",
-          afterUrl: "https://x/gittensory/shot?key=after-desktop",
-          beforeUrlMobile: "https://x/gittensory/shot?key=before-mobile",
-          afterUrlMobile: "https://x/gittensory/shot?key=after-mobile",
+          diffUrl: "https://x/loopover/shot?key=diff-desktop",
+          beforeUrl: "https://x/loopover/shot?key=before-desktop",
+          afterUrl: "https://x/loopover/shot?key=after-desktop",
+          beforeUrlMobile: "https://x/loopover/shot?key=before-mobile",
+          afterUrlMobile: "https://x/loopover/shot?key=after-mobile",
         }),
       ],
     });
@@ -356,7 +356,7 @@ describe("runVisualVisionForAdvisory", () => {
       const url = input.toString();
       requestedUrls.push(url);
       if (url === "https://api.anthropic.com/v1/messages") return anthropicOk(findingsResponse([]));
-      if (url.includes("/gittensory/shot")) return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+      if (url.includes("/loopover/shot")) return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
       return new Response("not found", { status: 404 });
     }));
     const adv = findingsHolder();
@@ -371,18 +371,18 @@ describe("runVisualVisionForAdvisory", () => {
       routes: [
         route({
           path: "/app",
-          diffUrlMobile: "https://x/gittensory/shot?key=diff-mobile",
-          beforeUrl: "https://x/gittensory/shot?key=before-desktop",
-          afterUrl: "https://x/gittensory/shot?key=after-desktop",
-          beforeUrlMobile: "https://x/gittensory/shot?key=before-mobile",
-          afterUrlMobile: "https://x/gittensory/shot?key=after-mobile",
+          diffUrlMobile: "https://x/loopover/shot?key=diff-mobile",
+          beforeUrl: "https://x/loopover/shot?key=before-desktop",
+          afterUrl: "https://x/loopover/shot?key=after-desktop",
+          beforeUrlMobile: "https://x/loopover/shot?key=before-mobile",
+          afterUrlMobile: "https://x/loopover/shot?key=after-mobile",
         }),
       ],
     });
-    expect(requestedUrls).toContain("https://x/gittensory/shot?key=before-mobile");
-    expect(requestedUrls).toContain("https://x/gittensory/shot?key=after-mobile");
-    expect(requestedUrls).not.toContain("https://x/gittensory/shot?key=before-desktop");
-    expect(requestedUrls).not.toContain("https://x/gittensory/shot?key=after-desktop");
+    expect(requestedUrls).toContain("https://x/loopover/shot?key=before-mobile");
+    expect(requestedUrls).toContain("https://x/loopover/shot?key=after-mobile");
+    expect(requestedUrls).not.toContain("https://x/loopover/shot?key=before-desktop");
+    expect(requestedUrls).not.toContain("https://x/loopover/shot?key=after-desktop");
   });
 
   it("skips a route whose confirmed-changed viewport is missing its before/after shot URLs", async () => {
@@ -399,7 +399,7 @@ describe("runVisualVisionForAdvisory", () => {
       settings: byokSettings(),
       advisory: adv,
       // diffUrl set (confirmed changed) but no beforeUrl/afterUrl at all -- degrades to "no images from this route".
-      routes: [route({ path: "/broken", diffUrl: "https://x/gittensory/shot?key=diff" })],
+      routes: [route({ path: "/broken", diffUrl: "https://x/loopover/shot?key=diff" })],
     });
     expect(adv.findings).toEqual([]);
   });
@@ -411,7 +411,7 @@ describe("runVisualVisionForAdvisory", () => {
       const url = input.toString();
       if (url === "https://api.anthropic.com/v1/messages") return anthropicOk(findingsResponse([]));
       if (url.includes("key=before")) return new Response("not found", { status: 404 });
-      if (url.includes("/gittensory/shot")) return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+      if (url.includes("/loopover/shot")) return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
       return new Response("not found", { status: 404 });
     }));
     const adv = findingsHolder();
@@ -423,7 +423,7 @@ describe("runVisualVisionForAdvisory", () => {
       confirmedContributor: true,
       settings: byokSettings(),
       advisory: adv,
-      routes: [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=before", afterUrl: "https://x/gittensory/shot?key=after" })],
+      routes: [route({ path: "/app", diffUrl: "https://x/loopover/shot?key=diff", beforeUrl: "https://x/loopover/shot?key=before", afterUrl: "https://x/loopover/shot?key=after" })],
     });
     // The "after" image alone was enough to attempt the call; the model returned no findings either way.
     expect(adv.findings).toEqual([]);
@@ -450,7 +450,7 @@ describe("runVisualVisionForAdvisory", () => {
       confirmedContributor: true,
       settings: byokSettings(),
       advisory: adv,
-      routes: [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=before", afterUrl: "https://x/gittensory/shot?key=after" })],
+      routes: [route({ path: "/app", diffUrl: "https://x/loopover/shot?key=diff", beforeUrl: "https://x/loopover/shot?key=before", afterUrl: "https://x/loopover/shot?key=after" })],
     });
     expect(providerCalls).toEqual([]);
     expect(adv.findings).toEqual([]);
@@ -469,7 +469,7 @@ describe("runVisualVisionForAdvisory", () => {
       confirmedContributor: true,
       settings: byokSettings(),
       advisory: adv,
-      routes: [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=before", afterUrl: "https://x/gittensory/shot?key=after" })],
+      routes: [route({ path: "/app", diffUrl: "https://x/loopover/shot?key=diff", beforeUrl: "https://x/loopover/shot?key=before", afterUrl: "https://x/loopover/shot?key=after" })],
     });
     expect(adv.findings).toEqual([]);
   });
@@ -487,7 +487,7 @@ describe("runVisualVisionForAdvisory", () => {
       confirmedContributor: true,
       settings: byokSettings(),
       advisory: adv,
-      routes: [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=before", afterUrl: "https://x/gittensory/shot?key=after" })],
+      routes: [route({ path: "/app", diffUrl: "https://x/loopover/shot?key=diff", beforeUrl: "https://x/loopover/shot?key=before", afterUrl: "https://x/loopover/shot?key=after" })],
     });
     expect(adv.findings).toEqual([]);
     // A genuine provider failure is a distinct "error" status (not "ok") -- but it's still a real request
@@ -518,7 +518,7 @@ describe("runVisualVisionForAdvisory", () => {
       confirmedContributor: true,
       settings: byokSettings(),
       advisory: adv,
-      routes: [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=before", afterUrl: "https://x/gittensory/shot?key=after" })],
+      routes: [route({ path: "/app", diffUrl: "https://x/loopover/shot?key=diff", beforeUrl: "https://x/loopover/shot?key=before", afterUrl: "https://x/loopover/shot?key=after" })],
     });
     expect(adv.findings).toEqual([]);
   });
@@ -539,7 +539,7 @@ describe("runVisualVisionForAdvisory", () => {
         confirmedContributor: true,
         settings: byokSettings(),
         advisory: adv,
-        routes: [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=before", afterUrl: "https://x/gittensory/shot?key=after" })],
+        routes: [route({ path: "/app", diffUrl: "https://x/loopover/shot?key=diff", beforeUrl: "https://x/loopover/shot?key=before", afterUrl: "https://x/loopover/shot?key=after" })],
       }),
     ).resolves.toBeUndefined();
     expect(adv.findings).toEqual([]);
@@ -552,13 +552,13 @@ describe("runVisualVisionForAdvisory", () => {
 function stubShots() {
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     const url = input.toString();
-    if (url.includes("/gittensory/shot")) return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "image/png" } });
+    if (url.includes("/loopover/shot")) return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "image/png" } });
     return new Response("not found", { status: 404 });
   }));
 }
 
 function selfHostVisionRoutes() {
-  return [route({ path: "/app", diffUrl: "https://x/gittensory/shot?key=diff", beforeUrl: "https://x/gittensory/shot?key=before", afterUrl: "https://x/gittensory/shot?key=after" })];
+  return [route({ path: "/app", diffUrl: "https://x/loopover/shot?key=diff", beforeUrl: "https://x/loopover/shot?key=before", afterUrl: "https://x/loopover/shot?key=after" })];
 }
 
 describe("runVisualVisionForAdvisory: self-host local vision provider (#4335)", () => {

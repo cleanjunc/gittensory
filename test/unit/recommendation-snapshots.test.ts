@@ -28,7 +28,7 @@ describe("recommendation snapshot envelopes", () => {
       generatedAt: "2026-06-01T00:00:00.000Z",
       publicSafe: true,
       target: {
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         pullNumber: 12,
       },
       provenance: {
@@ -49,10 +49,10 @@ describe("recommendation snapshot envelopes", () => {
 
   it("attaches the id and envelope without removing existing action payload", () => {
     const attached = attachRecommendationSnapshot(
-      action({ payload: { decision: { repoFullName: "JSONbored/gittensory" } } }),
+      action({ payload: { decision: { repoFullName: "JSONbored/loopover" } } }),
       context(),
     );
-    expect(attached.payload.decision).toEqual({ repoFullName: "JSONbored/gittensory" });
+    expect(attached.payload.decision).toEqual({ repoFullName: "JSONbored/loopover" });
     expect(attached.payload.recommendationSnapshotId).toBe("recommendation:context-123:run-1:00:choose_next_work");
     expect(attached.payload.recommendationSnapshot).toMatchObject({
       snapshotId: "recommendation:context-123:run-1:00:choose_next_work",
@@ -75,7 +75,7 @@ describe("recommendation snapshot envelopes", () => {
     ]);
     expect(attached[1]?.payload.recommendationSnapshot).toMatchObject({
       actionType: "explain_repo_fit",
-      target: { repoFullName: "JSONbored/gittensory", issueNumber: 7 },
+      target: { repoFullName: "JSONbored/loopover", issueNumber: 7 },
     });
   });
 
@@ -231,7 +231,7 @@ function action(overrides: Partial<AgentActionRecord> = {}): AgentActionRecord {
     id: "run-1:00:choose_next_work",
     runId: "run-1",
     actionType: "choose_next_work",
-    targetRepoFullName: "JSONbored/gittensory",
+    targetRepoFullName: "JSONbored/loopover",
     targetPullNumber: 12,
     status: "recommended",
     recommendation: "Pick narrow work.",

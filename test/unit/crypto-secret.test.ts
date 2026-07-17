@@ -17,8 +17,8 @@ describe("sha256Hex", () => {
   });
 
   it("is deterministic and returns lowercase 64-char hex", async () => {
-    const first = await sha256Hex("gittensory");
-    const second = await sha256Hex("gittensory");
+    const first = await sha256Hex("loopover");
+    const second = await sha256Hex("loopover");
     expect(first).toBe(second);
     expect(first).toMatch(/^[0-9a-f]{64}$/);
   });

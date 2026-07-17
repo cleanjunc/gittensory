@@ -19,14 +19,14 @@ import type { CollisionReport } from "../../src/signals/engine";
 import type { IssueRecord, PullRequestRecord, PullRequestFileRecord, RepositoryRecord } from "../../src/types";
 
 const repo: RepositoryRecord = {
-  fullName: "JSONbored/gittensory",
+  fullName: "JSONbored/loopover",
   owner: "JSONbored",
-  name: "gittensory",
+  name: "loopover",
   isInstalled: true,
   isRegistered: true,
   isPrivate: true,
   registryConfig: {
-    repo: "JSONbored/gittensory",
+    repo: "JSONbored/loopover",
     emissionShare: 0.02,
     issueDiscoveryShare: 0,
     labelMultipliers: { feature: 1.5 },
@@ -1598,7 +1598,7 @@ describe("green-CI compatibility reconciliation of the public comment gate", () 
 
 function emptyCollisions(): CollisionReport {
   return {
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     generatedAt: "2026-06-10T00:00:00.000Z",
     summary: { clusterCount: 0, highRiskCount: 0, itemsReviewed: 0 },
     clusters: [],

@@ -15,14 +15,14 @@ import type { Advisory } from "../../src/types";
 
 const changedRoute = (path: string): CaptureRoute => ({
   path,
-  beforeUrl: `https://api.example.dev/gittensory/shot?key=before-${path}`,
-  afterUrl: `https://api.example.dev/gittensory/shot?key=after-${path}`,
-  diffUrl: `https://api.example.dev/gittensory/shot?key=diff-${path}`,
+  beforeUrl: `https://api.example.dev/loopover/shot?key=before-${path}`,
+  afterUrl: `https://api.example.dev/loopover/shot?key=after-${path}`,
+  diffUrl: `https://api.example.dev/loopover/shot?key=diff-${path}`,
 });
 const unchangedRoute = (path: string): CaptureRoute => ({
   path,
-  beforeUrl: `https://api.example.dev/gittensory/shot?key=before-${path}`,
-  afterUrl: `https://api.example.dev/gittensory/shot?key=after-${path}`,
+  beforeUrl: `https://api.example.dev/loopover/shot?key=before-${path}`,
+  afterUrl: `https://api.example.dev/loopover/shot?key=after-${path}`,
 });
 const providerKey: AiReviewProviderKey = { provider: "anthropic", key: "sk-ant" };
 

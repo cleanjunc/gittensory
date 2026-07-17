@@ -229,13 +229,13 @@ describe("triggerPagerDutyIncident — cooldown gate (alert fatigue control #2)"
     expect(calls).toHaveLength(1);
   });
 
-  it("REGRESSION: a recent page recorded under the pre-rebrand 'gittensory' actor still suppresses a duplicate within the cooldown window", async () => {
+  it("REGRESSION: a recent page recorded under the pre-rebrand 'loopover' actor still suppresses a duplicate within the cooldown window", async () => {
     const calls = stubFetch();
     const env = enabledEnv();
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     await recordAuditEvent(env, {
       eventType: "external_notification.pagerduty",
-      actor: "gittensory",
+      actor: "loopover",
       targetKey: "ops_anomaly:acme/widgets",
       outcome: "completed",
       detail: "triggered",

@@ -68,7 +68,7 @@ afterEach(() => {
 });
 
 function createSandbox() {
-  const base = mkdtempSync(join(tmpdir(), "gittensory-selfhost-update-"));
+  const base = mkdtempSync(join(tmpdir(), "loopover-selfhost-update-"));
   sandboxDirs.push(base);
 
   const originDir = join(base, "origin.git");
@@ -272,7 +272,7 @@ describe("selfhost-update.sh", () => {
   });
 
   it("fails fast outside a git checkout", () => {
-    const outside = mkdtempSync(join(tmpdir(), "gittensory-selfhost-update-nogit-"));
+    const outside = mkdtempSync(join(tmpdir(), "loopover-selfhost-update-nogit-"));
     sandboxDirs.push(outside);
     mkdirSync(join(outside, "scripts"), { recursive: true });
     writeFileSync(join(outside, "scripts", "selfhost-update.sh"), REAL_SCRIPT);

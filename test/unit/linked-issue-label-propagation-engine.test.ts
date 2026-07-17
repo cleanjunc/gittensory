@@ -1,4 +1,4 @@
-// Mirror of the app suite pointed at the gittensory-engine copy so the extracted module owns its branch coverage (#2280).
+// Mirror of the app suite pointed at the loopover-engine copy so the extracted module owns its branch coverage (#2280).
 import { describe, expect, it } from "vitest";
 import { DEFAULT_LINKED_ISSUE_LABEL_PROPAGATION, normalizeLinkedIssueLabelPropagationConfig } from "../../packages/loopover-engine/src/review/linked-issue-label-propagation";
 

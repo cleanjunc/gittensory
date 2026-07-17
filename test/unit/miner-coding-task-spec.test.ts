@@ -302,7 +302,7 @@ describe("buildCodingTaskSpec (#5132)", () => {
     expect(result.instructions).not.toContain("No build/test/lint/format commands were confidently inferred");
   });
 
-  it("REGRESSION (#4786): a fail-closed undetected stack still reaches the prompt (no silent gittensory default)", () => {
+  it("REGRESSION (#4786): a fail-closed undetected stack still reaches the prompt (no silent loopover default)", () => {
     const dir = tempDir();
     const target = issue();
     const result = buildCodingTaskSpec({

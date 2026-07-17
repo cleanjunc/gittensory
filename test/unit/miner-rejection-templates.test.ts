@@ -5,7 +5,7 @@ import {
   renderRejectionMessage,
 } from "../../packages/loopover-miner/lib/rejection-templates.js";
 
-const CONTEXT = { repoFullName: "JSONbored/gittensory", prNumber: 2751 } as const;
+const CONTEXT = { repoFullName: "JSONbored/loopover", prNumber: 2751 } as const;
 
 describe("loopover-miner rejection templates (#2324)", () => {
   it("exposes the frozen reason vocabulary", () => {
@@ -17,7 +17,7 @@ describe("loopover-miner rejection templates (#2324)", () => {
     for (const reason of REJECTION_REASONS) {
       const message = renderRejectionMessage(reason, CONTEXT);
       expect(message).not.toMatch(/\{[^}]+\}/); // no unresolved {placeholder}
-      expect(message).toContain("JSONbored/gittensory");
+      expect(message).toContain("JSONbored/loopover");
       expect(message).toContain("#2751");
     }
   });
@@ -60,8 +60,8 @@ describe("loopover-miner rejection templates (#2324)", () => {
       );
     }
     // A well-formed owner/repo with the allowed punctuation still renders.
-    expect(renderRejectionMessage("gate_close", { repoFullName: "JSONbored/gittensory.io_test-1", prNumber: 9 })).toContain(
-      "JSONbored/gittensory.io_test-1",
+    expect(renderRejectionMessage("gate_close", { repoFullName: "JSONbored/loopover.io_test-1", prNumber: 9 })).toContain(
+      "JSONbored/loopover.io_test-1",
     );
   });
 });

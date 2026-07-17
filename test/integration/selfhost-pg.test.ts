@@ -1,7 +1,7 @@
 // Real-Postgres integration test for the self-host PG backend (#977). Skipped unless PG_TEST_URL is set, so
 // CI (no Postgres) skips it; run locally against a real PG:
-//   docker run -d -e POSTGRES_PASSWORD=devpw -e POSTGRES_DB=gittensory -p 55432:5432 postgres:16
-//   PG_TEST_URL=postgres://postgres:devpw@localhost:55432/gittensory npx vitest run test/integration/selfhost-pg.test.ts
+//   docker run -d -e POSTGRES_PASSWORD=devpw -e POSTGRES_DB=loopover -p 55432:5432 postgres:16
+//   PG_TEST_URL=postgres://postgres:devpw@localhost:55432/loopover npx vitest run test/integration/selfhost-pg.test.ts
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import pg from "pg";
 import { runSelfHostMigrations } from "../../src/selfhost/migrate";

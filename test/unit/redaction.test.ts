@@ -49,7 +49,7 @@ describe("isPublicSafeText (#542 shared public/private boundary)", () => {
     expect(isPublicSafeText("/var/log/app.log")).toBe(false);
     expect(isPublicSafeText("/var/folders/alice/work/private-repo/cache.ts")).toBe(false);
     expect(isPublicSafeText("/tmp/scratch")).toBe(false);
-    expect(isPublicSafeText("/private/tmp/gittensory/cache")).toBe(false);
+    expect(isPublicSafeText("/private/tmp/loopover/cache")).toBe(false);
     expect(isPublicSafeText("C:\\Users\\carol\\repo")).toBe(false);
     expect(isPublicSafeText("C:/Users/carol/repo")).toBe(false);
     expect(isPublicSafeText("/opt/homebrew/var/log")).toBe(false);

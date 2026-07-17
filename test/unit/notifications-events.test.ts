@@ -4,19 +4,19 @@ import type { GitHubWebhookPayload } from "../../src/types";
 
 const basePayload: GitHubWebhookPayload = {
   action: "submitted",
-  repository: { name: "gittensory", full_name: "JSONbored/gittensory", owner: { login: "JSONbored" } },
+  repository: { name: "loopover", full_name: "JSONbored/loopover", owner: { login: "JSONbored" } },
   pull_request: {
     number: 42,
     title: "Add feature",
     state: "open",
     user: { login: "contributor", type: "User" },
-    html_url: "https://github.com/JSONbored/gittensory/pull/42",
+    html_url: "https://github.com/JSONbored/loopover/pull/42",
   },
   review: {
     state: "changes_requested",
     user: { login: "maintainer", type: "User" },
     submitted_at: "2026-05-28T12:00:00.000Z",
-    html_url: "https://github.com/JSONbored/gittensory/pull/42#pullrequestreview-1",
+    html_url: "https://github.com/JSONbored/loopover/pull/42#pullrequestreview-1",
   },
   sender: { login: "maintainer", type: "User" },
 };
@@ -29,10 +29,10 @@ describe("detectNotificationEvents", () => {
       {
         eventType: "pull_request_changes_requested",
         recipientLogin: "contributor",
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         pullNumber: 42,
-        dedupKey: "changes_requested:JSONbored/gittensory#42:maintainer:2026-05-28T12:00:00.000Z",
-        deeplink: "https://github.com/JSONbored/gittensory/pull/42#pullrequestreview-1",
+        dedupKey: "changes_requested:JSONbored/loopover#42:maintainer:2026-05-28T12:00:00.000Z",
+        deeplink: "https://github.com/JSONbored/loopover/pull/42#pullrequestreview-1",
         actorLogin: "maintainer",
         detectedAt: "2026-05-28T12:00:01.000Z",
       },
@@ -100,7 +100,7 @@ describe("detectNotificationEvents", () => {
       "pull_request_review",
       {
         action: "submitted",
-        repository: { name: "gittensory", full_name: "JSONbored/gittensory", owner: { login: "JSONbored" } },
+        repository: { name: "loopover", full_name: "JSONbored/loopover", owner: { login: "JSONbored" } },
         pull_request: {
           number: 7,
           title: "Sparse review",
@@ -118,10 +118,10 @@ describe("detectNotificationEvents", () => {
       {
         eventType: "pull_request_changes_requested",
         recipientLogin: "contributor",
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         pullNumber: 7,
-        dedupKey: "changes_requested:JSONbored/gittensory#7:unknown:2026-05-28T13:00:00.000Z",
-        deeplink: "https://github.com/JSONbored/gittensory/pull/7",
+        dedupKey: "changes_requested:JSONbored/loopover#7:unknown:2026-05-28T13:00:00.000Z",
+        deeplink: "https://github.com/JSONbored/loopover/pull/7",
         actorLogin: "unknown",
         detectedAt: "2026-05-28T13:00:00.000Z",
       },
@@ -165,13 +165,13 @@ describe("detectNotificationEvents", () => {
 describe("detectNotificationEvents — merged PR (#702)", () => {
   const mergedPayload: GitHubWebhookPayload = {
     action: "closed",
-    repository: { name: "gittensory", full_name: "JSONbored/gittensory", owner: { login: "JSONbored" } },
+    repository: { name: "loopover", full_name: "JSONbored/loopover", owner: { login: "JSONbored" } },
     pull_request: {
       number: 42,
       title: "Add feature",
       state: "closed",
       user: { login: "contributor", type: "User" },
-      html_url: "https://github.com/JSONbored/gittensory/pull/42",
+      html_url: "https://github.com/JSONbored/loopover/pull/42",
       merged_at: "2026-05-29T00:00:00.000Z",
     },
   };
@@ -182,10 +182,10 @@ describe("detectNotificationEvents — merged PR (#702)", () => {
       {
         eventType: "pull_request_merged",
         recipientLogin: "contributor",
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         pullNumber: 42,
-        dedupKey: "pull_request_merged:JSONbored/gittensory#42:2026-05-29T00:00:00.000Z",
-        deeplink: "https://github.com/JSONbored/gittensory/pull/42",
+        dedupKey: "pull_request_merged:JSONbored/loopover#42:2026-05-29T00:00:00.000Z",
+        deeplink: "https://github.com/JSONbored/loopover/pull/42",
         actorLogin: "contributor",
         detectedAt: "2026-05-29T00:00:01.000Z",
       },
@@ -201,6 +201,6 @@ describe("detectNotificationEvents — merged PR (#702)", () => {
 
   it("falls back to the canonical PR URL when html_url is absent", () => {
     const events = detectNotificationEvents("pull_request", { ...mergedPayload, pull_request: { ...mergedPayload.pull_request!, html_url: undefined as never } }, "2026-05-29T00:00:01.000Z");
-    expect(events[0]?.deeplink).toBe("https://github.com/JSONbored/gittensory/pull/42");
+    expect(events[0]?.deeplink).toBe("https://github.com/JSONbored/loopover/pull/42");
   });
 });

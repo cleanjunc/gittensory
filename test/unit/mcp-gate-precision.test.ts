@@ -11,7 +11,7 @@ async function connect(env: Env) {
   const server = new LoopoverMcp(env).createServer();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
-  const client = new Client({ name: "gittensory-gate-precision-test", version: "0.1.0" }, { capabilities: {} });
+  const client = new Client({ name: "loopover-gate-precision-test", version: "0.1.0" }, { capabilities: {} });
   await client.connect(clientTransport);
   return client;
 }

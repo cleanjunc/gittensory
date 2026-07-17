@@ -15,17 +15,17 @@ describe("maintainer settings preview UI helpers", () => {
     expect(
       extractPreviewRepoOptions([
         { pr: "entrius/allways-ui#12" },
-        { pr: "JSONbored/gittensory#135" },
+        { pr: "JSONbored/loopover#135" },
         { pr: "entrius/allways-ui#14" },
         { pr: "not-a-pr" },
       ]),
-    ).toEqual(["entrius/allways-ui", "JSONbored/gittensory"]);
+    ).toEqual(["entrius/allways-ui", "JSONbored/loopover"]);
   });
 
   it("validates owner/repo input before the UI calls the dry-run endpoint", () => {
-    expect(splitRepoFullName("JSONbored/gittensory")).toEqual({
+    expect(splitRepoFullName("JSONbored/loopover")).toEqual({
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
     });
     expect(splitRepoFullName("missing")).toBeNull();
     expect(splitRepoFullName("/missing-owner")).toBeNull();
@@ -59,7 +59,7 @@ describe("maintainer settings preview UI helpers", () => {
 
   it("builds scenario-specific sample PR requests without private fields", () => {
     const request = buildSettingsPreviewRequest({
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       scenarioId: "miner-api-unavailable",
       title: "  ",
       labels: "bug, privacy",
@@ -86,7 +86,7 @@ describe("maintainer settings preview UI helpers", () => {
 
     expect(
       buildSettingsPreviewRequest({
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         scenarioId: "confirmed-miner",
         title: "Review cache preview",
         labels: "",
@@ -130,12 +130,12 @@ describe("maintainer settings preview UI helpers", () => {
     expect(
       extractPreviewRepoOptions([
         { pr: { split: () => [] } as unknown as string },
-        { pr: "JSONbored/gittensory#251" },
+        { pr: "JSONbored/loopover#251" },
       ]),
-    ).toEqual(["JSONbored/gittensory"]);
+    ).toEqual(["JSONbored/loopover"]);
 
     const request = buildSettingsPreviewRequest({
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       scenarioId: "confirmed-miner",
       title: "Export weekly report",
       labels: "",

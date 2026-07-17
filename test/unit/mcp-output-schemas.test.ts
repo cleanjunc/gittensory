@@ -47,7 +47,7 @@ async function connectTestClient(env: Env = createTestEnv(), identity?: AuthIden
   const mcpServer = new LoopoverMcp(env, identity).createServer();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await mcpServer.connect(serverTransport);
-  const client = new Client({ name: "gittensory-output-schema-test", version: "0.1.0" }, { capabilities: {} });
+  const client = new Client({ name: "loopover-output-schema-test", version: "0.1.0" }, { capabilities: {} });
   await client.connect(clientTransport);
   return { client, mcpServer };
 }

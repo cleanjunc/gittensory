@@ -31,7 +31,7 @@ describe("loopover-mcp CLI — doctor", () => {
     mkdirSync(secretConfigDir, { recursive: true });
     writeFileSync(join(secretConfigDir, "config.json"), JSON.stringify({ apiUrl: url }), { mode: 0o600 });
     const payload = JSON.parse(
-      await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/gittensory", "--json"], {
+      await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/loopover", "--json"], {
         LOOPOVER_API_URL: url,
         LOOPOVER_TOKEN: "session-token",
         LOOPOVER_CONFIG_DIR: secretConfigDir,
@@ -107,7 +107,7 @@ describe("loopover-mcp CLI — doctor", () => {
     tempDir = mkdtempSync(join(tmpdir(), "loopover-cli-"));
     const url = await startFixtureServer();
     const payload = JSON.parse(
-      await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/gittensory", "--json"], {
+      await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/loopover", "--json"], {
         LOOPOVER_API_URL: url,
         LOOPOVER_API_TOKEN: "",
         LOOPOVER_TOKEN: "",
@@ -223,7 +223,7 @@ describe("loopover-mcp CLI — doctor", () => {
     expect(status.package.updateAvailable).toBe(false);
 
     const doctor = JSON.parse(
-      await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/gittensory", "--json"], {
+      await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/loopover", "--json"], {
         LOOPOVER_API_URL: url,
         LOOPOVER_NPM_REGISTRY_URL: url,
         LOOPOVER_TOKEN: "session-token",
@@ -238,7 +238,7 @@ describe("loopover-mcp CLI — doctor", () => {
     tempDir = mkdtempSync(join(tmpdir(), "loopover-cli-"));
     const url = await startFixtureServer({ latestVersion: oneMinorAboveLocal });
     const payload = JSON.parse(
-      await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/gittensory", "--json"], {
+      await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/loopover", "--json"], {
         LOOPOVER_API_URL: url,
         LOOPOVER_NPM_REGISTRY_URL: url,
         LOOPOVER_TOKEN: "session-token",
@@ -265,7 +265,7 @@ describe("loopover-mcp CLI — doctor", () => {
     expect(payload.apiCompatibility.status).toBe("unavailable");
 
     const doctor = JSON.parse(
-      await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/gittensory", "--json"], {
+      await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/loopover", "--json"], {
         LOOPOVER_API_URL: url,
         LOOPOVER_TOKEN: "session-token",
         LOOPOVER_CONFIG_DIR: tempDir,
@@ -344,7 +344,7 @@ describe("loopover-mcp CLI — doctor", () => {
       upgradeCommand: "npm install -g @loopover/mcp@latest",
     });
 
-    const doctor = JSON.parse(await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/gittensory", "--json"], env)) as {
+    const doctor = JSON.parse(await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/loopover", "--json"], env)) as {
       checklist: Array<{ id: string; status: string }>;
       nextCommand: { command: string; reason: string };
       checks: Array<{ name: string; status: string; remediation?: string }>;
@@ -369,7 +369,7 @@ describe("loopover-mcp CLI — doctor", () => {
     tempDir = mkdtempSync(join(tmpdir(), "loopover-cli-"));
     const url = await startFixtureServer();
     const payload = JSON.parse(
-      await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/gittensory", "--json"], {
+      await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/loopover", "--json"], {
         LOOPOVER_API_URL: url,
         LOOPOVER_TOKEN: "session-token",
         LOOPOVER_CONFIG_DIR: tempDir,
@@ -428,8 +428,8 @@ describe("loopover-mcp CLI — doctor", () => {
     };
     const statusOutput = await runAsync(["status"], env);
     const statusJsonOutput = await runAsync(["status", "--json"], env);
-    const doctorOutput = await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/gittensory"], env);
-    const doctorJsonOutput = await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/gittensory", "--json"], env);
+    const doctorOutput = await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/loopover"], env);
+    const doctorJsonOutput = await runAsync(["doctor", "--cwd", tempDir, "--repo", "JSONbored/loopover", "--json"], env);
     for (const output of [statusOutput, statusJsonOutput, doctorOutput, doctorJsonOutput]) {
       expect(output).not.toContain("session-token");
       expect(output).not.toContain(tempDir);

@@ -21,7 +21,7 @@ const closeables: Array<{ close(): void }> = [];
 let logs: string[] = [];
 
 function tempDir() {
-  const root = mkdtempSync(join(tmpdir(), "gittensory-wire-cli-"));
+  const root = mkdtempSync(join(tmpdir(), "loopover-wire-cli-"));
   roots.push(root);
   return root;
 }

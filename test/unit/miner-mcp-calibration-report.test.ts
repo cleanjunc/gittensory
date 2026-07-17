@@ -19,12 +19,12 @@ type EventLedgerHandle = ReturnType<typeof initEventLedger>;
 
 const roots: string[] = [];
 function tempPredictionLedger(): PredictionLedgerHandle {
-  const root = mkdtempSync(join(tmpdir(), "gittensory-miner-mcp-calibration-pred-"));
+  const root = mkdtempSync(join(tmpdir(), "loopover-miner-mcp-calibration-pred-"));
   roots.push(root);
   return initPredictionLedger(join(root, "prediction-ledger.sqlite3"));
 }
 function tempEventLedger(): EventLedgerHandle {
-  const root = mkdtempSync(join(tmpdir(), "gittensory-miner-mcp-calibration-event-"));
+  const root = mkdtempSync(join(tmpdir(), "loopover-miner-mcp-calibration-event-"));
   roots.push(root);
   return initEventLedger(join(root, "event-ledger.sqlite3"));
 }

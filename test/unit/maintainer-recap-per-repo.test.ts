@@ -81,7 +81,7 @@ describe("buildPerRepoRecapSection (#2241)", () => {
 
   it("redacts a local-path leak in a repo label before emitting (defense-in-depth)", () => {
     // A mis-shaped label that embeds an absolute local path must be scrubbed via PUBLIC_LOCAL_PATH_SCRUB_PATTERN.
-    const section = buildPerRepoRecapSection(source([repo("/tmp/evil-checkout/gittensory", 3, 2, 1)]));
+    const section = buildPerRepoRecapSection(source([repo("/tmp/evil-checkout/loopover", 3, 2, 1)]));
     expect(section.rows[0]?.repo).toBe("<redacted-path>");
     expect(section.lines[0]).toBe("<redacted-path>: reviewed 3, merged 2, closed 1");
     for (const line of section.lines) {

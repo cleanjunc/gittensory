@@ -5,7 +5,7 @@ import { renderMetrics, resetMetrics } from "../../src/selfhost/metrics";
 import type { JobMessage } from "../../src/types";
 import { createTestEnv } from "../helpers/d1";
 
-function makeBatch(messages: Array<{ id: string; body: unknown }>, queue = "gittensory-jobs-dlq") {
+function makeBatch(messages: Array<{ id: string; body: unknown }>, queue = "loopover-jobs-dlq") {
   const acked: string[] = [];
   const retried: string[] = [];
   return {
@@ -112,7 +112,7 @@ describe("DLQ consumer (processDlqBatch)", () => {
       const env = createTestEnv();
       const sent = captureWebhooks(env);
       // No webhook_events row for fresh-1 → status is undefined (≠ processed) → recoverable, re-drive.
-      const batch = makeBatch([{ id: "wh-1", body: { type: "github-webhook", deliveryId: "fresh-1", eventName: "pull_request", payload: { action: "opened" } } }], "gittensory-webhooks-dlq");
+      const batch = makeBatch([{ id: "wh-1", body: { type: "github-webhook", deliveryId: "fresh-1", eventName: "pull_request", payload: { action: "opened" } } }], "loopover-webhooks-dlq");
 
       await processDlqBatch(batch as unknown as MessageBatch<never>, env);
 
@@ -128,7 +128,7 @@ describe("DLQ consumer (processDlqBatch)", () => {
       const env = createTestEnv();
       await recordWebhookEvent(env, { deliveryId: "done-1", eventName: "pull_request", payloadHash: "processed", status: "processed" });
       const sent = captureWebhooks(env);
-      const batch = makeBatch([{ id: "wh-2", body: { type: "github-webhook", deliveryId: "done-1", eventName: "pull_request", payload: {} } }], "gittensory-webhooks-dlq");
+      const batch = makeBatch([{ id: "wh-2", body: { type: "github-webhook", deliveryId: "done-1", eventName: "pull_request", payload: {} } }], "loopover-webhooks-dlq");
 
       await processDlqBatch(batch as unknown as MessageBatch<never>, env);
 
@@ -144,7 +144,7 @@ describe("DLQ consumer (processDlqBatch)", () => {
           throw new Error("queue unavailable");
         },
       } as unknown as Queue;
-      const batch = makeBatch([{ id: "wh-send-fail", body: { type: "github-webhook", deliveryId: "send-fail-1", eventName: "pull_request", payload: {} } }], "gittensory-webhooks-dlq");
+      const batch = makeBatch([{ id: "wh-send-fail", body: { type: "github-webhook", deliveryId: "send-fail-1", eventName: "pull_request", payload: {} } }], "loopover-webhooks-dlq");
 
       await processDlqBatch(batch as unknown as MessageBatch<never>, env);
 
@@ -157,7 +157,7 @@ describe("DLQ consumer (processDlqBatch)", () => {
     it("REGRESSION (metrics): missing webhook queue binding does not increment the redriven counter", async () => {
       const env = createTestEnv();
       delete (env as Partial<Env>).WEBHOOKS;
-      const batch = makeBatch([{ id: "wh-no-queue", body: { type: "github-webhook", deliveryId: "no-queue-1", eventName: "pull_request", payload: {} } }], "gittensory-webhooks-dlq");
+      const batch = makeBatch([{ id: "wh-no-queue", body: { type: "github-webhook", deliveryId: "no-queue-1", eventName: "pull_request", payload: {} } }], "loopover-webhooks-dlq");
 
       await processDlqBatch(batch as unknown as MessageBatch<never>, env);
 
@@ -170,7 +170,7 @@ describe("DLQ consumer (processDlqBatch)", () => {
     it("REGRESSION (no DLQ loop): does NOT re-drive a webhook that was already re-driven once", async () => {
       const env = createTestEnv();
       const sent = captureWebhooks(env);
-      const batch = makeBatch([{ id: "wh-3", body: { type: "github-webhook", deliveryId: "loop-1", eventName: "push", payload: {}, redriven: true } }], "gittensory-webhooks-dlq");
+      const batch = makeBatch([{ id: "wh-3", body: { type: "github-webhook", deliveryId: "loop-1", eventName: "push", payload: {}, redriven: true } }], "loopover-webhooks-dlq");
 
       await processDlqBatch(batch as unknown as MessageBatch<never>, env);
 
@@ -184,7 +184,7 @@ describe("DLQ consumer (processDlqBatch)", () => {
     it("REGRESSION (no re-drive of maintenance jobs): a backfill job is audited and dropped, never re-driven", async () => {
       const env = createTestEnv();
       const sent = captureWebhooks(env);
-      const batch = makeBatch([{ id: "mn-1", body: { type: "backfill-repo-segment" } }], "gittensory-jobs-dlq");
+      const batch = makeBatch([{ id: "mn-1", body: { type: "backfill-repo-segment" } }], "loopover-jobs-dlq");
 
       await processDlqBatch(batch as unknown as MessageBatch<never>, env);
 
@@ -198,7 +198,7 @@ describe("DLQ consumer (processDlqBatch)", () => {
     it("does not re-drive webhook jobs when webhook redrive is disabled for broker-only Cloudflare", async () => {
       const env = createTestEnv();
       const sent = captureWebhooks(env);
-      const batch = makeBatch([{ id: "wh-broker-only", body: { type: "github-webhook", deliveryId: "broker-only-1", eventName: "pull_request", payload: {} } }], "gittensory-webhooks-dlq");
+      const batch = makeBatch([{ id: "wh-broker-only", body: { type: "github-webhook", deliveryId: "broker-only-1", eventName: "pull_request", payload: {} } }], "loopover-webhooks-dlq");
 
       await processDlqBatch(batch as unknown as MessageBatch<never>, env, { redriveWebhooks: false });
 
@@ -213,7 +213,7 @@ describe("DLQ consumer (processDlqBatch)", () => {
       await recordGitHubRateLimitObservation(env, { repoFullName: "owner/repo", resource: "rest", path: "/x", statusCode: 200, limitValue: 5000, remaining: 5, resetAt: "2026-06-24T12:30:00.000Z", observedAt: "2026-06-24T12:00:00.000Z" });
       const options: Array<{ delaySeconds?: number } | undefined> = [];
       env.WEBHOOKS = { send: async (_m: JobMessage, opts?: { delaySeconds?: number }) => void options.push(opts) } as unknown as Queue;
-      const batch = makeBatch([{ id: "wh-rl", body: { type: "github-webhook", deliveryId: "rl-1", eventName: "pull_request", payload: {} } }], "gittensory-webhooks-dlq");
+      const batch = makeBatch([{ id: "wh-rl", body: { type: "github-webhook", deliveryId: "rl-1", eventName: "pull_request", payload: {} } }], "loopover-webhooks-dlq");
 
       await processDlqBatch(batch as unknown as MessageBatch<never>, env);
 

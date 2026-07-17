@@ -13,7 +13,7 @@ import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader
 import * as focusManifestLoaderModule from "../../src/signals/focus-manifest-loader";
 import { createTestEnv } from "../helpers/d1";
 
-const SELF_REPO = "JSONbored/gittensory";
+const SELF_REPO = "JSONbored/loopover";
 
 describe("isPrReconciliationEnabled — default OFF, truthy convention", () => {
   it("matches the codebase's shared truthy-string convention", () => {

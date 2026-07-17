@@ -82,25 +82,25 @@ describe("buildPublicReviewVolumeTrend", () => {
 
 describe("loadPublicReviewVolumeTrend — end-to-end over the real live tables", () => {
   it("credits a PR's week by its FIRST-PUBLISHED day, not its (possibly later) merge day, and folds in the Orb fleet", async () => {
-    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/gittensory" });
+    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/loopover" });
     const thisMonday = isoWeekStart(NOW);
     const thisWeekIso = `${thisMonday}T09:00:00.000Z`;
     const laterInWeekIso = new Date(Date.parse(thisWeekIso) + 86_400_000).toISOString();
     const priorMonday = isoWeekStart(NOW - 7 * 86_400_000);
     const priorWeekIso = `${priorMonday}T09:00:00.000Z`;
 
-    await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 1);
+    await upsertRepositoryFromGitHub(env, { name: "loopover", full_name: "JSONbored/loopover", private: false, owner: { login: "JSONbored" } }, 1);
 
     // PR #1: published LAST week, merged THIS week -- must credit `reviewed`/`merged` to LAST week's cohort
     // (its publish day), not to the week it actually merged in.
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 1, title: "PR 1", state: "closed", merged_at: thisWeekIso, user: { login: "a" }, head: { sha: "s1" }, labels: [] });
-    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/gittensory#1", outcome: "completed", createdAt: priorWeekIso });
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", { number: 1, title: "PR 1", state: "closed", merged_at: thisWeekIso, user: { login: "a" }, head: { sha: "s1" }, labels: [] });
+    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/loopover#1", outcome: "completed", createdAt: priorWeekIso });
 
     // PR #2: published and closed (no merge) THIS week -- a genuinely filtered PR in THIS week's own cohort, on
     // a day with no prior own-ledger publish (exercises the day-map's `?? 0` fallback branch for a fresh day).
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 2, title: "PR 2", state: "closed", user: { login: "b" }, head: { sha: "s2" }, labels: [] });
-    await env.DB.prepare("UPDATE pull_requests SET updated_at = ? WHERE repo_full_name = ? AND number = 2").bind(laterInWeekIso, "JSONbored/gittensory").run();
-    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/gittensory#2", outcome: "completed", createdAt: laterInWeekIso });
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", { number: 2, title: "PR 2", state: "closed", user: { login: "b" }, head: { sha: "s2" }, labels: [] });
+    await env.DB.prepare("UPDATE pull_requests SET updated_at = ? WHERE repo_full_name = ? AND number = 2").bind(laterInWeekIso, "JSONbored/loopover").run();
+    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/loopover#2", outcome: "completed", createdAt: laterInWeekIso });
 
     // Orb fleet: a registered installation with a merge on the SAME later day as PR #2 -- own-ledger and Orb
     // day-maps each have a day the OTHER source has no entry for (exercises both directions of the ownLedger/
@@ -133,19 +133,19 @@ describe("loadPublicReviewVolumeTrend — end-to-end over the real live tables",
     // trend's own window, so the PR must be excluded entirely, not misattributed to the recent event's week.
     // A naive single-pass query that filtered raw events by `created_at >= sinceIso` BEFORE taking MIN() would
     // get this wrong: it would see only the recent event and wrongly count the PR in the current week.
-    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/gittensory" });
+    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/loopover" });
     const thisMonday = isoWeekStart(NOW);
     const thisWeekIso = `${thisMonday}T09:00:00.000Z`;
     // 20 weeks ago: well outside the 8-week trend window, but still a real, storable timestamp.
     const longAgoIso = new Date(Date.parse(thisWeekIso) - 20 * 7 * 86_400_000).toISOString();
 
-    await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 1);
+    await upsertRepositoryFromGitHub(env, { name: "loopover", full_name: "JSONbored/loopover", private: false, owner: { login: "JSONbored" } }, 1);
     // Still open today (a long-lived PR that keeps getting re-reviewed) -- not merged, not closed.
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 9, title: "PR 9", state: "open", user: { login: "a" }, head: { sha: "s9" }, labels: [] });
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", { number: 9, title: "PR 9", state: "open", user: { login: "a" }, head: { sha: "s9" }, labels: [] });
     // Its TRUE first publish, 20 weeks ago -- outside the trend window on its own.
-    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/gittensory#9", outcome: "completed", createdAt: longAgoIso });
+    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/loopover#9", outcome: "completed", createdAt: longAgoIso });
     // A legitimate re-publish THIS week (e.g. a fresh push triggered another review pass).
-    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/gittensory#9", outcome: "completed", createdAt: thisWeekIso });
+    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/loopover#9", outcome: "completed", createdAt: thisWeekIso });
 
     const trend = await loadPublicReviewVolumeTrend(env, NOW);
     const currentWeek = trend[trend.length - 1];

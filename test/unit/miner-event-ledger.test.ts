@@ -50,13 +50,13 @@ describe("loopover-miner event ledger (#2290)", () => {
     const ledger = tempLedger();
     const entry = ledger.appendEvent({
       type: "discovered_issue",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       payload: { issueNumber: 2290, labels: ["gittensor:feature"] },
     });
     expect(entry).toMatchObject({
       seq: 1,
       type: "discovered_issue",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       payload: { issueNumber: 2290, labels: ["gittensor:feature"] },
     });
     expect(typeof entry.id).toBe("number");

@@ -17,7 +17,7 @@ describe("account-age throttle helpers (#2561 issue path)", () => {
   });
 
   it("repoOwnerLoginFromFullName returns the owner segment for owner/repo names", () => {
-    expect(repoOwnerLoginFromFullName("JSONbored/gittensory")).toBe("JSONbored");
+    expect(repoOwnerLoginFromFullName("JSONbored/loopover")).toBe("JSONbored");
   });
 
   it("repoOwnerLoginFromFullName returns empty for a no-slash repo name", () => {

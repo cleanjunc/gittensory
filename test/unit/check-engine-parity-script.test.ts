@@ -509,7 +509,7 @@ describe("check-engine-parity script", () => {
 
   it("runEngineParityMain returns 1 and logs failures when checks fail", () => {
     const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
-    const exitCode = runEngineParityMain("/definitely-not-a-gittensory-root");
+    const exitCode = runEngineParityMain("/definitely-not-a-loopover-root");
     expect(exitCode).toBe(1);
     expect(errorLog).toHaveBeenCalled();
   });

@@ -1207,10 +1207,10 @@ describe("world-class backend signals", () => {
   it("builds private contributor outcome and strategy reports across maintainer and cleanup lanes", () => {
     const ownerRepo: RepositoryRecord = {
       ...repo,
-      fullName: "jsonbored/gittensory",
+      fullName: "jsonbored/loopover",
       owner: "jsonbored",
-      name: "gittensory",
-      registryConfig: { ...repo.registryConfig!, repo: "jsonbored/gittensory", maintainerCut: 0.1 },
+      name: "loopover",
+      registryConfig: { ...repo.registryConfig!, repo: "jsonbored/loopover", maintainerCut: 0.1 },
     };
     const riskyRepo: RepositoryRecord = {
       ...repo,

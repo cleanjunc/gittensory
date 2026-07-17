@@ -16,7 +16,7 @@ describe.skipIf(!runLiveContracts)("live upstream Gittensor contract", () => {
     expect(result.ruleset.activeModel).not.toBe("unknown");
     expect(result.ruleset.payload).toMatchObject({
       registry: expect.objectContaining({
-        repositories: expect.arrayContaining([expect.objectContaining({ repo: "JSONbored/gittensory" })]),
+        repositories: expect.arrayContaining([expect.objectContaining({ repo: "JSONbored/loopover" })]),
       }),
       scoring: expect.objectContaining({ activeModel: result.ruleset.activeModel }),
       issueDiscovery: expect.objectContaining({ branchEligibilityRequired: expect.any(Boolean) }),

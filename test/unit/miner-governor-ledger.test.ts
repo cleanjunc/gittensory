@@ -58,7 +58,7 @@ describe("loopover-miner governor ledger (#2328)", () => {
     const ledger = tempLedger();
     const entry = ledger.appendGovernorEvent({
       eventType: "denied",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       actionClass: "write",
       decision: "block",
       reason: "kill switch active",
@@ -67,14 +67,14 @@ describe("loopover-miner governor ledger (#2328)", () => {
     expect(entry).toMatchObject({
       id: 1,
       eventType: "denied",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       actionClass: "write",
       decision: "block",
       reason: "kill switch active",
       payload: { rule: "global_kill_switch" },
     });
     expect(ledger.readGovernorEvents()).toEqual([entry]);
-    expect(ledger.readGovernorEvents({ repoFullName: "JSONbored/gittensory" })).toEqual([entry]);
+    expect(ledger.readGovernorEvents({ repoFullName: "JSONbored/loopover" })).toEqual([entry]);
     expect(ledger.readGovernorEvents({ repoFullName: "acme/other" })).toEqual([]);
   });
 

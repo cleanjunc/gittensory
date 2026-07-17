@@ -5,7 +5,7 @@ import { createTestEnv } from "../helpers/d1";
 describe("public subnet-interface descriptor route", () => {
   it("serves the SN74 contribution-interface descriptor without authentication", async () => {
     const app = createApp();
-    const env = createTestEnv({ PUBLIC_API_ORIGIN: "https://gittensory-api.aethereal.dev" });
+    const env = createTestEnv({ PUBLIC_API_ORIGIN: "https://loopover-api.aethereal.dev" });
 
     const response = await app.request("/v1/public/subnet-interface", {}, env);
     expect(response.status).toBe(200);
@@ -15,7 +15,7 @@ describe("public subnet-interface descriptor route", () => {
       subnet: { netuid: 74, name: "gittensor" },
       provider: { name: "LoopOver", role: "contribution_interface" },
       interfaces: {
-        mcp: { endpoint: "https://gittensory-api.aethereal.dev/mcp", transport: "http" },
+        mcp: { endpoint: "https://loopover-api.aethereal.dev/mcp", transport: "http" },
         // The publicly installable App slug is a stable hardcoded product identity now (see
         // subnet-interface.ts) -- independent of the Worker's own GITHUB_APP_SLUG, which no longer exists.
         githubApp: { slug: "loopover-orb", installUrl: "https://github.com/apps/loopover-orb" },

@@ -8,7 +8,7 @@ import { createTestEnv } from "../helpers/d1";
 //   • Identity is per-login: a session reads ONLY its own contributor/miner data.
 //   • Authority is per-repo: a session reads maintainer data ONLY for repos it maintains.
 //   • Maintainer-of-repo-A grants ZERO access to repo B. Operators and server tokens bypass per-repo scope.
-// GET /v1/repos/:owner/:repo/settings is the maintainer-DATA exemplar (repo gittensory config).
+// GET /v1/repos/:owner/:repo/settings is the maintainer-DATA exemplar (repo loopover config).
 
 async function seedOwnedRepo(env: Env, owner: string, name: string, installationId: number): Promise<void> {
   await upsertInstallation(env, {

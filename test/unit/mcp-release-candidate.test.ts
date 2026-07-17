@@ -97,7 +97,7 @@ describe("checkTarball", () => {
   });
 
   it("passes for an allowlisted file set with no secret-like content (success fixture)", () => {
-    const result = checkTarball({ files: ALLOWED_FILES, contentsByFile: { "README.md": "# gittensory-mcp", "package.json": "{}" } });
+    const result = checkTarball({ files: ALLOWED_FILES, contentsByFile: { "README.md": "# loopover-mcp", "package.json": "{}" } });
     expect(result).toMatchObject({ ok: true, code: "tarball_ok" });
     expect(result.unexpected).toEqual([]);
   });

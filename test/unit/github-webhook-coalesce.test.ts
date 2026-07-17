@@ -7,46 +7,46 @@ describe("githubWebhookCoalesceKey", () => {
     expect(
       githubWebhookCoalesceKey("check_suite", {
         action: "completed",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         check_suite: {
           head_sha: "ABC1234",
           pull_requests: [{ number: 12 }, { number: 3 }, { number: 7 }],
         },
       } as never),
-    ).toBe("github-webhook:ci-completed:jsonbored/gittensory@abc1234#3,7,12");
+    ).toBe("github-webhook:ci-completed:jsonbored/loopover@abc1234#3,7,12");
 
     expect(
       githubWebhookCoalesceKey("check_run", {
         action: "completed",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         check_run: { check_suite: { head_sha: "DEF5678" }, pull_requests: [] },
       } as never),
-    ).toBe("github-webhook:ci-completed:jsonbored/gittensory@def5678");
+    ).toBe("github-webhook:ci-completed:jsonbored/loopover@def5678");
   });
 
   it("coalesces gate-triggering pull request events and ignores non-actionable or terminal actions", () => {
     expect(
       githubWebhookCoalesceKey("pull_request", {
         action: "synchronize",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         number: 99,
         pull_request: {},
       } as never),
-    ).toBe("github-webhook:pr-refresh:jsonbored/gittensory#99");
+    ).toBe("github-webhook:pr-refresh:jsonbored/loopover#99");
     expect(
       githubWebhookCoalesceKey("pull_request", {
         action: "opened",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         pull_request: { number: 100, head: { sha: "BEEF123" } },
       } as GitHubWebhookPayload),
-    ).toBe("github-webhook:pr-refresh:jsonbored/gittensory#100@beef123");
+    ).toBe("github-webhook:pr-refresh:jsonbored/loopover#100@beef123");
     // "closed" is a terminal action -- merge/close has its own non-coalesced handling and must never collapse
     // with anything else. "labeled"/"unlabeled" now coalesce too (see the dedicated pr-label tests below) --
     // they are no longer in this "returns null" list.
     expect(
       githubWebhookCoalesceKey("pull_request", {
         action: "closed",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         pull_request: { number: 100, head: { sha: "BEEF123" } },
       } as GitHubWebhookPayload),
     ).toBeNull();
@@ -59,28 +59,28 @@ describe("githubWebhookCoalesceKey", () => {
     const burstKeys = (["reopened", "synchronize", "ready_for_review"] as const).map((action) =>
       githubWebhookCoalesceKey("pull_request", {
         action,
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         pull_request: { number: 100, head: { sha: "BEEF123" } },
       } as GitHubWebhookPayload),
     );
     expect(new Set(burstKeys).size).toBe(1);
-    expect(burstKeys[0]).toBe("github-webhook:pr-refresh:jsonbored/gittensory#100@beef123");
+    expect(burstKeys[0]).toBe("github-webhook:pr-refresh:jsonbored/loopover#100@beef123");
   });
 
   it("returns null for malformed or non-coalescible webhook shapes", () => {
-    expect(githubWebhookCoalesceKey("issues", { action: "closed", repository: { full_name: "JSONbored/Gittensory" } } as never)).toBeNull();
-    expect(githubWebhookCoalesceKey("check_suite", { action: "requested", repository: { full_name: "JSONbored/Gittensory" } } as never)).toBeNull();
+    expect(githubWebhookCoalesceKey("issues", { action: "closed", repository: { full_name: "JSONbored/Loopover" } } as never)).toBeNull();
+    expect(githubWebhookCoalesceKey("check_suite", { action: "requested", repository: { full_name: "JSONbored/Loopover" } } as never)).toBeNull();
     expect(
       githubWebhookCoalesceKey("check_suite", {
         action: "completed",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         check_suite: { pull_requests: [{ number: 7 }] },
       } as never),
     ).toBeNull();
     expect(
       githubWebhookCoalesceKey("pull_request", {
         action: "edited",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         pull_request: { head: { sha: "BEEF123" } },
       } as GitHubWebhookPayload),
     ).toBeNull();
@@ -92,17 +92,17 @@ describe("githubWebhookCoalesceKey", () => {
       expect(
         githubWebhookCoalesceKey("pull_request", {
           action,
-          repository: { full_name: "JSONbored/Gittensory" },
+          repository: { full_name: "JSONbored/Loopover" },
           pull_request: { number: 42, head: { sha: "BEEF123" } },
         } as GitHubWebhookPayload),
-      ).toBe("github-webhook:pr-label:jsonbored/gittensory#42");
+      ).toBe("github-webhook:pr-label:jsonbored/loopover#42");
     }
     // A burst of add/remove churn on the same PR collapses to the identical key regardless of which label
     // action fired -- the handler re-syncs generically and doesn't act on the specific label.
     const burstKeys = ["labeled", "unlabeled", "labeled"].map((action) =>
       githubWebhookCoalesceKey("pull_request", {
         action,
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         pull_request: { number: 42 },
       } as GitHubWebhookPayload),
     );
@@ -113,18 +113,18 @@ describe("githubWebhookCoalesceKey", () => {
     expect(
       githubWebhookCoalesceKey("pull_request", {
         action: "labeled",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         pull_request: {},
         number: 55,
       } as unknown as GitHubWebhookPayload),
-    ).toBe("github-webhook:pr-label:jsonbored/gittensory#55");
+    ).toBe("github-webhook:pr-label:jsonbored/loopover#55");
   });
 
   it("returns null for a label event with no resolvable PR number", () => {
     expect(
       githubWebhookCoalesceKey("pull_request", {
         action: "labeled",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
       } as GitHubWebhookPayload),
     ).toBeNull();
   });
@@ -134,7 +134,7 @@ describe("githubWebhookCoalesceKey", () => {
       expect(
         githubWebhookCoalesceKey("pull_request_review", {
           action,
-          repository: { full_name: "JSONbored/Gittensory" },
+          repository: { full_name: "JSONbored/Loopover" },
           pull_request: { number: 12, head: { sha: "CAFE123" } },
         } as GitHubWebhookPayload),
       ).toBeNull();
@@ -146,10 +146,10 @@ describe("githubWebhookCoalesceKey", () => {
       expect(
         githubWebhookCoalesceKey("pull_request_review_comment", {
           action,
-          repository: { full_name: "JSONbored/Gittensory" },
+          repository: { full_name: "JSONbored/Loopover" },
           pull_request: { number: 12, head: { sha: "CAFE123" } },
         } as GitHubWebhookPayload),
-      ).toBe("github-webhook:pull_request_review_comment:jsonbored/gittensory#12@cafe123");
+      ).toBe("github-webhook:pull_request_review_comment:jsonbored/loopover#12@cafe123");
     }
   });
 
@@ -158,27 +158,27 @@ describe("githubWebhookCoalesceKey", () => {
       expect(
         githubWebhookCoalesceKey("pull_request_review_thread", {
           action,
-          repository: { full_name: "JSONbored/Gittensory" },
+          repository: { full_name: "JSONbored/Loopover" },
           pull_request: { number: 12, head: { sha: "CAFE123" } },
         } as GitHubWebhookPayload),
-      ).toBe("github-webhook:pull_request_review_thread:jsonbored/gittensory#12@cafe123");
+      ).toBe("github-webhook:pull_request_review_thread:jsonbored/loopover#12@cafe123");
     }
   });
 
   it("keeps distinct review-surface event families separate so coalescing cannot drop review-only side effects", () => {
     const reviewKey = githubWebhookCoalesceKey("pull_request_review", {
       action: "submitted",
-      repository: { full_name: "JSONbored/Gittensory" },
+      repository: { full_name: "JSONbored/Loopover" },
       pull_request: { number: 12, head: { sha: "CAFE123" } },
     } as GitHubWebhookPayload);
     const commentKey = githubWebhookCoalesceKey("pull_request_review_comment", {
       action: "created",
-      repository: { full_name: "JSONbored/Gittensory" },
+      repository: { full_name: "JSONbored/Loopover" },
       pull_request: { number: 12, head: { sha: "CAFE123" } },
     } as GitHubWebhookPayload);
     const threadKey = githubWebhookCoalesceKey("pull_request_review_thread", {
       action: "resolved",
-      repository: { full_name: "JSONbored/Gittensory" },
+      repository: { full_name: "JSONbored/Loopover" },
       pull_request: { number: 12, head: { sha: "CAFE123" } },
     } as GitHubWebhookPayload);
 
@@ -190,17 +190,17 @@ describe("githubWebhookCoalesceKey", () => {
     expect(
       githubWebhookCoalesceKey("pull_request_review_comment", {
         action: "created",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         pull_request: { number: 12 },
       } as GitHubWebhookPayload),
-    ).toBe("github-webhook:pull_request_review_comment:jsonbored/gittensory#12");
+    ).toBe("github-webhook:pull_request_review_comment:jsonbored/loopover#12");
   });
 
   it("returns null for a review-surface event with no resolvable PR number", () => {
     expect(
       githubWebhookCoalesceKey("pull_request_review_comment", {
         action: "created",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
       } as GitHubWebhookPayload),
     ).toBeNull();
   });
@@ -209,21 +209,21 @@ describe("githubWebhookCoalesceKey", () => {
     expect(
       githubWebhookCoalesceKey("pull_request_review", {
         action: "requested_changes_dismissed",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         pull_request: { number: 12, head: { sha: "CAFE123" } },
       } as GitHubWebhookPayload),
     ).toBeNull();
     expect(
       githubWebhookCoalesceKey("pull_request_review_comment", {
         action: "resolved",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         pull_request: { number: 12, head: { sha: "CAFE123" } },
       } as GitHubWebhookPayload),
     ).toBeNull();
     expect(
       githubWebhookCoalesceKey("pull_request_review_thread", {
         action: "created",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         pull_request: { number: 12, head: { sha: "CAFE123" } },
       } as GitHubWebhookPayload),
     ).toBeNull();
@@ -233,7 +233,7 @@ describe("githubWebhookCoalesceKey", () => {
     expect(
       githubWebhookCoalesceKey("issue_comment", {
         action: "created",
-        repository: { full_name: "JSONbored/Gittensory" },
+        repository: { full_name: "JSONbored/Loopover" },
         pull_request: { number: 12, head: { sha: "CAFE123" } },
       } as unknown as GitHubWebhookPayload),
     ).toBeNull();

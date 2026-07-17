@@ -89,27 +89,27 @@ describe("buildPublicAccuracyTrend", () => {
 
 describe("loadPublicAccuracyTrend — end-to-end over the real live tables", () => {
   it("combines own-ledger merged/closed/reversed and Orb-fleet merged/closed into a consistent weekly trend", async () => {
-    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/gittensory" });
+    const env = createTestEnv({ LOOPOVER_PUBLIC_STATS_REPOS: "JSONbored/loopover" });
     const thisMonday = isoWeekStart(NOW);
     const thisWeekIso = `${thisMonday}T09:00:00.000Z`;
     const laterInWeekIso = new Date(Date.parse(thisWeekIso) + 86_400_000).toISOString();
 
     // Own-ledger: PR #1 published+merged this week (no reversal).
-    await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 1);
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 1, title: "PR 1", state: "closed", merged_at: thisWeekIso, user: { login: "a" }, head: { sha: "s1" }, labels: [] });
-    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/gittensory#1", outcome: "completed", createdAt: thisWeekIso });
+    await upsertRepositoryFromGitHub(env, { name: "loopover", full_name: "JSONbored/loopover", private: false, owner: { login: "JSONbored" } }, 1);
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", { number: 1, title: "PR 1", state: "closed", merged_at: thisWeekIso, user: { login: "a" }, head: { sha: "s1" }, labels: [] });
+    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/loopover#1", outcome: "completed", createdAt: thisWeekIso });
 
     // Own-ledger: PR #2 auto-closed by the engine this week, then REVERTED (reopened) -- must count in `reversed`.
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 2, title: "PR 2", state: "open", user: { login: "b" }, head: { sha: "s2" }, labels: [] });
-    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/gittensory#2", outcome: "completed", createdAt: thisWeekIso });
-    await recordAuditEvent(env, { eventType: "agent.action.close", targetKey: "JSONbored/gittensory#2", outcome: "completed", createdAt: thisWeekIso });
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", { number: 2, title: "PR 2", state: "open", user: { login: "b" }, head: { sha: "s2" }, labels: [] });
+    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/loopover#2", outcome: "completed", createdAt: thisWeekIso });
+    await recordAuditEvent(env, { eventType: "agent.action.close", targetKey: "JSONbored/loopover#2", outcome: "completed", createdAt: thisWeekIso });
 
     // Own-ledger: PR #3 closes WITHOUT merging (no reversal), on a DAY WITH NO PRIOR own-ledger merge -- exercises
     // the closedRows fold's `map.get(day)?.merged ?? 0` fallback branch (a day the mergedRows loop never touched),
     // distinct from the mergedRows loop above.
-    await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 3, title: "PR 3", state: "closed", user: { login: "c" }, head: { sha: "s3" }, labels: [] });
-    await env.DB.prepare("UPDATE pull_requests SET updated_at = ? WHERE repo_full_name = ? AND number = 3").bind(laterInWeekIso, "JSONbored/gittensory").run();
-    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/gittensory#3", outcome: "completed", createdAt: laterInWeekIso });
+    await upsertPullRequestFromGitHub(env, "JSONbored/loopover", { number: 3, title: "PR 3", state: "closed", user: { login: "c" }, head: { sha: "s3" }, labels: [] });
+    await env.DB.prepare("UPDATE pull_requests SET updated_at = ? WHERE repo_full_name = ? AND number = 3").bind(laterInWeekIso, "JSONbored/loopover").run();
+    await recordAuditEvent(env, { eventType: "github_app.pr_public_surface_published", targetKey: "JSONbored/loopover#3", outcome: "completed", createdAt: laterInWeekIso });
 
     // Orb fleet: a registered installation with a merge on the SAME later day as PR #3's close -- so the
     // own-ledger and Orb day-maps each have a day the OTHER source has no entry for at all (exercises both

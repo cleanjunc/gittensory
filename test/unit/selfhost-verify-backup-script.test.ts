@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 const tmpRoots: string[] = [];
 
 function tmpRoot(): string {
-  const dir = mkdtempSync(join(tmpdir(), "gittensory-verify-"));
+  const dir = mkdtempSync(join(tmpdir(), "loopover-verify-"));
   tmpRoots.push(dir);
   return dir;
 }
@@ -187,7 +187,7 @@ function runVerify(
 describe("self-host verify-backup script", () => {
   it("validates the newest Postgres dump with pg_restore --list", () => {
     const root = tmpRoot();
-    writePgDump(root, "gittensory-20240101T000000Z.dump", true);
+    writePgDump(root, "loopover-20240101T000000Z.dump", true);
 
     const r = runVerify(root, [], { LOOPOVER_BACKUP_SOURCE_DATABASE_URL: "postgres://u:p@h/db" }, { pg_restore: PG_RESTORE });
 
@@ -199,7 +199,7 @@ describe("self-host verify-backup script", () => {
 
   it("fails when the Postgres dump is unreadable", () => {
     const root = tmpRoot();
-    writePgDump(root, "gittensory-bad.dump", false);
+    writePgDump(root, "loopover-bad.dump", false);
 
     const r = runVerify(root, [], { LOOPOVER_BACKUP_SOURCE_DATABASE_URL: "postgres://u:p@h/db" }, { pg_restore: PG_RESTORE });
 
@@ -219,7 +219,7 @@ describe("self-host verify-backup script", () => {
 
   it("refuses the opt-in scratch restore when no scratch URL is configured", () => {
     const root = tmpRoot();
-    writePgDump(root, "gittensory-a.dump", true);
+    writePgDump(root, "loopover-a.dump", true);
 
     const r = runVerify(
       root,
@@ -234,7 +234,7 @@ describe("self-host verify-backup script", () => {
 
   it("refuses the scratch restore when the scratch URL is byte-for-byte the live database", () => {
     const root = tmpRoot();
-    writePgDump(root, "gittensory-a.dump", true);
+    writePgDump(root, "loopover-a.dump", true);
     const live = "postgres://u:p@h/live";
 
     const r = runVerify(
@@ -254,11 +254,11 @@ describe("self-host verify-backup script", () => {
 
   it("refuses the scratch restore when a DIFFERENTLY-SPELLED URL resolves to the SAME database (regression: naive string compare bypass)", () => {
     const root = tmpRoot();
-    writePgDump(root, "gittensory-a.dump", true);
+    writePgDump(root, "loopover-a.dump", true);
     // Same database, deliberately spelled differently: scheme (postgres vs postgresql) AND an explicit vs
     // default port — a `[ "$scratch" = "$PG_DB" ]` string compare would wrongly treat these as distinct.
-    const live = "postgres://gittensory:pw@postgres/gittensory";
-    const scratch = "postgresql://gittensory:pw@postgres:5432/gittensory";
+    const live = "postgres://loopover:pw@postgres/loopover";
+    const scratch = "postgresql://loopover:pw@postgres:5432/loopover";
     expect(scratch).not.toBe(live);
 
     const r = runVerify(
@@ -274,8 +274,8 @@ describe("self-host verify-backup script", () => {
         // Both URLs resolve to the identical real connection identity, exactly as they would in production
         // if they point at the same Postgres server/database despite the different spelling.
         psql: fakePsql({
-          [sanitizedUrl(live)]: "gittensory@10.0.0.5:5432",
-          [sanitizedUrl(scratch)]: "gittensory@10.0.0.5:5432",
+          [sanitizedUrl(live)]: "loopover@10.0.0.5:5432",
+          [sanitizedUrl(scratch)]: "loopover@10.0.0.5:5432",
         }),
       },
     );
@@ -286,7 +286,7 @@ describe("self-host verify-backup script", () => {
 
   it("refuses (fails closed) when the scratch database's identity cannot be determined", () => {
     const root = tmpRoot();
-    writePgDump(root, "gittensory-a.dump", true);
+    writePgDump(root, "loopover-a.dump", true);
 
     const r = runVerify(
       root,
@@ -307,7 +307,7 @@ describe("self-host verify-backup script", () => {
 
   it("refuses (fails closed) when the live database's identity cannot be determined", () => {
     const root = tmpRoot();
-    writePgDump(root, "gittensory-a.dump", true);
+    writePgDump(root, "loopover-a.dump", true);
     const scratch = "postgres://u:p@h/scratch";
 
     const r = runVerify(
@@ -319,7 +319,7 @@ describe("self-host verify-backup script", () => {
         LOOPOVER_VERIFY_SCRATCH_DATABASE_URL: scratch,
       },
       // Scratch resolves fine, but the live URL has no mapping — its identity query fails.
-      { pg_restore: PG_RESTORE, psql: fakePsql({ [sanitizedUrl(scratch)]: "gittensory@10.0.0.9:5432/scratch" }) },
+      { pg_restore: PG_RESTORE, psql: fakePsql({ [sanitizedUrl(scratch)]: "loopover@10.0.0.9:5432/scratch" }) },
     );
 
     expect(r.status).toBe(1);
@@ -328,7 +328,7 @@ describe("self-host verify-backup script", () => {
 
   it("runs the guarded scratch restore into a throwaway database and sanity-checks it", () => {
     const root = tmpRoot();
-    writePgDump(root, "gittensory-a.dump", true);
+    writePgDump(root, "loopover-a.dump", true);
     const live = "postgres://u:p@h/live";
     const scratch = "postgres://u:p@h/scratch";
 
@@ -343,7 +343,7 @@ describe("self-host verify-backup script", () => {
       {
         pg_restore: PG_RESTORE,
         psql: fakePsql(
-          { [sanitizedUrl(live)]: "gittensory@10.0.0.5:5432/live", [sanitizedUrl(scratch)]: "gittensory@10.0.0.5:5432/scratch" },
+          { [sanitizedUrl(live)]: "loopover@10.0.0.5:5432/live", [sanitizedUrl(scratch)]: "loopover@10.0.0.5:5432/scratch" },
           "42",
         ),
       },
@@ -355,12 +355,12 @@ describe("self-host verify-backup script", () => {
 
   it("never passes a password to psql/pg_restore argv across the full scratch-restore flow, and never leaks one URL's password onto a different URL's connection", () => {
     const root = tmpRoot();
-    writePgDump(root, "gittensory-a.dump", true);
+    writePgDump(root, "loopover-a.dump", true);
     // live has NO password; scratch supplies its password via the libpq query-string form (not userinfo)
     // -- both must be handled, and the live connection (checked between two scratch connections) must
     // never see a PGPASSFILE left over from scratch's.
-    const live = "postgres://gittensory@postgres/gittensory";
-    const scratch = "postgresql://gittensory@postgres/scratch?password=SuperSecret123%21";
+    const live = "postgres://loopover@postgres/loopover";
+    const scratch = "postgresql://loopover@postgres/scratch?password=SuperSecret123%21";
     const captureFile = join(root, "pg-capture.log");
 
     const r = runVerify(
@@ -375,7 +375,7 @@ describe("self-host verify-backup script", () => {
       {
         pg_restore: PG_RESTORE,
         psql: fakePsql(
-          { [sanitizedUrl(scratch)]: "gittensory@10.0.0.5:5432/scratch", [sanitizedUrl(live)]: "gittensory@10.0.0.5:5432/live" },
+          { [sanitizedUrl(scratch)]: "loopover@10.0.0.5:5432/scratch", [sanitizedUrl(live)]: "loopover@10.0.0.5:5432/live" },
           "7",
         ),
       },
@@ -411,7 +411,7 @@ describe("self-host verify-backup script", () => {
 
   it("strips EVERY occurrence of a repeated query-string password, not just the first", () => {
     const root = tmpRoot();
-    writePgDump(root, "gittensory-a.dump", true);
+    writePgDump(root, "loopover-a.dump", true);
     const captureFile = join(root, "pg-capture.log");
     // A malformed URL repeating `password=` isn't rejected by libpq's own parser -- stripping only the
     // first occurrence would leave a second one sitting in argv, still a leaked credential regardless of
@@ -443,7 +443,7 @@ describe("self-host verify-backup script", () => {
 
   it("strips a query-string password even when its KEY NAME is percent-encoded", () => {
     const root = tmpRoot();
-    writePgDump(root, "gittensory-a.dump", true);
+    writePgDump(root, "loopover-a.dump", true);
     const captureFile = join(root, "pg-capture.log");
     // libpq percent-decodes query KEY NAMES before matching them against connection keywords, so
     // pass%77ord (%77 = 'w') is just as much `password` as the literal spelling -- a literal string match
@@ -473,13 +473,13 @@ describe("self-host verify-backup script", () => {
 
   it("proves the userinfo-password form through the same full scratch-restore flow as the query-string form", () => {
     const root = tmpRoot();
-    writePgDump(root, "gittensory-a.dump", true);
+    writePgDump(root, "loopover-a.dump", true);
     const captureFile = join(root, "pg-capture.log");
     // Mirrors the query-string-password test above, but with the password in userinfo instead -- both
     // forms must be proven through the identical multi-connection flow (identity checks, the actual
     // restore, and the sanity query), not just in isolation.
-    const live = "postgresql://gittensory@postgres/gittensory";
-    const scratch = "postgres://gittensory:SuperSecret123%21@postgres/scratch";
+    const live = "postgresql://loopover@postgres/loopover";
+    const scratch = "postgres://loopover:SuperSecret123%21@postgres/scratch";
 
     const r = runVerify(
       root,
@@ -493,7 +493,7 @@ describe("self-host verify-backup script", () => {
       {
         pg_restore: PG_RESTORE,
         psql: fakePsql(
-          { [sanitizedUrl(scratch)]: "gittensory@10.0.0.5:5432/scratch", [sanitizedUrl(live)]: "gittensory@10.0.0.5:5432/live" },
+          { [sanitizedUrl(scratch)]: "loopover@10.0.0.5:5432/scratch", [sanitizedUrl(live)]: "loopover@10.0.0.5:5432/live" },
           "9",
         ),
       },
@@ -518,7 +518,7 @@ describe("self-host verify-backup script", () => {
 
   it("validates the newest SQLite backup with an integrity check", () => {
     const root = tmpRoot();
-    writeSqliteGz(root, "gittensory-20240101T000000Z.sqlite.gz");
+    writeSqliteGz(root, "loopover-20240101T000000Z.sqlite.gz");
 
     const r = runVerify(root, [], {}, { sqlite3: SQLITE3 });
 
@@ -528,7 +528,7 @@ describe("self-host verify-backup script", () => {
 
   it("fails when the SQLite backup fails its integrity check", () => {
     const root = tmpRoot();
-    writeSqliteGz(root, "gittensory-a.sqlite.gz");
+    writeSqliteGz(root, "loopover-a.sqlite.gz");
 
     const r = runVerify(root, [], { FAKE_SQLITE_INTEGRITY: "malformed database disk image" }, { sqlite3: SQLITE3 });
 
@@ -538,7 +538,7 @@ describe("self-host verify-backup script", () => {
 
   it("fails when the SQLite backup is not valid gzip", () => {
     const root = tmpRoot();
-    writeSqliteGz(root, "gittensory-a.sqlite.gz", "not gzip at all", false);
+    writeSqliteGz(root, "loopover-a.sqlite.gz", "not gzip at all", false);
 
     const r = runVerify(root, [], {}, { sqlite3: SQLITE3 });
 

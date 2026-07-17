@@ -1166,7 +1166,7 @@ describe("database row parser hardening", () => {
           },
           repositories: [
             {
-              repoFullName: "JSONbored/gittensory",
+              repoFullName: "JSONbored/loopover",
               pullRequests: 1,
               mergedPullRequests: 1,
               openPullRequests: 0,
@@ -1187,7 +1187,7 @@ describe("database row parser hardening", () => {
           ],
           pullRequests: [
             {
-              repoFullName: "JSONbored/gittensory",
+              repoFullName: "JSONbored/loopover",
               number: 1,
               title: "Fix cache",
               state: "open",

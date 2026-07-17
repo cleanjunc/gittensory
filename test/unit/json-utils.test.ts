@@ -18,8 +18,8 @@ describe("JSON and string utility helpers", () => {
   });
 
   it("normalizes repo names and error messages without leaking arbitrary thrown values", () => {
-    expect(normalizeRepoFullName(" JSONbored/gittensory ")).toBe("JSONbored/gittensory");
-    expect(repoParts("JSONbored/gittensory")).toEqual({ owner: "JSONbored", name: "gittensory" });
+    expect(normalizeRepoFullName(" JSONbored/loopover ")).toBe("JSONbored/loopover");
+    expect(repoParts("JSONbored/loopover")).toEqual({ owner: "JSONbored", name: "loopover" });
     expect(repoParts("")).toEqual({ owner: "", name: "" });
     expect(repoParts("owner/nested/name")).toEqual({ owner: "owner", name: "nested/name" });
 
@@ -42,7 +42,7 @@ describe("JSON and string utility helpers", () => {
   });
 
   it("repoParts trims outer whitespace before splitting, matching normalizeRepoFullName", () => {
-    expect(repoParts(" JSONbored/gittensory ")).toEqual({ owner: "JSONbored", name: "gittensory" });
+    expect(repoParts(" JSONbored/loopover ")).toEqual({ owner: "JSONbored", name: "loopover" });
     expect(repoParts("  owner/nested/name  ")).toEqual({ owner: "owner", name: "nested/name" });
     expect(repoParts("   ")).toEqual({ owner: "", name: "" });
     expect(repoParts("\towner/repo\n")).toEqual({ owner: "owner", name: "repo" });

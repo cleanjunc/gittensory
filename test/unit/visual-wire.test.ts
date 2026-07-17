@@ -24,7 +24,7 @@ describe("isScreenshotsEnabled", () => {
 // `features.screenshots` may opt an allowlisted repo out, but it must not let an unallowlisted repo bypass the
 // operator-controlled LOOPOVER_REVIEW_REPOS rollout boundary.
 describe("screenshots converged-feature activation (env flag AND repo cutover allowlist, with manifest opt-out)", () => {
-  const repo = "JSONbored/gittensory";
+  const repo = "JSONbored/loopover";
   const noOverride: Pick<FocusManifest, "features"> = {
     features: { present: false, rag: null, reputation: null, safety: null, grounding: null, e2eTests: null, screenshots: null, improvementSignal: null, amsReputationBridge: null },
   };
@@ -45,7 +45,7 @@ describe("screenshots converged-feature activation (env flag AND repo cutover al
   });
 
   it("matches the repo case-insensitively within the allowlist", () => {
-    expect(resolveConvergedFeature({ LOOPOVER_REVIEW_SCREENSHOTS: "on", LOOPOVER_REVIEW_REPOS: "jsonbored/GITTENSORY" } as Env, noOverride, "screenshots", repo)).toBe(true);
+    expect(resolveConvergedFeature({ LOOPOVER_REVIEW_SCREENSHOTS: "on", LOOPOVER_REVIEW_REPOS: "jsonbored/LOOPOVER" } as Env, noOverride, "screenshots", repo)).toBe(true);
   });
 
   it("does not let a `features.screenshots` override bypass the repo allowlist", () => {

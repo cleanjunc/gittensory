@@ -59,7 +59,7 @@ describe("loopover-mcp CLI — packets", () => {
     expect(offline.cachedAt).toEqual(expect.any(String));
     expect(offline.cache.rerunGuidance).toMatch(/Retry when LoopOver API access is restored/);
 
-    const repoDecision = JSON.parse(await runAsync(["repo-decision", "--login", "JSONbored", "--repo", "JSONbored/gittensory", "--json"], env)) as {
+    const repoDecision = JSON.parse(await runAsync(["repo-decision", "--login", "JSONbored", "--repo", "JSONbored/loopover", "--json"], env)) as {
       status: string;
       source: string;
       stale: boolean;
@@ -69,7 +69,7 @@ describe("loopover-mcp CLI — packets", () => {
       status: "ready",
       source: "local_cache",
       stale: true,
-      decision: { repoFullName: "JSONbored/gittensory", recommendation: "pursue" },
+      decision: { repoFullName: "JSONbored/loopover", recommendation: "pursue" },
     });
   });
 
@@ -244,7 +244,7 @@ describe("loopover-mcp CLI — packets", () => {
     fixtureOptions.repoDecisionErrorContentType = "text/html";
 
     await expect(runAsync(["decision-pack", "--login", "JSONbored", "--json"], env)).rejects.toThrow(/LoopOver API 403/);
-    await expect(runAsync(["repo-decision", "--login", "JSONbored", "--repo", "JSONbored/gittensory", "--json"], env)).rejects.toThrow(/LoopOver API 403/);
+    await expect(runAsync(["repo-decision", "--login", "JSONbored", "--repo", "JSONbored/loopover", "--json"], env)).rejects.toThrow(/LoopOver API 403/);
   });
 
   it("does not use stale decision-pack cache when local credentials are missing", async () => {
@@ -265,7 +265,7 @@ describe("loopover-mcp CLI — packets", () => {
     };
 
     await expect(runAsync(["decision-pack", "--login", "JSONbored", "--json"], withoutToken)).rejects.toThrow(/Run `loopover-mcp login`/);
-    await expect(runAsync(["repo-decision", "--login", "JSONbored", "--repo", "JSONbored/gittensory", "--json"], withoutToken)).rejects.toThrow(
+    await expect(runAsync(["repo-decision", "--login", "JSONbored", "--repo", "JSONbored/loopover", "--json"], withoutToken)).rejects.toThrow(
       /Run `loopover-mcp login`/,
     );
   });
@@ -279,14 +279,14 @@ describe("loopover-mcp CLI — packets", () => {
       LOOPOVER_CONFIG_DIR: tempDir,
     };
 
-    const plan = JSON.parse(await runAsync(["agent", "plan", "--login", "JSONbored", "--repo", "JSONbored/gittensory", "--json"], env)) as {
+    const plan = JSON.parse(await runAsync(["agent", "plan", "--login", "JSONbored", "--repo", "JSONbored/loopover", "--json"], env)) as {
       run: { id: string; status: string };
       actions: Array<{ actionType: string }>;
     };
     expect(plan.run).toMatchObject({ id: "run-1", status: "completed" });
     expect(plan.actions[0]).toMatchObject({ actionType: "choose_next_work" });
 
-    const planText = await runAsync(["agent", "plan", "--login", "JSONbored", "--repo", "JSONbored/gittensory"], env);
+    const planText = await runAsync(["agent", "plan", "--login", "JSONbored", "--repo", "JSONbored/loopover"], env);
     expect(planText).toContain("why now:");
     expect(planText).toContain("impact:");
     expect(planText).toContain("rerun:");
@@ -305,7 +305,7 @@ describe("loopover-mcp CLI — packets", () => {
     git(tempDir, "config", "user.email", "test@example.com");
     git(tempDir, "config", "user.name", "LoopOver Test");
     git(tempDir, "config", "commit.gpgsign", "false");
-    git(tempDir, "remote", "add", "origin", "git@github.com:JSONbored/gittensory.git");
+    git(tempDir, "remote", "add", "origin", "git@github.com:JSONbored/loopover.git");
     writeFileSync(join(tempDir, "README.md"), "fixture\n");
     git(tempDir, "add", "README.md");
     git(tempDir, "commit", "-m", "initial commit");
@@ -334,7 +334,7 @@ describe("loopover-mcp CLI — packets", () => {
     git(tempDir, "config", "user.email", "test@example.com");
     git(tempDir, "config", "user.name", "LoopOver Test");
     git(tempDir, "config", "commit.gpgsign", "false");
-    git(tempDir, "remote", "add", "origin", "git@github.com:JSONbored/gittensory.git");
+    git(tempDir, "remote", "add", "origin", "git@github.com:JSONbored/loopover.git");
     writeFileSync(join(tempDir, "README.md"), "fixture\n");
     git(tempDir, "add", "README.md");
     git(tempDir, "commit", "-m", "initial commit");
@@ -374,7 +374,7 @@ describe("loopover-mcp CLI — packets", () => {
     git(tempDir, "config", "user.email", "test@example.com");
     git(tempDir, "config", "user.name", "LoopOver Test");
     git(tempDir, "config", "commit.gpgsign", "false");
-    git(tempDir, "remote", "add", "origin", "git@github.com:JSONbored/gittensory.git");
+    git(tempDir, "remote", "add", "origin", "git@github.com:JSONbored/loopover.git");
     writeFileSync(join(tempDir, "README.md"), "fixture\n");
     git(tempDir, "add", "README.md");
     git(tempDir, "commit", "-m", "initial commit");
@@ -468,7 +468,7 @@ describe("loopover-mcp CLI — packets", () => {
     git(tempDir, "config", "user.email", "test@example.com");
     git(tempDir, "config", "user.name", "LoopOver Test");
     git(tempDir, "config", "commit.gpgsign", "false");
-    git(tempDir, "remote", "add", "origin", "git@github.com:JSONbored/gittensory.git");
+    git(tempDir, "remote", "add", "origin", "git@github.com:JSONbored/loopover.git");
     writeFileSync(join(tempDir, "README.md"), "fixture\n");
     git(tempDir, "add", "README.md");
     git(tempDir, "commit", "-m", "initial commit");

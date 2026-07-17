@@ -4,7 +4,7 @@ import { DEFAULT_SCORING_CONSTANTS, parsePythonNumberConstants } from "../../pac
 import { buildScorePreview } from "../../packages/loopover-engine/src/scoring/preview";
 import { classifyOpenPullRequest } from "../../packages/loopover-engine/src/scoring/pending-pr-scenarios";
 
-describe("gittensory-engine scoring barrel exports (#2282)", () => {
+describe("loopover-engine scoring barrel exports (#2282)", () => {
   it("re-exports scoring namespaces from the package barrel", async () => {
     const barrel = await import("../../packages/loopover-engine/src/index");
     expect(typeof barrel.scoringPreview.buildScorePreview).toBe("function");

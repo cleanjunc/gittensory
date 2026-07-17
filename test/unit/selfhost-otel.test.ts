@@ -92,9 +92,9 @@ describe("self-host OpenTelemetry", () => {
         env({
           OTEL_TRACES_EXPORTER: "console,otlp",
           OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318/",
-          OTEL_SERVICE_NAME: "gittensory-test",
+          OTEL_SERVICE_NAME: "loopover-test",
           SENTRY_ENVIRONMENT: "selfhost-test",
-          LOOPOVER_VERSION: "gittensory-selfhost@test",
+          LOOPOVER_VERSION: "loopover-selfhost@test",
         }),
       ),
     ).toBe(true);
@@ -134,8 +134,8 @@ describe("self-host OpenTelemetry", () => {
     expect(span.attributes.badNumber).toBeUndefined();
     expect(span.attributes.longText).toHaveLength(160);
     expect(span.resource.attributes).toMatchObject({
-      "service.name": "gittensory-test",
-      "service.version": "gittensory-selfhost@test",
+      "service.name": "loopover-test",
+      "service.version": "loopover-selfhost@test",
       "deployment.environment.name": "selfhost-test",
     });
     expect(otelMocks.OTLPTraceExporter).toHaveBeenCalledTimes(1);
@@ -594,7 +594,7 @@ describe("self-host OpenTelemetry", () => {
       "selfhost.review.gate",
       {
         installationId: 143010787,
-        repoFullName: "JSONbored/gittensory",
+        repoFullName: "JSONbored/loopover",
         pullNumber: 1001,
         operation: "gate_decision",
         agent: "dual-ai",
@@ -607,7 +607,7 @@ describe("self-host OpenTelemetry", () => {
 
     const span = otelMocks.exportedSpans.find((entry) => entry.name === "selfhost.review.gate");
     expect(span.attributes).toMatchObject({
-      "github.repository": "JSONbored/gittensory",
+      "github.repository": "JSONbored/loopover",
       "github.pull_request.number": 1001,
       "github.installation_id_hash": "68b9c2136087c5ca",
       "loopover.operation": "gate_decision",
@@ -631,7 +631,7 @@ describe("self-host OpenTelemetry", () => {
   it("keeps only primitive, finite, non-secret attributes", () => {
     expect(
       otelSafeAttributes({
-        repo: "JSONbored/gittensory",
+        repo: "JSONbored/loopover",
         count: 1,
         ok: false,
         authHeader: "Bearer nope",
@@ -640,6 +640,6 @@ describe("self-host OpenTelemetry", () => {
         nan: Number.NaN,
         obj: { x: 1 },
       }),
-    ).toEqual({ repo: "JSONbored/gittensory", count: 1, ok: false });
+    ).toEqual({ repo: "JSONbored/loopover", count: 1, ok: false });
   });
 });

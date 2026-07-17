@@ -91,7 +91,7 @@ function substituteProvider(query: string, value: string): string {
 }
 
 function tmpRoot(): string {
-  const dir = mkdtempSync(join(tmpdir(), "gittensory-grafana-miner-usage-"));
+  const dir = mkdtempSync(join(tmpdir(), "loopover-grafana-miner-usage-"));
   tmpRoots.push(dir);
   return dir;
 }

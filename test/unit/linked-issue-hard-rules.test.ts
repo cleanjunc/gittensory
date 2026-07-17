@@ -261,7 +261,7 @@ describe("evaluateLinkedIssueHardRules", () => {
 
 describe("loadLinkedIssueHardRules", () => {
   it("returns the all-off default without requiring external policy storage", async () => {
-    expect(await loadLinkedIssueHardRules({} as Env, "JSONbored/gittensory")).toEqual(DEFAULT_LINKED_ISSUE_HARD_RULES);
+    expect(await loadLinkedIssueHardRules({} as Env, "JSONbored/loopover")).toEqual(DEFAULT_LINKED_ISSUE_HARD_RULES);
   });
 
   it("ignores unrelated env data so stale hosted config cannot manufacture a close", async () => {
@@ -281,7 +281,7 @@ describe("loadLinkedIssueHardRules", () => {
           },
         },
       } as unknown as Env,
-      "JSONbored/gittensory",
+      "JSONbored/loopover",
     );
     expect(cfg).toEqual(DEFAULT_LINKED_ISSUE_HARD_RULES);
   });

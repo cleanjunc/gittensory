@@ -37,7 +37,7 @@ async function post(
   return handleOrbWebhook(ctx(e, headers, request));
 }
 
-const INSTALL = JSON.stringify({ action: "created", installation: { id: 42 }, repository: { full_name: "JSONbored/gittensory" } });
+const INSTALL = JSON.stringify({ action: "created", installation: { id: 42 }, repository: { full_name: "JSONbored/loopover" } });
 const row = (e: Env, delivery: string) =>
   (e.DB as unknown as TestD1Database).prepare("SELECT event_name, action, installation_id, repository_full_name, status FROM orb_webhook_events WHERE delivery_id=?").bind(delivery).first<{ event_name: string; action: string; installation_id: number; repository_full_name: string; status: string }>();
 
@@ -102,13 +102,13 @@ describe("handleOrbWebhook (POST /v1/orb/webhook)", () => {
     const res = await post(e, INSTALL, { delivery: "ok-1" });
     expect(res.status).toBe(202);
     await expect(res.json()).resolves.toMatchObject({ status: "received", eventName: "installation" });
-    expect(await row(e, "ok-1")).toMatchObject({ action: "created", installation_id: 42, repository_full_name: "JSONbored/gittensory", status: "received" });
+    expect(await row(e, "ok-1")).toMatchObject({ action: "created", installation_id: 42, repository_full_name: "JSONbored/loopover", status: "received" });
   });
 
   it("ACKs 202 immediately and SCHEDULES the relay forward via waitUntil (never blocks the ACK on a slow container, #orb-ack-fast)", async () => {
     const e = env();
     const scheduled: Promise<unknown>[] = [];
-    const PR = JSON.stringify({ action: "opened", installation: { id: 99 }, repository: { full_name: "JSONbored/gittensory" }, number: 7 });
+    const PR = JSON.stringify({ action: "opened", installation: { id: 99 }, repository: { full_name: "JSONbored/loopover" }, number: 7 });
     const request = new Request("https://collector/v1/orb/webhook", { method: "POST", body: PR });
     const headers = { "x-github-delivery": "fwd-1", "x-github-event": "pull_request", "x-hub-signature-256": await sign(PR, SECRET) };
     const res = await handleOrbWebhook(ctx(e, headers, request, { waitUntil: (p) => scheduled.push(p) }));
@@ -121,7 +121,7 @@ describe("handleOrbWebhook (POST /v1/orb/webhook)", () => {
   it("INVARIANT: central Orb ingress stays live without the self-host review-runtime cache", async () => {
     const e = env();
     delete e.SELFHOST_TRANSIENT_CACHE;
-    const PR = JSON.stringify({ action: "opened", installation: { id: 100 }, repository: { full_name: "JSONbored/gittensory" }, number: 8 });
+    const PR = JSON.stringify({ action: "opened", installation: { id: 100 }, repository: { full_name: "JSONbored/loopover" }, number: 8 });
     const res = await post(e, PR, { delivery: "orb-no-review-cache", event: "pull_request" });
     expect(res.status).toBe(202);
     await expect(res.json()).resolves.toMatchObject({ status: "received", eventName: "pull_request" });

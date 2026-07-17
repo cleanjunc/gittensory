@@ -99,7 +99,7 @@ describe("loopover-mcp CLI — lint-pr-text", () => {
   it("validates inputs and prints help", async () => {
     const e = await env();
     await expect(runAsync(["lint-pr-text", "--linked-issue", "0"], e)).rejects.toThrow(/positive integer/);
-    await expect(runAsync(["lint-pr-text", "--body-file", "/tmp/missing-gittensory-pr-body.md"], e)).rejects.toThrow(/Body file not found/);
+    await expect(runAsync(["lint-pr-text", "--body-file", "/tmp/missing-loopover-pr-body.md"], e)).rejects.toThrow(/Body file not found/);
     const help = run(["lint-pr-text", "--help"]);
     expect(help).toMatch(/Usage: loopover-mcp lint-pr-text/);
     expect(help).toMatch(/loopover_lint_pr_text/);

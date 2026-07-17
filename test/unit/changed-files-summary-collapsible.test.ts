@@ -226,7 +226,7 @@ describe("buildUnifiedCommentBody changedFilesSummary wiring (#1957 / #2145)", (
     const body = buildUnifiedCommentBody({
       ...base,
       changedFilesSummary: files,
-      beforeAfter: [{ path: "/", afterUrl: "https://api.example.dev/gittensory/shot?key=gittensory/shots/x.png" }],
+      beforeAfter: [{ path: "/", afterUrl: "https://api.example.dev/loopover/shot?key=loopover/shots/x.png" }],
     });
     expect(body).toContain("Changed files");
     expect(body).toContain("Visual preview");

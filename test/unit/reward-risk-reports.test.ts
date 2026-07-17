@@ -86,7 +86,7 @@ function issue(
 
 function makeFiles(count: number, pathPrefix = "src/file", additions = 10): PullRequestFileRecord[] {
   return Array.from({ length: count }, (_, i) => ({
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     pullNumber: 1,
     path: `${pathPrefix}-${i}.ts`,
     additions,
@@ -99,7 +99,7 @@ function makeFiles(count: number, pathPrefix = "src/file", additions = 10): Pull
 function failingCheck(pullNumber: number, name = "ci"): CheckSummaryRecord {
   return {
     id: `${name}-1`,
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     pullNumber,
     name,
     status: "completed",
@@ -110,7 +110,7 @@ function failingCheck(pullNumber: number, name = "ci"): CheckSummaryRecord {
 
 describe("buildMaintainerNoiseReport (#2093)", () => {
   it("falls back to the empty-noise message when no source fires", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const report = buildMaintainerNoiseReport(r, [], [], [], r.fullName);
     expect(report.repoFullName).toBe(r.fullName);
     expect(typeof report.generatedAt).toBe("string");
@@ -120,7 +120,7 @@ describe("buildMaintainerNoiseReport (#2093)", () => {
   });
 
   it("reports the unlinked open PR arm and the three level thresholds", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const makeUnlinked = (n: number) =>
       Array.from({ length: n }, (_, i) =>
         pr(r.fullName, 200 + i, `Focused fix ${i}`, { linkedIssues: [], updatedAt: new Date().toISOString() }),
@@ -132,7 +132,7 @@ describe("buildMaintainerNoiseReport (#2093)", () => {
   });
 
   it("reports the high-risk collision cluster arm", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const relatedIssue = issue(r.fullName, 1, "Fix cache bug");
     const collidingPr = pr(r.fullName, 100, "Fix cache bug duplicate", { linkedIssues: [1] });
     const recentMerged: RecentMergedPullRequestRecord[] = [
@@ -144,7 +144,7 @@ describe("buildMaintainerNoiseReport (#2093)", () => {
   });
 
   it("reports the stale PR arm", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const stale = pr(r.fullName, 50, "Old PR", {
       linkedIssues: [],
       updatedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
@@ -155,7 +155,7 @@ describe("buildMaintainerNoiseReport (#2093)", () => {
   });
 
   it("reports the broad-diff title arm", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const broad = pr(r.fullName, 60, "Refactor and cleanup of various modules across the codebase".padEnd(140, " x"), {
       linkedIssues: [],
     });
@@ -164,7 +164,7 @@ describe("buildMaintainerNoiseReport (#2093)", () => {
   });
 
   it("excludes already-merged/closed broad-title PRs from the broad-diff noise arm (only open PRs are live noise)", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     // A merged and a closed PR whose titles hit the churn regex must NOT be counted as live queue noise.
     const merged = pr(r.fullName, 61, "Refactor cleanup of various modules", { state: "merged" });
     const closed = pr(r.fullName, 62, "Misc cleanup", { state: "closed" });
@@ -176,7 +176,7 @@ describe("buildMaintainerNoiseReport (#2093)", () => {
   });
 
   it("reports the strained intake arm via deduped maintainerActions", () => {
-    const r = repo("JSONbored/gittensory", { issueDiscoveryShare: 0 });
+    const r = repo("JSONbored/loopover", { issueDiscoveryShare: 0 });
     const unlinked = Array.from({ length: 4 }, (_, i) =>
       pr(r.fullName, 300 + i, `Open ${i}`, { linkedIssues: [], updatedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString() }),
     );
@@ -199,7 +199,7 @@ function closedRateHistory(login: string, r: RepositoryRecord, closed: number, m
 
 describe("buildPullRequestReviewability (#2093)", () => {
   it("returns the empty-blocker fallback and review_now action with approval", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const p = pr(r.fullName, 1, "Patch integration helper", {
       linkedIssues: [42],
       authorLogin: "dev",
@@ -227,7 +227,7 @@ describe("buildPullRequestReviewability (#2093)", () => {
   });
 
   it("reports the missing-linked-issue arm and picks needs_author action", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const p = pr(r.fullName, 20, "Small unlinked code fix", { linkedIssues: [], updatedAt: new Date().toISOString() });
     const result = buildPullRequestReviewability({
       repo: r,
@@ -247,7 +247,7 @@ describe("buildPullRequestReviewability (#2093)", () => {
   });
 
   it("reports the non-open PR arm and picks close_or_redirect action", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const closed = pr(r.fullName, 21, "Closed broad PR", { state: "closed", linkedIssues: [], updatedAt: new Date().toISOString() });
     const result = buildPullRequestReviewability({
       repo: r,
@@ -267,7 +267,7 @@ describe("buildPullRequestReviewability (#2093)", () => {
   });
 
   it("reports the maintainer_lane action when the PR author is the repo owner", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const ownerPr = pr(r.fullName, 30, "Owner follow-up", { authorLogin: "JSONbored", linkedIssues: [], updatedAt: new Date().toISOString() });
     const result = buildPullRequestReviewability({
       repo: r,
@@ -286,7 +286,7 @@ describe("buildPullRequestReviewability (#2093)", () => {
   });
 
   it("reports the collision-cluster arm and picks likely_duplicate action", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const relatedIssue = issue(r.fullName, 5, "Fix cache invalidation");
     const targetPr = pr(r.fullName, 40, "Fix cache invalidation", { linkedIssues: [5], authorLogin: "dev", updatedAt: new Date().toISOString() });
     const recentMerged: RecentMergedPullRequestRecord[] = [
@@ -310,7 +310,7 @@ describe("buildPullRequestReviewability (#2093)", () => {
   });
 
   it("reports the code-without-test arm when only non-test files changed", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const p = pr(r.fullName, 50, "Refactor cache", { linkedIssues: [9], authorLogin: "dev", updatedAt: new Date().toISOString() });
     const result = buildPullRequestReviewability({
       repo: r,
@@ -328,7 +328,7 @@ describe("buildPullRequestReviewability (#2093)", () => {
   });
 
   it("reports the failing-checks arm", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const p = pr(r.fullName, 60, "WIP", { linkedIssues: [], authorLogin: "dev", updatedAt: new Date().toISOString() });
     const result = buildPullRequestReviewability({
       repo: r,
@@ -346,7 +346,7 @@ describe("buildPullRequestReviewability (#2093)", () => {
   });
 
   it("reports the broad-diff arm at fileCount >= 12 and at additions+deletions >= 800", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const p = pr(r.fullName, 70, "Wide refactor", { linkedIssues: [], authorLogin: "dev", updatedAt: new Date().toISOString() });
     const eleven = makeFiles(11);
     const twelve = makeFiles(12);
@@ -411,7 +411,7 @@ describe("buildPullRequestReviewability (#2093)", () => {
   });
 
   it("reports the high closed-PR-rate arm and falls to watch action", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const p = pr(r.fullName, 80, "Another try", { linkedIssues: [], authorLogin: "dev", updatedAt: new Date().toISOString() });
     const outcomeHistory = closedRateHistory("dev", r, 4, 1);
     const result = buildPullRequestReviewability({
@@ -432,7 +432,7 @@ describe("buildPullRequestReviewability (#2093)", () => {
   });
 
   it("exposes generatedAt and summary shape without leaking private score internals to public fields", () => {
-    const r = repo("JSONbored/gittensory");
+    const r = repo("JSONbored/loopover");
     const p = pr(r.fullName, 90, "Shape check", { linkedIssues: [], authorLogin: "dev", updatedAt: new Date().toISOString() });
     const result = buildPullRequestReviewability({
       repo: r,

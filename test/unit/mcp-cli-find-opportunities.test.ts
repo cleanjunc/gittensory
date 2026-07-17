@@ -16,7 +16,7 @@ let apiUrl: string;
 let capturedRequests: Array<{ url: string; method: string; body: string }>;
 
 async function connect() {
-  configDir = mkdtempSync(join(tmpdir(), "gittensory-find-opp-"));
+  configDir = mkdtempSync(join(tmpdir(), "loopover-find-opp-"));
   capturedRequests = [];
   apiUrl = await startFixtureServer({
     onApiRequest: (request) => {

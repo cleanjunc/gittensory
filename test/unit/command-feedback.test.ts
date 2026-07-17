@@ -15,7 +15,7 @@ describe("command usefulness feedback storage", () => {
     await recordAgentCommandFeedback(env, {
       id: "feedback-initial",
       answerId: "answer-preflight",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       issueNumber: 77,
       command: "preflight",
       actorLogin: "Oktofeesh1",
@@ -28,7 +28,7 @@ describe("command usefulness feedback storage", () => {
     });
     await recordAgentCommandFeedback(env, {
       answerId: "answer-preflight",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       issueNumber: 77,
       command: "preflight",
       actorLogin: "oktofeesh1",
@@ -40,7 +40,7 @@ describe("command usefulness feedback storage", () => {
     });
     await recordAgentCommandFeedback(env, {
       answerId: "answer-preflight",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       issueNumber: 77,
       command: "preflight",
       actorLogin: "maintainer",
@@ -85,13 +85,13 @@ describe("command usefulness feedback storage", () => {
   it("upserts answer metadata and filters usefulness windows deterministically", async () => {
     const env = createTestEnv();
     await upsertAgentCommandAnswer(env, answer({ id: "answer-new", command: "blockers", responseCommentId: 10 }));
-    await upsertAgentCommandAnswer(env, answer({ id: "answer-new", command: "blockers", responseCommentId: 11, responseUrl: "https://github.com/JSONbored/gittensory/pull/1#issuecomment-11" }));
+    await upsertAgentCommandAnswer(env, answer({ id: "answer-new", command: "blockers", responseCommentId: 11, responseUrl: "https://github.com/JSONbored/loopover/pull/1#issuecomment-11" }));
     await upsertAgentCommandAnswer(env, answer({ id: "answer-old", command: "next-action" }));
 
     await expect(getAgentCommandAnswer(env, "answer-new")).resolves.toMatchObject({
       id: "answer-new",
       responseCommentId: 11,
-      responseUrl: "https://github.com/JSONbored/gittensory/pull/1#issuecomment-11",
+      responseUrl: "https://github.com/JSONbored/loopover/pull/1#issuecomment-11",
     });
 
     await recordAgentCommandFeedback(env, feedback({ answerId: "answer-new", command: "blockers", actorLogin: "reviewer", updatedAt: "2026-05-28T00:00:00.000Z" }));
@@ -110,7 +110,7 @@ describe("command usefulness feedback storage", () => {
 function answer(overrides: Partial<Parameters<typeof upsertAgentCommandAnswer>[1]> = {}): Parameters<typeof upsertAgentCommandAnswer>[1] {
   return {
     id: "answer",
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     issueNumber: 77,
     command: "preflight",
     requestCommentId: 1,
@@ -127,7 +127,7 @@ function answer(overrides: Partial<Parameters<typeof upsertAgentCommandAnswer>[1
 function feedback(overrides: Partial<Parameters<typeof recordAgentCommandFeedback>[1]> = {}): Parameters<typeof recordAgentCommandFeedback>[1] {
   return {
     answerId: "answer",
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     issueNumber: 77,
     command: "preflight",
     actorLogin: "reviewer",

@@ -48,10 +48,10 @@ describe("database persistence helpers", () => {
       affectedAreas: ["registry", "source"],
     });
 
-    await updateUpstreamDriftReportIssue(env, "registry:abc", { number: 42, url: "https://github.com/JSONbored/gittensory/issues/42" });
+    await updateUpstreamDriftReportIssue(env, "registry:abc", { number: 42, url: "https://github.com/JSONbored/loopover/issues/42" });
     expect(await getOpenUpstreamDriftReportByFingerprint(env, "registry:abc")).toMatchObject({
       issueNumber: 42,
-      issueUrl: "https://github.com/JSONbored/gittensory/issues/42",
+      issueUrl: "https://github.com/JSONbored/loopover/issues/42",
     });
 
     await upsertContributorScoringProfile(env, {
@@ -68,7 +68,7 @@ describe("database persistence helpers", () => {
     await persistBountyLifecycleEvent(env, {
       id: "bounty-event-1",
       bountyId: "bounty-1",
-      repoFullName: "JSONbored/gittensory",
+      repoFullName: "JSONbored/loopover",
       issueNumber: 7,
       status: "Completed",
       payload: { target_alpha: "74.0000" },

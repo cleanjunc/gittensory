@@ -68,7 +68,7 @@ describe("loopover_monitor_open_prs stdio proxy", () => {
     expect(captured.method).toBe("GET");
     expect(result.isError).toBeFalsy();
     const text = JSON.stringify(result);
-    expect(text).toContain("JSONbored/gittensory");
+    expect(text).toContain("JSONbored/loopover");
     expect(text).toContain("failing_checks");
     // The tool summary is the API's own sentence, not a second one invented client-side.
     expect(text).toContain(openPrMonitorFixture().summary);
@@ -92,7 +92,7 @@ describe("loopover-mcp monitor-open-prs CLI", () => {
     const fixture = openPrMonitorFixture();
     expect(out).toContain(fixture.summary);
     expect(out).toContain(fixture.guidance[0]!);
-    expect(out).toContain("JSONbored/gittensory#42 [failing_checks] fix(queue): drain stale entries");
+    expect(out).toContain("JSONbored/loopover#42 [failing_checks] fix(queue): drain stale entries");
     expect(out).toContain("  - Fix the failing check, then push.");
   });
 

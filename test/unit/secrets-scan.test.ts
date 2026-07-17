@@ -30,7 +30,7 @@ describe("scanForSecrets — deterministic secret-pattern scanner", () => {
   });
 
   // #4284: AWS's own officially published documentation placeholder caused 4 false-positive PR closes in
-  // gittensory's own subprocess-env-redaction-helper epic before this exclusion existed. Assembled from
+  // loopover's own subprocess-env-redaction-helper epic before this exclusion existed. Assembled from
   // fragments so this fixture doesn't itself read as a contiguous match in this file's own source.
   it("does NOT flag AWS's own officially published documentation example key", () => {
     expect(scanForSecrets("AKIA" + "IOSFODNN7EXAMPLE").kinds).not.toContain("aws_access_key");
@@ -247,7 +247,7 @@ describe("scanForSecrets — deterministic secret-pattern scanner", () => {
     expect(scanForSecrets(`token = "${singleWord}"`).kinds).toContain("generic_secret_assignment");
   });
 
-  // #4579-followup: confirmed live false positives (metagraphed/gittensory#4524, #4224) closed PRs for
+  // #4579-followup: confirmed live false positives (metagraphed/loopover#4524, #4224) closed PRs for
   // "missing before/after screenshot table"-unrelated reasons -- a leaked secret that never existed. These
   // exact session-token literals are known test fixtures.
   it.each([

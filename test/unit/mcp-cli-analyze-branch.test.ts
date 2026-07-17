@@ -37,7 +37,7 @@ describe("loopover-mcp CLI — analyze-branch --format table", () => {
   });
 
   const env = (url: string) => ({ LOOPOVER_API_URL: url, LOOPOVER_TOKEN: "session-token", LOOPOVER_SKIP_NPM_VERSION_CHECK: "true" });
-  const args = (extra: string[]) => ["analyze-branch", "--login", "JSONbored", "--cwd", tempDir as string, "--repo", "JSONbored/gittensory", ...extra];
+  const args = (extra: string[]) => ["analyze-branch", "--login", "JSONbored", "--cwd", tempDir as string, "--repo", "JSONbored/loopover", ...extra];
 
   it("renders next actions and score blockers as aligned tables", async () => {
     tempDir = createPacketRepo();

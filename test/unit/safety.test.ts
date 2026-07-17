@@ -59,15 +59,15 @@ function safetyMinerSnapshot(login: string) {
 async function seedGateEnabledRepo(env: Env): Promise<void> {
   await persistRegistrySnapshot(
     env,
-    normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
+    normalizeRegistryPayload({ "JSONbored/loopover": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
   );
-  await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
+  await upsertRepositoryFromGitHub(env, { name: "loopover", full_name: "JSONbored/loopover", private: false, owner: { login: "JSONbored" } }, 123);
   await upsertRepositorySettings(env, {
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     autoLabelEnabled: false,
     slopGateMode: "advisory", // turns the shared gateFiles load on so the reuse branch is hit
   });
-  await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", reviewCheckMode: "required" } });
+  await upsertRepoFocusManifest(env, "JSONbored/loopover", { settings: { commentMode: "off", publicSurface: "off", checkRunMode: "off", reviewCheckMode: "required" } });
   await upsertOfficialMinerDetection(env, "contributor", { status: "confirmed", snapshot: safetyMinerSnapshot("contributor") }, 60_000);
 }
 
@@ -76,7 +76,7 @@ async function seedLeakedSecretFile(env: Env): Promise<void> {
   await env.DB.prepare(
     "INSERT INTO pull_request_files (repo_full_name, pull_number, path, status, additions, deletions, changes, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
   )
-    .bind("JSONbored/gittensory", 42, "src/config.ts", "modified", 1, 0, 1, JSON.stringify({ patch: `@@\n+const token = "${LEAKED_TOKEN}";` }))
+    .bind("JSONbored/loopover", 42, "src/config.ts", "modified", 1, 0, 1, JSON.stringify({ patch: `@@\n+const token = "${LEAKED_TOKEN}";` }))
     .run();
 }
 
@@ -107,7 +107,7 @@ function prWebhook(deliveryId: string) {
     payload: {
       action: "opened",
       installation: { id: 123, account: { login: "JSONbored", id: 1, type: "User" } },
-      repository: { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } },
+      repository: { name: "loopover", full_name: "JSONbored/loopover", private: false, owner: { login: "JSONbored" } },
       pull_request: { number: 42, title: "Add config", state: "open", user: { login: "contributor" }, head: { sha: "gate123" }, labels: [], body: "Adds a token." },
     },
   };

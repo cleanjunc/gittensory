@@ -10,7 +10,7 @@ function profile(overrides: Partial<ContributorFitProfile> = {}): ContributorFit
     registeredRepoActivity: {
       pullRequests: 10,
       mergedPullRequests: 9,
-      reposTouched: ["JSONbored/gittensory"],
+      reposTouched: ["JSONbored/loopover"],
     },
     trustSignals: { level: "established", unlinkedOpenPullRequests: 0 },
     ...overrides,
@@ -33,24 +33,24 @@ describe("classifyContributorFit", () => {
     const result = profile({
       trustSignals: { level: "established", unlinkedOpenPullRequests: 3 },
     });
-    const { fit, reasons } = classifyContributorFit(result, "JSONbored/gittensory");
+    const { fit, reasons } = classifyContributorFit(result, "JSONbored/loopover");
     expect(fit).toBe("weak");
     expect(reasons).toContain("3 unlinked open pull request(s)");
   });
 
   it("is weak for a new profile whose few attempts mostly failed to merge", () => {
     const result = profile({
-      registeredRepoActivity: { pullRequests: 10, mergedPullRequests: 2, reposTouched: ["JSONbored/gittensory"] },
+      registeredRepoActivity: { pullRequests: 10, mergedPullRequests: 2, reposTouched: ["JSONbored/loopover"] },
       trustSignals: { level: "new", unlinkedOpenPullRequests: 0 },
     });
-    const { fit, reasons } = classifyContributorFit(result, "JSONbored/gittensory");
+    const { fit, reasons } = classifyContributorFit(result, "JSONbored/loopover");
     expect(fit).toBe("weak");
     expect(reasons).toContain("new profile with low merge ratio (2/10)");
   });
 
   it("is strong for an established profile with a clean queue and a high merge ratio", () => {
     const result = profile();
-    const { fit, reasons } = classifyContributorFit(result, "JSONbored/gittensory");
+    const { fit, reasons } = classifyContributorFit(result, "JSONbored/loopover");
     expect(fit).toBe("strong");
     expect(reasons).toContain("trust level is 'established'");
     expect(reasons).toContain("no unlinked open pull requests");
@@ -59,10 +59,10 @@ describe("classifyContributorFit", () => {
 
   it("is neutral when history exists but signals are mixed (emerging, clean queue, mid merge ratio)", () => {
     const result = profile({
-      registeredRepoActivity: { pullRequests: 10, mergedPullRequests: 6, reposTouched: ["JSONbored/gittensory"] },
+      registeredRepoActivity: { pullRequests: 10, mergedPullRequests: 6, reposTouched: ["JSONbored/loopover"] },
       trustSignals: { level: "emerging", unlinkedOpenPullRequests: 0 },
     });
-    const { fit, reasons } = classifyContributorFit(result, "JSONbored/gittensory");
+    const { fit, reasons } = classifyContributorFit(result, "JSONbored/loopover");
     expect(fit).toBe("neutral");
     expect(reasons).toContain("no unlinked open pull requests");
     expect(reasons.some((r) => r.startsWith("strong merge ratio"))).toBe(false);
@@ -70,10 +70,10 @@ describe("classifyContributorFit", () => {
 
   it("is neutral for touched-repo history with no recorded pull-request count", () => {
     const result = profile({
-      registeredRepoActivity: { pullRequests: 0, mergedPullRequests: 0, reposTouched: ["JSONbored/gittensory"] },
+      registeredRepoActivity: { pullRequests: 0, mergedPullRequests: 0, reposTouched: ["JSONbored/loopover"] },
       trustSignals: { level: "established", unlinkedOpenPullRequests: 0 },
     });
-    const { fit, reasons } = classifyContributorFit(result, "JSONbored/gittensory");
+    const { fit, reasons } = classifyContributorFit(result, "JSONbored/loopover");
     expect(fit).toBe("neutral");
     expect(reasons).toContain("trust level is 'established'");
     expect(reasons).toContain("no unlinked open pull requests");
@@ -84,22 +84,22 @@ describe("classifyContributorFit", () => {
       registeredRepoActivity: {
         pullRequests: 10,
         mergedPullRequests: 9,
-        reposTouched: ["JSONbored/gittensory"],
+        reposTouched: ["JSONbored/loopover"],
       },
       trustSignals: { level: "established", unlinkedOpenPullRequests: 0 },
     });
-    expect(classifyContributorFit(result, "jsonbored/gittensory").fit).toBe("strong");
-    expect(classifyContributorFit(result, "JSONBORED/Gittensory").fit).toBe("strong");
+    expect(classifyContributorFit(result, "jsonbored/loopover").fit).toBe("strong");
+    expect(classifyContributorFit(result, "JSONBORED/Loopover").fit).toBe("strong");
   });
 
   it("matches the exact verdicts across the strong/neutral/weak axis", () => {
     const strong = profile();
     const weak = profile({ trustSignals: { level: "established", unlinkedOpenPullRequests: 1 } });
     const neutral = profile({
-      registeredRepoActivity: { pullRequests: 10, mergedPullRequests: 6, reposTouched: ["JSONbored/gittensory"] },
+      registeredRepoActivity: { pullRequests: 10, mergedPullRequests: 6, reposTouched: ["JSONbored/loopover"] },
       trustSignals: { level: "emerging", unlinkedOpenPullRequests: 0 },
     });
-    const verdicts = [strong, weak, neutral].map((p) => classifyContributorFit(p, "JSONbored/gittensory").fit);
+    const verdicts = [strong, weak, neutral].map((p) => classifyContributorFit(p, "JSONbored/loopover").fit);
     expect(verdicts).toEqual(["strong", "weak", "neutral"]);
   });
 });

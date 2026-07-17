@@ -44,15 +44,15 @@ import type { ContributorRepoStatRecord, IssueRecord, PullRequestRecord, RecentM
 const isoDaysAgo = (days: number): string => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
 const repo: RepositoryRecord = {
-  fullName: "JSONbored/gittensory",
+  fullName: "JSONbored/loopover",
   owner: "JSONbored",
-  name: "gittensory",
+  name: "loopover",
   isInstalled: true,
   isRegistered: true,
   isPrivate: true,
   defaultBranch: "main",
   registryConfig: {
-    repo: "JSONbored/gittensory",
+    repo: "JSONbored/loopover",
     emissionShare: 0.01,
     issueDiscoveryShare: 0,
     labelMultipliers: { bug: 1.2, "status:ready": 0.2, missing: 0.5 },
@@ -675,10 +675,10 @@ describe("v2 signal builders", () => {
 
   it("reports registry changes between snapshots", () => {
     const current = snapshot("new", [
-      { repo: "JSONbored/gittensory", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: { bug: 1.1 } },
+      { repo: "JSONbored/loopover", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: { bug: 1.1 } },
       { repo: "JSONbored/awesome-claude", emissionShare: 0.01, issueDiscoveryShare: 0, labelMultipliers: {} },
     ]);
-    const previous = snapshot("old", [{ repo: "JSONbored/gittensory", emissionShare: 0.01, issueDiscoveryShare: 0, labelMultipliers: {} }]);
+    const previous = snapshot("old", [{ repo: "JSONbored/loopover", emissionShare: 0.01, issueDiscoveryShare: 0, labelMultipliers: {} }]);
     const report = buildRegistryChangeReport([current, previous]);
     expect(report.addedRepos).toEqual(["JSONbored/awesome-claude"]);
     expect(report.changedRepos[0]?.changes).toContain("emission_share 0.01 -> 0.02");
@@ -687,23 +687,23 @@ describe("v2 signal builders", () => {
   it("reports changes to fixed base score, default label multiplier, and eligibility mode", () => {
     // Only fixedBaseScore changes; every other compared field is identical. The base
     // score override is the highest-impact registry change, so it must be surfaced.
-    const previous = snapshot("old", [{ repo: "JSONbored/gittensory", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {}, fixedBaseScore: 2 }]);
-    const current = snapshot("new", [{ repo: "JSONbored/gittensory", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {}, fixedBaseScore: 50 }]);
+    const previous = snapshot("old", [{ repo: "JSONbored/loopover", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {}, fixedBaseScore: 2 }]);
+    const current = snapshot("new", [{ repo: "JSONbored/loopover", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {}, fixedBaseScore: 50 }]);
     const report = buildRegistryChangeReport([current, previous]);
     expect(report.changedRepos).toHaveLength(1);
     expect(report.changedRepos[0]?.changes).toContain("fixed_base_score 2 -> 50");
     expect(report.summary).toContain("1 changed");
 
     // eligibility_mode and default_label_multiplier are tracked too.
-    const beforeMode = snapshot("old2", [{ repo: "JSONbored/gittensory", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {}, eligibilityMode: "branch_required", defaultLabelMultiplier: 1 }]);
-    const afterMode = snapshot("new2", [{ repo: "JSONbored/gittensory", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {}, eligibilityMode: "any_branch", defaultLabelMultiplier: 1.2 }]);
+    const beforeMode = snapshot("old2", [{ repo: "JSONbored/loopover", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {}, eligibilityMode: "branch_required", defaultLabelMultiplier: 1 }]);
+    const afterMode = snapshot("new2", [{ repo: "JSONbored/loopover", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {}, eligibilityMode: "any_branch", defaultLabelMultiplier: 1.2 }]);
     const modeReport = buildRegistryChangeReport([afterMode, beforeMode]);
     expect(modeReport.changedRepos[0]?.changes).toEqual(
       expect.arrayContaining(["eligibility_mode branch_required -> any_branch", "default_label_multiplier 1 -> 1.2"]),
     );
 
-    const beforeDecay = snapshot("old3", [{ repo: "JSONbored/gittensory", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {}, timeDecay: { gracePeriodHours: 12 } }]);
-    const afterDecay = snapshot("new3", [{ repo: "JSONbored/gittensory", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {}, timeDecay: { gracePeriodHours: 24 } }]);
+    const beforeDecay = snapshot("old3", [{ repo: "JSONbored/loopover", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {}, timeDecay: { gracePeriodHours: 12 } }]);
+    const afterDecay = snapshot("new3", [{ repo: "JSONbored/loopover", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {}, timeDecay: { gracePeriodHours: 24 } }]);
     const decayReport = buildRegistryChangeReport([afterDecay, beforeDecay]);
     expect(decayReport.changedRepos).toHaveLength(1);
     expect(decayReport.changedRepos[0]?.changes).toContain("time_decay changed");
@@ -849,19 +849,19 @@ describe("v2 signal builders", () => {
   });
 
   it("handles registry change report boundaries and all tracked fields", () => {
-    const onlyCurrent = snapshot("only", [{ repo: "JSONbored/gittensory", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {} }]);
+    const onlyCurrent = snapshot("only", [{ repo: "JSONbored/loopover", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {} }]);
     const current = snapshot("current", [
-      { repo: "JSONbored/gittensory", emissionShare: 0.02, issueDiscoveryShare: 1, labelMultipliers: { bug: 1 } },
+      { repo: "JSONbored/loopover", emissionShare: 0.02, issueDiscoveryShare: 1, labelMultipliers: { bug: 1 } },
     ]);
     current.repositories[0]!.maintainerCut = 0.5;
     current.repositories[0]!.trustedLabelPipeline = true;
     const previous = snapshot("previous", [
-      { repo: "JSONbored/gittensory", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {} },
+      { repo: "JSONbored/loopover", emissionShare: 0.02, issueDiscoveryShare: 0, labelMultipliers: {} },
       { repo: "old/repo", emissionShare: 0.01, issueDiscoveryShare: 0, labelMultipliers: {} },
     ]);
 
     expect(buildRegistryChangeReport([]).summary).toMatch(/No registry snapshots/);
-    expect(buildRegistryChangeReport([onlyCurrent]).addedRepos).toEqual(["JSONbored/gittensory"]);
+    expect(buildRegistryChangeReport([onlyCurrent]).addedRepos).toEqual(["JSONbored/loopover"]);
     const changed = buildRegistryChangeReport([current, previous]);
     expect(changed.removedRepos).toEqual(["old/repo"]);
     expect(changed.changedRepos[0]?.changes).toEqual(
@@ -1792,9 +1792,9 @@ describe("v2 signal builders", () => {
     };
     const unregisteredProject: RepositoryRecord = {
       ...repo,
-      fullName: "JSONbored/gittensory",
+      fullName: "JSONbored/loopover",
       owner: "JSONbored",
-      name: "gittensory",
+      name: "loopover",
       isRegistered: false,
       registryConfig: null,
     };
@@ -1945,7 +1945,7 @@ describe("v2 signal builders", () => {
     expect(inactive.scoreBlockers).toContain("Repository allocation is inactive.");
     expect(maintainer.roleContext.maintainerLane).toBe(true);
     expect(maintainer.actions.map((action) => action.actionKind)).toEqual(expect.arrayContaining(["maintainer_lane_improve_repo", "maintainer_cut_readiness"]));
-    expect(strategy.repoAnalyses.map((analysis) => analysis.repoFullName)).not.toContain("JSONbored/gittensory");
+    expect(strategy.repoAnalyses.map((analysis) => analysis.repoFullName)).not.toContain("JSONbored/loopover");
     expect(strategy.topActions[0]?.actionKind).toBe("cleanup_existing_prs");
     expect(JSON.stringify(strategy)).not.toMatch(/wallet|hotkey|guaranteed payout|farming/i);
   });

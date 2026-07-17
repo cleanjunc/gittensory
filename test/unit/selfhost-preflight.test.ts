@@ -31,7 +31,7 @@ describe("self-host environment preflight (#2080)", () => {
         REDIS_URL: " redis://redis:6379 ",
         GITHUB_APP_ID: " 123 ",
         GITHUB_APP_PRIVATE_KEY: ` ${privateKey} `,
-        DATABASE_URL: " postgres://gittensory:secret@postgres:5432/gittensory ",
+        DATABASE_URL: " postgres://loopover:secret@postgres:5432/loopover ",
       }),
     ).toEqual({ ok: true, problems: [] });
 
@@ -40,7 +40,7 @@ describe("self-host environment preflight (#2080)", () => {
         REDIS_URL: "redis://redis:6379",
         GITHUB_APP_ID: "123",
         GITHUB_APP_PRIVATE_KEY: privateKey,
-        DATABASE_URL: "postgresql://gittensory:secret@postgres:5432/gittensory",
+        DATABASE_URL: "postgresql://loopover:secret@postgres:5432/loopover",
       }),
     ).toEqual({ ok: true, problems: [] });
 
@@ -49,7 +49,7 @@ describe("self-host environment preflight (#2080)", () => {
         REDIS_URL: "redis://redis:6379",
         GITHUB_APP_ID: "123",
         GITHUB_APP_PRIVATE_KEY: privateKey,
-        DATABASE_URL: "postgresql:///gittensory?host=/var/run/postgresql",
+        DATABASE_URL: "postgresql:///loopover?host=/var/run/postgresql",
       }),
     ).toEqual({ ok: true, problems: [] });
 
@@ -177,8 +177,8 @@ describe("self-host environment preflight (#2080)", () => {
     for (const DATABASE_URL of [
       "postgres://",
       "postgres://postgres",
-      "postgresql:///gittensory",
-      "sqlite:///tmp/gittensory.sqlite?password=super-secret-db",
+      "postgresql:///loopover",
+      "sqlite:///tmp/loopover.sqlite?password=super-secret-db",
     ]) {
       const result = preflightEnv({
         REDIS_URL: "redis://redis:6379",
@@ -197,7 +197,7 @@ describe("self-host environment preflight (#2080)", () => {
       REDIS_URL: "redis://redis:6379",
       GITHUB_APP_ID: "123",
       GITHUB_APP_PRIVATE_KEY: privateKey,
-      DATABASE_URL: "postgres://user:super-secret-db@/gittensory",
+      DATABASE_URL: "postgres://user:super-secret-db@/loopover",
     });
     expect(JSON.stringify(secretBearing)).not.toContain("super-secret-db");
   });
@@ -305,7 +305,7 @@ describe("self-host environment preflight (#2080)", () => {
       REDIS_URL: "   ",
       SELFHOST_SETUP_TOKEN: "secret-setup-token-with-enough-entropy",
       PUBLIC_API_ORIGIN: "https://selfhost.example",
-      DATABASE_URL: "sqlite:///tmp/gittensory.sqlite?password=super-secret-db",
+      DATABASE_URL: "sqlite:///tmp/loopover.sqlite?password=super-secret-db",
     });
 
     expect(result).toEqual({

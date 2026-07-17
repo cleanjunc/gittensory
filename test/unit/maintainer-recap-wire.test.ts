@@ -6,7 +6,7 @@ import { recordGateBlockOutcome, updatePullRequestSlopAssessment, upsertPullRequ
 import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader";
 import { createTestEnv } from "../helpers/d1";
 
-const SELF_REPO = "JSONbored/gittensory";
+const SELF_REPO = "JSONbored/loopover";
 
 const HOOK = "https://discord.com/api/webhooks/123/abc";
 

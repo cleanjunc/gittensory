@@ -24,7 +24,7 @@ function writeExecutable(path: string, contents: string) {
 // `compose ... exec -T postgres psql ...` (the kill-switch write, controlled via PSQL_EXIT_CODE and
 // recorded to PSQL_CALL_LOG so a test can assert on the exact SQL sent).
 function createSandbox() {
-  const base = mkdtempSync(join(tmpdir(), "gittensory-selfhost-regression-gate-"));
+  const base = mkdtempSync(join(tmpdir(), "loopover-selfhost-regression-gate-"));
   sandboxDirs.push(base);
   const bin = join(base, "bin");
   mkdirSync(bin, { recursive: true });
@@ -161,7 +161,7 @@ describe("selfhost-post-update-regression-gate.sh", () => {
   });
 
   it("falls back to safe defaults for non-numeric window/threshold settings without evaluating them as Bash arithmetic", () => {
-    const marker = join(tmpdir(), `gittensory-regression-gate-injection-${process.pid}`);
+    const marker = join(tmpdir(), `loopover-regression-gate-injection-${process.pid}`);
     rmSync(marker, { force: true });
 
     const result = run({

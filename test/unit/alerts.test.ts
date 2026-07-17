@@ -174,7 +174,7 @@ describe("runAnomalyAlerts guards", () => {
 });
 
 // ── runAnomalyAlerts send path ───────────────────────────────────────────────────────────────────────
-// gittensory's migrated `notification_deliveries` table is the badge read-model — a DIFFERENT schema than
+// loopover's migrated `notification_deliveries` table is the badge read-model — a DIFFERENT schema than
 // the native port's claim SQL (project/target_id/notification_key). So we emulate the claim store: the
 // INSERT ... ON CONFLICT(project, target_id, notification_key) DO NOTHING returns changes=1 the first time a
 // (project, target_id, notification_key) tuple is seen and changes=0 on a repeat (the per-hour throttle).

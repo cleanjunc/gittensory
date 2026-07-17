@@ -7,7 +7,7 @@ import {
 } from "../../src/github/backfill";
 import { createTestEnv } from "../helpers/d1";
 
-const REPO = "JSONbored/gittensory";
+const REPO = "JSONbored/loopover";
 const SHA = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
 const TOKEN = "test-token";
 

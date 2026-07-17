@@ -82,7 +82,7 @@ describe("GitHub PR labels", () => {
     });
 
     await expect(
-      removePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/gittensory", 4, "gittensor"),
+      removePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/loopover", 4, "gittensor"),
     ).resolves.toBeUndefined();
     expect(calls.some((call) => call.startsWith("DELETE ") && call.includes("/labels/"))).toBe(true);
   });
@@ -100,7 +100,7 @@ describe("GitHub PR labels", () => {
       });
 
       await expect(
-        removePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/gittensory", 4, "gittensor"),
+        removePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/loopover", 4, "gittensor"),
       ).rejects.toMatchObject({ status });
     }
   });
@@ -117,7 +117,7 @@ describe("GitHub PR labels", () => {
     });
 
     await expect(
-      removePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/gittensory", 4, "gittensor"),
+      removePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/loopover", 4, "gittensor"),
     ).resolves.toBeUndefined();
   });
 
@@ -143,7 +143,7 @@ describe("GitHub PR labels", () => {
     const result = await ensurePullRequestLabel(
       createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }),
       998877,
-      "JSONbored/gittensory",
+      "JSONbored/loopover",
       4,
       "gittensor",
       { createMissingLabel: true },
@@ -174,7 +174,7 @@ describe("GitHub PR labels", () => {
     });
 
     await expect(
-      removePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 998877, "JSONbored/gittensory", 4, "gittensor"),
+      removePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 998877, "JSONbored/loopover", 4, "gittensor"),
     ).resolves.toBeUndefined();
     expect(deleteAttempts).toBe(2);
     expect(tokenMints).toBe(2);
@@ -190,12 +190,12 @@ describe("GitHub PR labels", () => {
       return new Response("unexpected", { status: 500 });
     });
 
-    const result = await ensurePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/gittensory", 4, "gittensor", {
+    const result = await ensurePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/loopover", 4, "gittensor", {
       createMissingLabel: true,
     });
 
     expect(result).toEqual({ applied: false, created: false });
-    expect(calls.some((call) => call.includes("/repos/JSONbored/gittensory/labels"))).toBe(false);
+    expect(calls.some((call) => call.includes("/repos/JSONbored/loopover/labels"))).toBe(false);
   });
 
   it("applies an existing repository label without creating it, even when the repo has more than 100 labels", async () => {
@@ -206,7 +206,7 @@ describe("GitHub PR labels", () => {
       calls.push(`${method} ${url}`);
       if (url.includes("/access_tokens")) return Response.json({ token: "installation-token" });
       if (url.includes("/issues/4/labels") && method === "GET") return Response.json([]);
-      if (url.includes("/repos/JSONbored/gittensory/labels") && method === "POST") {
+      if (url.includes("/repos/JSONbored/loopover/labels") && method === "POST") {
         // GitHub 422 "already_exists" — label is in the repo (possibly beyond page 100)
         return Response.json(
           { message: "Validation Failed", errors: [{ resource: "Label", code: "already_exists", field: "name" }] },
@@ -217,7 +217,7 @@ describe("GitHub PR labels", () => {
       return new Response("unexpected", { status: 500 });
     });
 
-    const result = await ensurePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/gittensory", 4, "gittensor", {
+    const result = await ensurePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/loopover", 4, "gittensor", {
       createMissingLabel: true,
     });
 
@@ -230,7 +230,7 @@ describe("GitHub PR labels", () => {
       const method = init?.method ?? "GET";
       if (url.includes("/access_tokens")) return Response.json({ token: "installation-token" });
       if (url.includes("/issues/4/labels") && method === "GET") return Response.json([]);
-      if (url.includes("/repos/JSONbored/gittensory/labels") && method === "POST") {
+      if (url.includes("/repos/JSONbored/loopover/labels") && method === "POST") {
         return Response.json(
           { message: "Validation Failed", errors: [{ resource: "Label", code: "invalid", field: "name" }] },
           { status: 422 },
@@ -240,7 +240,7 @@ describe("GitHub PR labels", () => {
     });
 
     await expect(
-      ensurePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/gittensory", 4, "gittensor", {
+      ensurePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/loopover", 4, "gittensor", {
         createMissingLabel: true,
       }),
     ).rejects.toMatchObject({ status: 422 });
@@ -254,8 +254,8 @@ describe("GitHub PR labels", () => {
       calls.push(`${method} ${url}`);
       if (url.includes("/access_tokens")) return Response.json({ token: "installation-token" });
       if (url.includes("/issues/4/labels") && method === "GET") return Response.json([]);
-      if (url.includes("/repos/JSONbored/gittensory/labels") && method === "GET") return Response.json([]);
-      if (url.includes("/repos/JSONbored/gittensory/labels") && method === "POST") {
+      if (url.includes("/repos/JSONbored/loopover/labels") && method === "GET") return Response.json([]);
+      if (url.includes("/repos/JSONbored/loopover/labels") && method === "POST") {
         const body = JSON.parse(String(init?.body ?? "{}")) as { name?: string; color?: string };
         expect(body).toMatchObject({ name: "gittensor", color: "7ee787" });
         return Response.json({ name: "gittensor" }, { status: 201 });
@@ -264,12 +264,12 @@ describe("GitHub PR labels", () => {
       return new Response("unexpected", { status: 500 });
     });
 
-    const result = await ensurePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/gittensory", 4, "gittensor", {
+    const result = await ensurePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/loopover", 4, "gittensor", {
       createMissingLabel: true,
     });
 
     expect(result).toEqual({ applied: true, created: true });
-    expect(calls).toEqual(expect.arrayContaining([expect.stringMatching(/^POST .*\/repos\/JSONbored\/gittensory\/labels$/)]));
+    expect(calls).toEqual(expect.arrayContaining([expect.stringMatching(/^POST .*\/repos\/JSONbored\/loopover\/labels$/)]));
   });
 
   it("applies a configured label without creating the repository label when creation is disabled", async () => {
@@ -284,12 +284,12 @@ describe("GitHub PR labels", () => {
       return new Response("unexpected", { status: 500 });
     });
 
-    const result = await ensurePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/gittensory", 4, "gittensor", {
+    const result = await ensurePullRequestLabel(createTestEnv({ GITHUB_APP_PRIVATE_KEY: generateRsaPrivateKeyPem() }), 123, "JSONbored/loopover", 4, "gittensor", {
       createMissingLabel: false,
     });
 
     expect(result).toEqual({ applied: true, created: false });
-    expect(calls.some((call) => call.includes("/repos/JSONbored/gittensory/labels"))).toBe(false);
+    expect(calls.some((call) => call.includes("/repos/JSONbored/loopover/labels"))).toBe(false);
   });
 });
 

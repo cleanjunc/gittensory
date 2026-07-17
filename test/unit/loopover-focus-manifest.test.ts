@@ -112,8 +112,8 @@ describe("LoopOver repo focus manifest", () => {
   });
 
   it("loads bundled manifest for the LoopOver repo when fetch is unavailable", async () => {
-    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/gittensory" });
-    const manifest = await loadRepoFocusManifest(env, "JSONbored/gittensory", { fetcher: async () => null });
+    const env = createTestEnv({ LOOPOVER_DRIFT_ISSUE_REPO: "JSONbored/loopover" });
+    const manifest = await loadRepoFocusManifest(env, "JSONbored/loopover", { fetcher: async () => null });
     expect(manifest.present).toBe(true);
     expect(manifest.wantedPaths).toContain("packages/");
     expect(manifest.wantedPaths).toContain("apps/loopover-ui/");

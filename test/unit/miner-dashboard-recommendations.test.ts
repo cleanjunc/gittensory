@@ -50,7 +50,7 @@ describe("miner dashboard recommendation metadata", () => {
       actionPortfolio: {
         topActions: [
           {
-            repoFullName: "JSONbored/gittensory",
+            repoFullName: "JSONbored/loopover",
             actionKind: "open_new_direct_pr",
             rerunWhen: "Rerun when queue changes, not wallet hotkey scoreability reward estimate ghp_abcd1234EFGH5678ijkl.",
           },
@@ -323,7 +323,7 @@ describe("miner dashboard recommendation metadata", () => {
       actionPortfolio: {
         topActions: [
           {
-            repoFullName: "JSONbored/gittensory",
+            repoFullName: "JSONbored/loopover",
             actionKind: "open_new_direct_pr",
             // /root/ and /var/ were already covered here; C:/Users/ (forward-slash) and the lower-case drive
             // form (c:\Users\...) are now covered via the shared source, which matches the drive letter
@@ -352,7 +352,7 @@ describe("miner dashboard recommendation metadata", () => {
       actionPortfolio: {
         topActions: [
           {
-            repoFullName: "JSONbored/gittensory",
+            repoFullName: "JSONbored/loopover",
             actionKind: "open_new_direct_pr",
             rerunWhen: `Rerun once the broker recovers from enrollment ${fakeEnrollId} secret ${fakeSecret}.`,
           },
@@ -434,7 +434,7 @@ function decisionPack(overrides: Record<string, unknown> = {}): ContributorDecis
 
 function repoDecision(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     recommendation: "pursue",
     priorityScore: 82,
     queue: { openPullRequests: 1, openIssues: 2, mergedPullRequests: 1, closedUnmergedPullRequests: 0 },
@@ -452,7 +452,7 @@ function repoDecision(overrides: Record<string, unknown> = {}): Record<string, u
 
 function action(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    repoFullName: "JSONbored/gittensory",
+    repoFullName: "JSONbored/loopover",
     actionKind: "open_new_direct_pr",
     recommendation: "pursue",
     priorityScore: 82,

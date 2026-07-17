@@ -81,15 +81,15 @@ describe("extractPayloadType", () => {
 
 describe("extractPayloadContext", () => {
   it("returns top-level repo and PR fields from internal PR jobs", () => {
-    expect(extractPayloadContext(JSON.stringify({ type: "agent-regate-pr", repoFullName: "JSONbored/gittensory", prNumber: 2087 }))).toEqual({
-      repo: "JSONbored/gittensory",
+    expect(extractPayloadContext(JSON.stringify({ type: "agent-regate-pr", repoFullName: "JSONbored/loopover", prNumber: 2087 }))).toEqual({
+      repo: "JSONbored/loopover",
       pr_number: 2087,
     });
   });
 
   it("returns repo-only context for repo-scoped background jobs", () => {
-    expect(extractPayloadContext(JSON.stringify({ type: "rag-index-repo", repoFullName: "JSONbored/gittensory" }))).toEqual({
-      repo: "JSONbored/gittensory",
+    expect(extractPayloadContext(JSON.stringify({ type: "rag-index-repo", repoFullName: "JSONbored/loopover" }))).toEqual({
+      repo: "JSONbored/loopover",
     });
   });
 
@@ -104,11 +104,11 @@ describe("extractPayloadContext", () => {
       extractPayloadContext(JSON.stringify({
         type: "github-webhook",
         payload: {
-          repository: { full_name: "JSONbored/gittensory" },
+          repository: { full_name: "JSONbored/loopover" },
           pull_request: { number: 2087 },
         },
       })),
-    ).toEqual({ repo: "JSONbored/gittensory", pr_number: 2087 });
+    ).toEqual({ repo: "JSONbored/loopover", pr_number: 2087 });
   });
 
   it("falls back from wrong top-level fields to nested webhook context", () => {
@@ -118,11 +118,11 @@ describe("extractPayloadContext", () => {
         repoFullName: 123,
         prNumber: "2087",
         payload: {
-          repository: { full_name: "JSONbored/gittensory" },
+          repository: { full_name: "JSONbored/loopover" },
           pull_request: { number: 2087 },
         },
       })),
-    ).toEqual({ repo: "JSONbored/gittensory", pr_number: 2087 });
+    ).toEqual({ repo: "JSONbored/loopover", pr_number: 2087 });
   });
 
   it("extracts PR numbers from PR issue-comment payloads without treating regular issues as PRs", () => {
@@ -130,20 +130,20 @@ describe("extractPayloadContext", () => {
       extractPayloadContext(JSON.stringify({
         type: "github-webhook",
         payload: {
-          repository: { full_name: "JSONbored/gittensory" },
+          repository: { full_name: "JSONbored/loopover" },
           issue: { number: 2087, pull_request: {} },
         },
       })),
-    ).toEqual({ repo: "JSONbored/gittensory", pr_number: 2087 });
+    ).toEqual({ repo: "JSONbored/loopover", pr_number: 2087 });
     expect(
       extractPayloadContext(JSON.stringify({
         type: "github-webhook",
         payload: {
-          repository: { full_name: "JSONbored/gittensory" },
+          repository: { full_name: "JSONbored/loopover" },
           issue: { number: 2087 },
         },
       })),
-    ).toEqual({ repo: "JSONbored/gittensory" });
+    ).toEqual({ repo: "JSONbored/loopover" });
   });
 
   it("extracts PR numbers from check-run and check-suite pull request arrays", () => {
@@ -151,20 +151,20 @@ describe("extractPayloadContext", () => {
       extractPayloadContext(JSON.stringify({
         type: "github-webhook",
         payload: {
-          repository: { full_name: "JSONbored/gittensory" },
+          repository: { full_name: "JSONbored/loopover" },
           check_run: { pull_requests: [null, { number: "bad" }, { number: 2087 }] },
         },
       })),
-    ).toEqual({ repo: "JSONbored/gittensory", pr_number: 2087 });
+    ).toEqual({ repo: "JSONbored/loopover", pr_number: 2087 });
     expect(
       extractPayloadContext(JSON.stringify({
         type: "github-webhook",
         payload: {
-          repository: { full_name: "JSONbored/gittensory" },
+          repository: { full_name: "JSONbored/loopover" },
           check_suite: { pull_requests: [{ number: 2088 }] },
         },
       })),
-    ).toEqual({ repo: "JSONbored/gittensory", pr_number: 2088 });
+    ).toEqual({ repo: "JSONbored/loopover", pr_number: 2088 });
   });
 
   it("returns undefined for missing, malformed, and non-object payloads", () => {

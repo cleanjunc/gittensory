@@ -14,7 +14,7 @@ let transport: StdioClientTransport;
 let configDir: string;
 
 async function connect() {
-  configDir = mkdtempSync(join(tmpdir(), "gittensory-feasibility-gate-"));
+  configDir = mkdtempSync(join(tmpdir(), "loopover-feasibility-gate-"));
   transport = new StdioClientTransport({
     command: "node",
     args: [bin, "--stdio"],
@@ -107,7 +107,7 @@ describe("loopover_feasibility_gate: local claim-ledger sourcing (#5157)", () =>
   let ledgerConfigDir: string;
 
   async function connectWithLedgerDb(dbPath: string | undefined) {
-    ledgerConfigDir = mkdtempSync(join(tmpdir(), "gittensory-feasibility-gate-ledger-"));
+    ledgerConfigDir = mkdtempSync(join(tmpdir(), "loopover-feasibility-gate-ledger-"));
     const env: Record<string, string> = { ...(process.env as Record<string, string>), LOOPOVER_CONFIG_DIR: ledgerConfigDir };
     if (dbPath !== undefined) env.LOOPOVER_MINER_CLAIM_LEDGER_DB = dbPath;
     else delete env.LOOPOVER_MINER_CLAIM_LEDGER_DB;
@@ -117,7 +117,7 @@ describe("loopover_feasibility_gate: local claim-ledger sourcing (#5157)", () =>
   }
 
   beforeEach(() => {
-    ledgerRoot = mkdtempSync(join(tmpdir(), "gittensory-feasibility-gate-ledger-db-"));
+    ledgerRoot = mkdtempSync(join(tmpdir(), "loopover-feasibility-gate-ledger-db-"));
     ledgerDbPath = join(ledgerRoot, "claim-ledger.sqlite3");
   });
 

@@ -179,7 +179,7 @@ describe("private-beta auth and rate limiting", () => {
     expect(observedKeys[1]).toMatch(/^normal:\/v1\/repos:token:/);
 
     observedKeys.length = 0;
-    await expect(enforceRateLimit(fakeContext(env, "/v1/public/github/repos/JSONbored/gittensory/stats", { "cf-connecting-ip": "203.0.113.9" }), "normal")).resolves.toBeNull();
+    await expect(enforceRateLimit(fakeContext(env, "/v1/public/github/repos/JSONbored/loopover/stats", { "cf-connecting-ip": "203.0.113.9" }), "normal")).resolves.toBeNull();
     await expect(enforceRateLimit(fakeContext(env, "/v1/public/github/repos/Attacker/missing-one/stats", { "cf-connecting-ip": "203.0.113.9" }), "normal")).resolves.toBeNull();
     expect(observedKeys).toHaveLength(2);
     expect(observedKeys[0]).toBe(observedKeys[1]);
@@ -499,19 +499,19 @@ describe("private-beta auth and rate limiting", () => {
     const fallbackObservedKeys: string[] = [];
     const fallbackHeaders = fakeContext(
       rateLimitTestEnv({}, fallbackObservedKeys),
-      "/v1/repos/JSONbored/gittensory",
+      "/v1/repos/JSONbored/loopover",
       trustedProxyHeaders({ "x-real-ip": "198.51.100.3", "x-forwarded-for": "198.51.100.2, 198.51.100.3" }),
     );
     await expect(enforceRateLimit(fallbackHeaders, "normal")).resolves.toBeNull();
     expect(fallbackObservedKeys).toHaveLength(1);
-    expect(fallbackObservedKeys[0]).toMatch(/^normal:\/v1\/repos\/JSONbored\/gittensory:ip:/);
+    expect(fallbackObservedKeys[0]).toMatch(/^normal:\/v1\/repos\/JSONbored\/loopover:ip:/);
     expect(fallbackHeaders.res.headers.get("x-ratelimit-limit")).toBe("120");
     expect(fallbackHeaders.res.headers.get("x-ratelimit-remaining")).toBe("120");
     expect(fallbackHeaders.res.headers.get("x-ratelimit-reset")).toBeNull();
 
     const malformedDecision = fakeContext(
       createTestEnv({ RATE_LIMITER: rateLimiterNamespace({ status: 200, body: "not-json" }) as unknown as DurableObjectNamespace }),
-      "/v1/repos/JSONbored/gittensory",
+      "/v1/repos/JSONbored/loopover",
     );
     await expect(enforceRateLimit(malformedDecision, "normal")).resolves.toBeNull();
     expect(malformedDecision.res.headers.get("x-ratelimit-limit")).toBe("120");
@@ -519,7 +519,7 @@ describe("private-beta auth and rate limiting", () => {
 
     const allowed = fakeContext(
       createTestEnv({ RATE_LIMITER: rateLimiterNamespace({ status: 200, body: { limit: 3, remaining: 2, resetAt: "2026-05-25T00:01:00.000Z" } }) as unknown as DurableObjectNamespace }),
-      "/v1/repos/JSONbored/gittensory/pulls/123/reviewability",
+      "/v1/repos/JSONbored/loopover/pulls/123/reviewability",
       { authorization: "Bearer session-token" },
     );
     await expect(enforceRateLimit(allowed, "normal")).resolves.toBeNull();
@@ -704,7 +704,7 @@ describe("private-beta auth and rate limiting", () => {
     });
     const started = await startGitHubWebOAuth(
       env,
-      "https://gittensory-api.aethereal.dev/v1/auth/github/start",
+      "https://loopover-api.aethereal.dev/v1/auth/github/start",
       "https://loopover.ai/app/workbench",
     );
     expect(started.returnTo).toBe("https://loopover.ai/app/workbench");
@@ -713,7 +713,7 @@ describe("private-beta auth and rate limiting", () => {
     expect(started.authorizationUrl).toContain("redirect_uri=https%3A%2F%2Fapi.loopover.ai%2Fv1%2Fauth%2Fgithub%2Fcallback");
 
     await expect(
-      startGitHubWebOAuth(createTestEnv({ GITHUB_OAUTH_CLIENT_ID: "client-id" }), "https://gittensory-api.aethereal.dev/v1/auth/github/start", undefined),
+      startGitHubWebOAuth(createTestEnv({ GITHUB_OAUTH_CLIENT_ID: "client-id" }), "https://loopover-api.aethereal.dev/v1/auth/github/start", undefined),
     ).rejects.toThrow(/not_configured/);
 
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
@@ -723,7 +723,7 @@ describe("private-beta auth and rate limiting", () => {
       return Response.json({});
     });
     await expect(
-      completeGitHubWebOAuth(env, "https://gittensory-api.aethereal.dev/v1/auth/github/callback", {
+      completeGitHubWebOAuth(env, "https://loopover-api.aethereal.dev/v1/auth/github/callback", {
         code: "code",
         state: started.state,
         cookieState: started.state,
@@ -731,7 +731,7 @@ describe("private-beta auth and rate limiting", () => {
     ).resolves.toMatchObject({ login: "jsonbored", scopes: ["read:user"], returnTo: "https://loopover.ai/app/workbench" });
 
     await expect(
-      completeGitHubWebOAuth(env, "https://gittensory-api.aethereal.dev/v1/auth/github/callback", {
+      completeGitHubWebOAuth(env, "https://loopover-api.aethereal.dev/v1/auth/github/callback", {
         code: "code",
         state: started.state,
         cookieState: "wrong-state",
@@ -744,7 +744,7 @@ describe("private-beta auth and rate limiting", () => {
       return Response.json({});
     });
     await expect(
-      completeGitHubWebOAuth(env, "https://gittensory-api.aethereal.dev/v1/auth/github/callback", {
+      completeGitHubWebOAuth(env, "https://loopover-api.aethereal.dev/v1/auth/github/callback", {
         code: "code",
         state: started.state,
         cookieState: started.state,
@@ -769,7 +769,7 @@ describe("private-beta auth and rate limiting", () => {
     expect(localhostReturnTo.returnTo).toBe("http://localhost:5173/app");
 
     await expect(
-      completeGitHubWebOAuth(createTestEnv({ GITHUB_OAUTH_CLIENT_ID: "client-id" }), "https://gittensory-api.aethereal.dev/v1/auth/github/callback", {
+      completeGitHubWebOAuth(createTestEnv({ GITHUB_OAUTH_CLIENT_ID: "client-id" }), "https://loopover-api.aethereal.dev/v1/auth/github/callback", {
         code: "code",
         state: invalidReturnTo.state,
         cookieState: invalidReturnTo.state,
@@ -879,9 +879,9 @@ describe("private-beta auth and rate limiting", () => {
     const own = await startGitHubWebOAuth(env, "https://my-instance.example.com/v1/auth/github/start", "https://my-instance.example.com/app/workbench");
     expect(own.returnTo).toBe("https://my-instance.example.com/app/workbench");
 
-    // The cloud gittensory.aethereal.dev origin is no longer accepted for THIS instance -- it falls back to
+    // The cloud loopover.aethereal.dev origin is no longer accepted for THIS instance -- it falls back to
     // this instance's own /app, proving the dead literal is gone rather than merely redundant.
-    const cloud = await startGitHubWebOAuth(env, "https://my-instance.example.com/v1/auth/github/start", "https://gittensory.aethereal.dev/app/workbench");
+    const cloud = await startGitHubWebOAuth(env, "https://my-instance.example.com/v1/auth/github/start", "https://loopover.aethereal.dev/app/workbench");
     expect(cloud.returnTo).toBe("https://my-instance.example.com/app");
 
     // Localhost dev origins remain accepted regardless of PUBLIC_SITE_ORIGIN.
@@ -893,35 +893,35 @@ describe("private-beta auth and rate limiting", () => {
     const env = createTestEnv({
       GITHUB_OAUTH_CLIENT_ID: "client-id",
       GITHUB_OAUTH_CLIENT_SECRET: "client-secret",
-      PUBLIC_SITE_ORIGIN: "https://gittensory.aethereal.dev",
+      PUBLIC_SITE_ORIGIN: "https://loopover.aethereal.dev",
       PUBLIC_SITE_ORIGIN_ALIASES: "https://loopover.ai, https://staging.loopover.ai",
     });
 
     // The primary PUBLIC_SITE_ORIGIN still works exactly as before.
-    const primary = await startGitHubWebOAuth(env, "https://gittensory-api.aethereal.dev/v1/auth/github/start", "https://gittensory.aethereal.dev/app/workbench");
-    expect(primary.returnTo).toBe("https://gittensory.aethereal.dev/app/workbench");
+    const primary = await startGitHubWebOAuth(env, "https://loopover-api.aethereal.dev/v1/auth/github/start", "https://loopover.aethereal.dev/app/workbench");
+    expect(primary.returnTo).toBe("https://loopover.aethereal.dev/app/workbench");
 
     // An aliased origin is accepted verbatim, not bounced to the primary origin's fallback.
-    const alias = await startGitHubWebOAuth(env, "https://gittensory-api.aethereal.dev/v1/auth/github/start", "https://loopover.ai/app/workbench");
+    const alias = await startGitHubWebOAuth(env, "https://loopover-api.aethereal.dev/v1/auth/github/start", "https://loopover.ai/app/workbench");
     expect(alias.returnTo).toBe("https://loopover.ai/app/workbench");
 
     // A second, comma-separated alias (with surrounding whitespace) is also accepted.
-    const secondAlias = await startGitHubWebOAuth(env, "https://gittensory-api.aethereal.dev/v1/auth/github/start", "https://staging.loopover.ai/app");
+    const secondAlias = await startGitHubWebOAuth(env, "https://loopover-api.aethereal.dev/v1/auth/github/start", "https://staging.loopover.ai/app");
     expect(secondAlias.returnTo).toBe("https://staging.loopover.ai/app");
 
     // An origin that is neither the primary nor an alias still falls back to the primary origin's /app.
-    const untrusted = await startGitHubWebOAuth(env, "https://gittensory-api.aethereal.dev/v1/auth/github/start", "https://evil.example/app");
-    expect(untrusted.returnTo).toBe("https://gittensory.aethereal.dev/app");
+    const untrusted = await startGitHubWebOAuth(env, "https://loopover-api.aethereal.dev/v1/auth/github/start", "https://evil.example/app");
+    expect(untrusted.returnTo).toBe("https://loopover.aethereal.dev/app");
 
     // Unset PUBLIC_SITE_ORIGIN_ALIASES behaves exactly as before this var existed -- only the primary origin.
     const noAliases = createTestEnv({
       GITHUB_OAUTH_CLIENT_ID: "client-id",
       GITHUB_OAUTH_CLIENT_SECRET: "client-secret",
-      PUBLIC_SITE_ORIGIN: "https://gittensory.aethereal.dev",
+      PUBLIC_SITE_ORIGIN: "https://loopover.aethereal.dev",
     });
     delete (noAliases as Partial<Env>).PUBLIC_SITE_ORIGIN_ALIASES;
-    const rejected = await startGitHubWebOAuth(noAliases, "https://gittensory-api.aethereal.dev/v1/auth/github/start", "https://loopover.ai/app/workbench");
-    expect(rejected.returnTo).toBe("https://gittensory.aethereal.dev/app");
+    const rejected = await startGitHubWebOAuth(noAliases, "https://loopover-api.aethereal.dev/v1/auth/github/start", "https://loopover.ai/app/workbench");
+    expect(rejected.returnTo).toBe("https://loopover.aethereal.dev/app");
   });
 
   it("verifies the GitHub token audience before minting a session on the token-exchange path", async () => {

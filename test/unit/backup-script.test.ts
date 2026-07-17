@@ -80,10 +80,10 @@ exit 0
 `;
 
 function createHarness() {
-  const dir = mkdtempSync(join(tmpdir(), "gittensory-backup-"));
+  const dir = mkdtempSync(join(tmpdir(), "loopover-backup-"));
   const binDir = join(dir, "bin");
   const outDir = join(dir, "backups");
-  const dbPath = join(dir, "gittensory.sqlite");
+  const dbPath = join(dir, "loopover.sqlite");
   mkdirSync(binDir);
   writeFileSync(dbPath, "dummy-db"); // must exist so `[ -f "$DB" ]` is true
   const stub = join(binDir, "sqlite3");
@@ -218,7 +218,7 @@ describe("scripts/backup.sh sqlite online-backup verification (#2084)", () => {
 
   it("records a postgres dump artifact when postgres backup succeeds", () => {
     const res = runBackup(harness, "ok", {
-      databaseUrl: "postgresql://backup@example.invalid/gittensory",
+      databaseUrl: "postgresql://backup@example.invalid/loopover",
     });
 
     expect(res.status).toBe(0);
@@ -240,8 +240,8 @@ describe("scripts/backup.sh sqlite online-backup verification (#2084)", () => {
     // failed backup it would prune these down to 1, so preserving BOTH proves the skip.
     const sqliteDir = join(harness.outDir, "sqlite");
     mkdirSync(sqliteDir, { recursive: true });
-    writeFileSync(join(sqliteDir, "gittensory-OLD1.sqlite.gz"), "old-good-1");
-    writeFileSync(join(sqliteDir, "gittensory-OLD2.sqlite.gz"), "old-good-2");
+    writeFileSync(join(sqliteDir, "loopover-OLD1.sqlite.gz"), "old-good-1");
+    writeFileSync(join(sqliteDir, "loopover-OLD2.sqlite.gz"), "old-good-2");
 
     const res = runBackup(harness, "corrupt");
 
@@ -252,13 +252,13 @@ describe("scripts/backup.sh sqlite online-backup verification (#2084)", () => {
     // retention-skip is logged and the previously-good backups both survive
     expect(res.stdout).toContain("skipping sqlite retention");
     const files = readdirSync(sqliteDir);
-    expect(files).toContain("gittensory-OLD1.sqlite.gz");
-    expect(files).toContain("gittensory-OLD2.sqlite.gz");
+    expect(files).toContain("loopover-OLD1.sqlite.gz");
+    expect(files).toContain("loopover-OLD2.sqlite.gz");
     // the corrupt/partial uncompressed file was removed, and no new gz was produced
     expect(files.filter((f) => f.endsWith(".sqlite")).length).toBe(0);
     expect(files.filter((f) => f.endsWith(".sqlite.gz")).sort()).toEqual([
-      "gittensory-OLD1.sqlite.gz",
-      "gittensory-OLD2.sqlite.gz",
+      "loopover-OLD1.sqlite.gz",
+      "loopover-OLD2.sqlite.gz",
     ]);
   });
 });

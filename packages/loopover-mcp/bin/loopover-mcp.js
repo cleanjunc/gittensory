@@ -35,7 +35,7 @@ import { buildResultsPayload } from "@loopover/engine";
 // #6753: the same pure composer the remote MCP tool + /v1/loop/progress-snapshot both call.
 import { buildProgressSnapshot } from "@loopover/engine";
 // #6755: the same pure bridge the remote MCP tool + /v1/loop/intake-idea both call.
-import { validateIdeaSubmission, buildTaskGraph } from "@loopover/engine";
+import { validateIdeaSubmission, buildTaskGraph, buildClaimPlan } from "@loopover/engine";
 import { z } from "zod";
 import { buildBranchAnalysisPayload, collectLocalDiff, collectLocalBranchMetadata, probeLocalScorer, referenceScorePreviewExample, resolveScorePreviewCommand, resolveWorkspaceCwd, sanitizeLocalScorerStatus, setupGuidanceForLocalScorer, isTestFile } from "../lib/local-branch.js";
 import { formatTable } from "../lib/format-table.js";
@@ -1003,6 +1003,12 @@ const STDIO_TOOL_DESCRIPTORS = [
       "Turn a freeform renter idea into a strict, claimable task-graph (spec #4779) and score it against the same feasibility gate the loop runs on. Deterministic and source-free: validates the submission, assembles constituent issues (an optional caller-supplied decomposition, else a single-issue baseline), and returns the graph plus its go/raise/avoid verdict. A malformed or empty submission returns an actionable error list, not a silent failure. Computed in-process; no API round-trip.",
   },
   {
+    name: "loopover_plan_idea_claims",
+    category: "agent",
+    description:
+      "Route a freeform idea through the intake bridge into a claim/code/submit-loop plan (#4799): validates the submission, builds the scored task-graph, and returns which constituent issues the loop can claim now vs. defer vs. skip — dependency-ordered so a prerequisite is always claimed before its dependents. Deterministic and source-free; it decides what to claim, it does not claim or run anything. Computed in-process; no API round-trip.",
+  },
+  {
     name: "loopover_check_issue_slop",
     category: "review",
     description: "Assess the deterministic slop risk of an issue from its title + body alone (no repo data) — flags clearly low-effort issues (empty body, an unfilled template) for triage. Returns slopRisk (0-100), band, findings, and the rubric. Advisory-only.",
@@ -1660,6 +1666,28 @@ registerStdioTool(
       verdict: taskGraph.rubric.verdict,
       taskGraph,
     });
+  },
+);
+
+registerStdioTool(
+  "loopover_plan_idea_claims",
+  {
+    description: stdioToolDescription("loopover_plan_idea_claims"),
+    inputSchema: intakeIdeaShape,
+  },
+  // Computed in-process from @loopover/engine (#6756) — the same pure validateIdeaSubmission/buildTaskGraph/
+  // buildClaimPlan the remote server (src/mcp/server.ts) and the /v1/loop/plan-idea-claims route both call,
+  // reproducing the tool's handler exactly so all three surfaces return an identical payload for identical
+  // input, fully offline.
+  (input) => {
+    const validated = validateIdeaSubmission(input);
+    if (!validated.ok) return toolResult(`Invalid idea submission: ${validated.errors.join(", ")}.`, { ok: false, errors: validated.errors });
+    const graph = buildTaskGraph(validated.idea, input.decomposition);
+    const claimPlan = buildClaimPlan(graph, validated.idea.targetRepo);
+    return toolResult(
+      `Claim plan: ${claimPlan.claimable.length} claimable, ${claimPlan.deferred.length} deferred, ${claimPlan.skipped.length} skipped.`,
+      { ok: true, verdict: claimPlan.graphVerdict, claimPlan },
+    );
   },
 );
 

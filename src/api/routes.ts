@@ -204,7 +204,7 @@ import { buildTestEvidenceReport } from "../signals/test-evidence";
 import { evaluateEscalation } from "../loop-escalation";
 import { buildResultsPayload } from "../results-payload";
 import { buildProgressSnapshot } from "../loop-progress";
-import { validateIdeaSubmission, buildTaskGraph } from "../idea-intake";
+import { validateIdeaSubmission, buildTaskGraph, buildClaimPlan } from "../idea-intake";
 import { loadPrAiReviewFindings } from "../mcp/pr-ai-review-findings";
 import {
   buildMcpCompatibilityMetadata,
@@ -3391,6 +3391,22 @@ export function createApp() {
     if (!validated.ok) return c.json({ ok: false, errors: validated.errors }, 400);
     const taskGraph = buildTaskGraph(validated.idea, parsed.data.decomposition);
     return c.json({ ok: true, verdict: taskGraph.rubric.verdict, taskGraph });
+  });
+
+  // #6756: REST mirror of the loopover_plan_idea_claims MCP tool, bringing it to the same REST/CLI parity its
+  // same-tier sibling loopover_check_slop_risk (/v1/lint/slop-risk) already has. Reproduces the tool's handler
+  // exactly -- validate, assemble the task-graph, then disposition it via buildClaimPlan -- delegating to the
+  // same pure functions and adding no logic of its own. A malformed or empty submission returns the engine's
+  // actionable error list (same shape as /v1/loop/intake-idea: the payload, with 400), never a silent failure.
+  app.post("/v1/loop/plan-idea-claims", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = intakeIdeaSchema.safeParse(body);
+    if (!parsed.success) return c.json({ error: "invalid_plan_idea_claims_request", issues: parsed.error.issues }, 400);
+    const validated = validateIdeaSubmission(parsed.data);
+    if (!validated.ok) return c.json({ ok: false, errors: validated.errors }, 400);
+    const graph = buildTaskGraph(validated.idea, parsed.data.decomposition);
+    const claimPlan = buildClaimPlan(graph, validated.idea.targetRepo);
+    return c.json({ ok: true, verdict: claimPlan.graphVerdict, claimPlan });
   });
 
   app.post("/v1/lint/issue-slop", async (c) => {

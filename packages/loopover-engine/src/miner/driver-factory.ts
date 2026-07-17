@@ -58,6 +58,31 @@ function firstConfiguredEnvValue(value: string | undefined): string | undefined 
   return trimmed ? trimmed : undefined;
 }
 
+// The credential env var names each CLI actually reads. Command-scoped (not a blanket forward of every
+// possible provider's credential regardless of which CLI is running) so an operator with both
+// ANTHROPIC_API_KEY and OPENAI_API_KEY set only ever leaks the one the invoked CLI actually needs.
+const CLAUDE_CREDENTIAL_ENV_KEYS = ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY"] as const;
+const CODEX_CREDENTIAL_ENV_KEYS = ["OPENAI_API_KEY", "CODEX_ACCESS_TOKEN"] as const;
+
+/** #6875: `createCliSubprocessCodingAgentDriver`'s `parentEnv` is deliberately, strictly allowlisted and never
+ *  carries `HOME` or any credential (a coding-agent subprocess getting the operator's full, un-vetted
+ *  environment is the exact thing that allowlist exists to prevent) -- its separate `env` field ("extra env
+ *  overlaid on the allowlisted parent") is the intended channel for exactly this kind of deliberately, narrowly
+ *  forwarded value, but nothing ever populated it, so a spawned `claude`/`codex` subprocess had no `HOME` to
+ *  locate a persisted credential file with, AND no credential env var either -- unable to authenticate at all,
+ *  independent of and more fundamental than #6840's separate `--permission-mode` gap. Resolves only `HOME` plus
+ *  the command's own real credential keys from the full env this factory already has -- never the raw env
+ *  object itself, preserving the strict-allowlist boundary for everything else. */
+function resolveCliCredentialEnv(command: "claude" | "codex", env: Record<string, string | undefined>): Record<string, string | undefined> {
+  const credentialKeys = command === "claude" ? CLAUDE_CREDENTIAL_ENV_KEYS : CODEX_CREDENTIAL_ENV_KEYS;
+  const resolved: Record<string, string | undefined> = {};
+  if (env.HOME !== undefined) resolved.HOME = env.HOME;
+  for (const key of credentialKeys) {
+    if (env[key] !== undefined) resolved[key] = env[key];
+  }
+  return resolved;
+}
+
 /** Positive-integer env parse for the CLI wall-clock ceiling; anything else defers to the driver default. */
 function configuredTimeoutMs(env: Record<string, string | undefined>): number | undefined {
   const raw = Number(firstConfiguredEnvValue(env.MINER_CODING_AGENT_TIMEOUT_MS));
@@ -168,6 +193,7 @@ function createCliProvider(
     command,
     spawn: options.spawn,
     parentEnv: env,
+    env: resolveCliCredentialEnv(command, env),
     ...(timeoutMs !== undefined ? { timeoutMs } : {}),
     ...(buildArgs !== undefined ? { buildArgs } : {}),
     ...(options.knownSecrets !== undefined ? { knownSecrets: options.knownSecrets } : {}),

@@ -517,6 +517,39 @@ describe("createCodingAgentDriver provider resolution (#4289)", () => {
     expect([...calls[0]!.args].slice(0, 3)).toEqual(["exec", "--model", "gpt-5.1-codex"]);
   });
 
+  it("#6875: forwards HOME and the command's own credential to the spawned CLI, never the other provider's credential", async () => {
+    const { spawn: claudeSpawn, calls: claudeCalls } = recordingSpawn();
+    await createCodingAgentDriver({
+      providerName: "claude-cli",
+      spawn: claudeSpawn,
+      env: { HOME: "/home/miner", CLAUDE_CODE_OAUTH_TOKEN: "claude-token-value", OPENAI_API_KEY: "codex-key-value" },
+    }).run(cliTask);
+    expect(claudeCalls[0]!.opts.env.HOME).toBe("/home/miner");
+    expect(claudeCalls[0]!.opts.env.CLAUDE_CODE_OAUTH_TOKEN).toBe("claude-token-value");
+    expect(claudeCalls[0]!.opts.env.OPENAI_API_KEY).toBeUndefined();
+
+    const { spawn: codexSpawn, calls: codexCalls } = recordingSpawn();
+    await createCodingAgentDriver({
+      providerName: "codex-cli",
+      spawn: codexSpawn,
+      env: { HOME: "/home/miner", OPENAI_API_KEY: "codex-key-value", CLAUDE_CODE_OAUTH_TOKEN: "claude-token-value" },
+    }).run(cliTask);
+    expect(codexCalls[0]!.opts.env.HOME).toBe("/home/miner");
+    expect(codexCalls[0]!.opts.env.OPENAI_API_KEY).toBe("codex-key-value");
+    expect(codexCalls[0]!.opts.env.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
+  });
+
+  it("#6875: forwards ANTHROPIC_API_KEY/CODEX_ACCESS_TOKEN too, and omits HOME entirely when it isn't configured", async () => {
+    const { spawn: claudeSpawn, calls: claudeCalls } = recordingSpawn();
+    await createCodingAgentDriver({ providerName: "claude-cli", spawn: claudeSpawn, env: { ANTHROPIC_API_KEY: "sk-ant-value" } }).run(cliTask);
+    expect(claudeCalls[0]!.opts.env.ANTHROPIC_API_KEY).toBe("sk-ant-value");
+    expect(claudeCalls[0]!.opts.env.HOME).toBeUndefined();
+
+    const { spawn: codexSpawn, calls: codexCalls } = recordingSpawn();
+    await createCodingAgentDriver({ providerName: "codex-cli", spawn: codexSpawn, env: { CODEX_ACCESS_TOKEN: "codex-access-value" } }).run(cliTask);
+    expect(codexCalls[0]!.opts.env.CODEX_ACCESS_TOKEN).toBe("codex-access-value");
+  });
+
   it("CONSUMES the declared timeout env key when it is a positive integer, else defers to the driver default", async () => {
     const { spawn, calls } = recordingSpawn();
     await createCodingAgentDriver({ providerName: "claude-cli", spawn, env: { MINER_CODING_AGENT_TIMEOUT_MS: "90000" } }).run(cliTask);

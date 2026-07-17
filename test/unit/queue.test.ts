@@ -3,6 +3,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { clearInstallationTokenCacheForTest } from "../../src/github/app";
 import { clearReviewSuppressionCacheForTest } from "../../src/review/review-memory-wire";
 import { PR_PANEL_COMMENT_MARKER } from "../../src/github/comments";
+import * as commentsModule from "../../src/github/comments";
 import * as backfillModule from "../../src/github/backfill";
 import * as rateLimitModule from "../../src/github/rate-limit";
 import * as repositoriesModule from "../../src/db/repositories";
@@ -6009,6 +6010,202 @@ describe("queue processors", () => {
         .bind("github_app.ai_review_cache_hit", "JSONbored/gittensory#70")
         .first<{ n: number }>();
       expect(reuseAudit?.n).toBe(2); // both later passes explicitly reused the durable cache
+    });
+
+    it("#6724 (review-burst): a genuinely full no-op republish (comment byte-identical AND label already present) records republish_noop instead of a fresh pr_public_surface_published", async () => {
+      let aiCalls = 0;
+      const env = createTestEnv({
+        GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(),
+        AI: { run: async () => { aiCalls += 1; return { response: JSON.stringify({ assessment: "Looks fine.", blockers: [], nits: [], suggestions: [] }) }; } } as unknown as Ai,
+        AI_SUMMARIES_ENABLED: "true",
+        AI_PUBLIC_COMMENTS_ENABLED: "true",
+        AI_DAILY_NEURON_BUDGET: "100000",
+      });
+      await seedRegateChurnRepo(env, { publicSurface: "comment_and_label" });
+      // reviewCheckMode: "disabled" isolates the comment/label no-op path this test is about -- with the gate
+      // check-run enabled (as most gateEnabled repos are), gate_check_run publishes fresh every pass regardless
+      // of comment/label content, which correctly keeps surfaceContentChanged true by this fix's own conservative
+      // design (only a PUBLISHED-OUTPUTS SET of exactly comment/label can ever be marked unchanged). Extending a
+      // similar no-op signal to gate_check_run is a separate, not-yet-implemented scope -- see the PR description.
+      await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_and_label", checkRunMode: "off", reviewCheckMode: "disabled", aiReviewMode: "block" }, review: { auto_review: { cadence: "continuous" } } });
+      await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 71, title: "Fix the retry loop", state: "open", user: { login: "contributor" }, head: { sha: "a71" }, labels: [], body: "Closes #1" });
+      await upsertPullRequestDetailSyncState(env, { repoFullName: "JSONbored/gittensory", pullNumber: 71, status: "complete", reviewsSyncedAt: new Date().toISOString() });
+
+      const stickyComment: { current: { id: number; body: string } | null } = { current: null };
+      let commentPatches = 0;
+      let labelPosts = 0;
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString();
+        const method = init?.method ?? "GET";
+        if (url.includes("/access_tokens")) return Response.json({ token: "fake-installation-token" });
+        if (url.includes("/pulls/71/files")) return Response.json([{ filename: "src/a.ts", status: "modified", additions: 1, deletions: 0, changes: 1, patch: "@@\n+export const ok = true;" }]);
+        if (url.endsWith("/pulls/71")) return Response.json({ number: 71, title: "Fix the retry loop", state: "open", user: { login: "contributor" }, head: { sha: "a71" }, labels: [], body: "Closes #1", mergeable_state: "clean" });
+        if (url.includes("/commits/a71/check-runs")) return Response.json({ total_count: 0, check_runs: [] });
+        if (url.includes("/commits/a71/status")) return Response.json({ state: "success", statuses: [] });
+        if (url.includes("/issues/1")) return Response.json({ number: 1, title: "Issue", state: "open", labels: [], user: { login: "reporter" } });
+        if (url.includes("/issues/71/comments") && method === "GET") {
+          return Response.json(stickyComment.current ? [{ ...stickyComment.current, user: { login: "gittensory[bot]", type: "Bot" } }] : []);
+        }
+        if (url.includes("/issues/71/comments") && method === "POST") {
+          const body = String((JSON.parse(String(init?.body ?? "{}")) as { body?: string }).body ?? "");
+          stickyComment.current = { id: 1, body };
+          return Response.json({ id: 1 }, { status: 201 });
+        }
+        if (url.includes("/issues/comments/1") && method === "PATCH") {
+          commentPatches += 1;
+          const body = String((JSON.parse(String(init?.body ?? "{}")) as { body?: string }).body ?? "");
+          stickyComment.current = { id: 1, body };
+          return Response.json({ id: 1 }, { status: 200 });
+        }
+        // Unlike the #3379 reproduction above, EVERY label this PR would ever get (gittensorLabel's own "gittensor"
+        // AND the separate type-label decision's "gittensor:bug", inferred from the title) is ALREADY present from
+        // the first pass onward -- proving the genuinely-nothing-changed case this test targets, not the
+        // perpetual-label-repair case that one covers.
+        if (url.includes("/issues/71/labels") && method === "GET") return Response.json([{ name: "gittensor" }, { name: "gittensor:bug" }]);
+        if (url.includes("/issues/71/labels") && method === "POST") {
+          labelPosts += 1;
+          return Response.json([]);
+        }
+        if (url.includes("/branches/")) return Response.json({ protected: false, protection: { required_status_checks: { contexts: [] } } });
+        return Response.json({});
+      });
+
+      await processJob(env, { type: "agent-regate-pr", deliveryId: "webhook-open", repoFullName: "JSONbored/gittensory", prNumber: 71, installationId: 123 });
+      expect(aiCalls).toBeGreaterThan(0);
+      const publishedAfterFirst = await env.DB.prepare("select count(*) as n from audit_events where event_type = ? and target_key = ?")
+        .bind("github_app.pr_public_surface_published", "JSONbored/gittensory#71")
+        .first<{ n: number }>();
+      expect(publishedAfterFirst?.n).toBe(1); // the first pass IS a real publish (brand-new comment)
+      expect(labelPosts).toBe(0); // label was already present from the very first GET -- never posted
+      const patchesAfterFirst = commentPatches; // the first pass's own placeholder->final PATCH, same as #3379 above
+
+      // A later scheduled regate-sweep pass over the SAME unchanged head: AI cache hit, comment PATCH skipped
+      // (byte-identical), label already present -- nothing on GitHub actually changes this pass.
+      await processJob(env, { type: "agent-regate-pr", deliveryId: "regate-sweep:JSONbored/gittensory#71:1", repoFullName: "JSONbored/gittensory", prNumber: 71, installationId: 123 });
+
+      expect(commentPatches).toBe(patchesAfterFirst); // no additional PATCH -- the re-render is byte-identical
+      expect(labelPosts).toBe(0);
+      const publishedAfterSecond = await env.DB.prepare("select count(*) as n from audit_events where event_type = ? and target_key = ?")
+        .bind("github_app.pr_public_surface_published", "JSONbored/gittensory#71")
+        .first<{ n: number }>();
+      expect(publishedAfterSecond?.n).toBe(1); // NOT a second durable publish record -- the burst counter's exact fix target
+      const noopAudit = await env.DB.prepare("select count(*) as n, detail from audit_events where event_type = ? and target_key = ? group by detail")
+        .bind("github_app.pr_public_surface_republish_noop", "JSONbored/gittensory#71")
+        .first<{ n: number; detail: string }>();
+      expect(noopAudit?.n).toBe(1);
+      expect(noopAudit?.detail).toContain("no visible change");
+    });
+
+    it("#6724 (review-burst): a comment-unchanged pass that newly applies a previously-missing label still records a fresh pr_public_surface_published", async () => {
+      const env = createTestEnv({
+        GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(),
+        AI: { run: async () => ({ response: JSON.stringify({ assessment: "Looks fine.", blockers: [], nits: [], suggestions: [] }) }) } as unknown as Ai,
+        AI_SUMMARIES_ENABLED: "true",
+        AI_PUBLIC_COMMENTS_ENABLED: "true",
+        AI_DAILY_NEURON_BUDGET: "100000",
+      });
+      await seedRegateChurnRepo(env, { publicSurface: "comment_and_label" });
+      await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_and_label", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "block" }, review: { auto_review: { cadence: "continuous" } } });
+      await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 72, title: "Fix the retry loop", state: "open", user: { login: "contributor" }, head: { sha: "a72" }, labels: [], body: "Closes #1" });
+      await upsertPullRequestDetailSyncState(env, { repoFullName: "JSONbored/gittensory", pullNumber: 72, status: "complete", reviewsSyncedAt: new Date().toISOString() });
+
+      const stickyComment: { current: { id: number; body: string } | null } = { current: null };
+      let labelPresent = false;
+      let labelPosts = 0;
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString();
+        const method = init?.method ?? "GET";
+        if (url.includes("/access_tokens")) return Response.json({ token: "fake-installation-token" });
+        if (url.includes("/pulls/72/files")) return Response.json([{ filename: "src/a.ts", status: "modified", additions: 1, deletions: 0, changes: 1, patch: "@@\n+export const ok = true;" }]);
+        if (url.endsWith("/pulls/72")) return Response.json({ number: 72, title: "Fix the retry loop", state: "open", user: { login: "contributor" }, head: { sha: "a72" }, labels: [], body: "Closes #1", mergeable_state: "clean" });
+        if (url.includes("/commits/a72/check-runs")) return Response.json({ total_count: 0, check_runs: [] });
+        if (url.includes("/commits/a72/status")) return Response.json({ state: "success", statuses: [] });
+        if (url.includes("/issues/1")) return Response.json({ number: 1, title: "Issue", state: "open", labels: [], user: { login: "reporter" } });
+        if (url.includes("/issues/72/comments") && method === "GET") {
+          return Response.json(stickyComment.current ? [{ ...stickyComment.current, user: { login: "gittensory[bot]", type: "Bot" } }] : []);
+        }
+        if (url.includes("/issues/72/comments") && method === "POST") {
+          const body = String((JSON.parse(String(init?.body ?? "{}")) as { body?: string }).body ?? "");
+          stickyComment.current = { id: 1, body };
+          return Response.json({ id: 1 }, { status: 201 });
+        }
+        if (url.includes("/issues/comments/1") && method === "PATCH") {
+          const body = String((JSON.parse(String(init?.body ?? "{}")) as { body?: string }).body ?? "");
+          stickyComment.current = { id: 1, body };
+          return Response.json({ id: 1 }, { status: 200 });
+        }
+        // The label is missing on the first pass (proving the FIRST publish is real), then present by the second
+        // -- but this test simulates it being manually removed again right before the second pass, so the second
+        // pass's own POST is what flips labelPresent back to true, proving a genuinely NEW label application
+        // still counts as a real change even though the comment itself renders byte-identical.
+        if (url.includes("/issues/72/labels") && method === "GET") return Response.json(labelPresent ? [{ name: "gittensor" }] : []);
+        if (url.includes("/issues/72/labels") && method === "POST") {
+          labelPosts += 1;
+          labelPresent = true;
+          return Response.json([]);
+        }
+        if (url.includes("/branches/")) return Response.json({ protected: false, protection: { required_status_checks: { contexts: [] } } });
+        return Response.json({});
+      });
+
+      await processJob(env, { type: "agent-regate-pr", deliveryId: "webhook-open", repoFullName: "JSONbored/gittensory", prNumber: 72, installationId: 123 });
+      expect(labelPosts).toBe(1);
+      labelPresent = false; // simulate a maintainer/bot removing the label between passes
+
+      await processJob(env, { type: "agent-regate-pr", deliveryId: "regate-sweep:JSONbored/gittensory#72:1", repoFullName: "JSONbored/gittensory", prNumber: 72, installationId: 123 });
+      expect(labelPosts).toBe(2); // label repair re-applied it -- a real change this pass
+
+      const published = await env.DB.prepare("select count(*) as n from audit_events where event_type = ? and target_key = ?")
+        .bind("github_app.pr_public_surface_published", "JSONbored/gittensory#72")
+        .first<{ n: number }>();
+      expect(published?.n).toBe(2); // both passes are real publishes -- comment unchanged, but the label DID change
+      const noopAudit = await env.DB.prepare("select count(*) as n from audit_events where event_type = ? and target_key = ?")
+        .bind("github_app.pr_public_surface_republish_noop", "JSONbored/gittensory#72")
+        .first<{ n: number }>();
+      expect(noopAudit?.n).toBe(0);
+    });
+
+    it("#6724 (review-burst): a null comment-publish result (the createIfMissing:false shape, structurally unreachable at this call site but still part of the return type) defaults commentContentChanged to true, not a false no-op", async () => {
+      const env = createTestEnv({
+        GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(),
+        AI: { run: async () => ({ response: JSON.stringify({ assessment: "Looks fine.", blockers: [], nits: [], suggestions: [] }) }) } as unknown as Ai,
+        AI_SUMMARIES_ENABLED: "true",
+        AI_PUBLIC_COMMENTS_ENABLED: "true",
+        AI_DAILY_NEURON_BUDGET: "100000",
+      });
+      await seedRegateChurnRepo(env, { publicSurface: "comment_and_label" });
+      await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_and_label", checkRunMode: "off", reviewCheckMode: "disabled", aiReviewMode: "block" }, review: { auto_review: { cadence: "continuous" } } });
+      await upsertPullRequestFromGitHub(env, "JSONbored/gittensory", { number: 73, title: "Fix the retry loop", state: "open", user: { login: "contributor" }, head: { sha: "a73" }, labels: [], body: "Closes #1" });
+      await upsertPullRequestDetailSyncState(env, { repoFullName: "JSONbored/gittensory", pullNumber: 73, status: "complete", reviewsSyncedAt: new Date().toISOString() });
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString();
+        const method = init?.method ?? "GET";
+        if (url.includes("/access_tokens")) return Response.json({ token: "fake-installation-token" });
+        if (url.includes("/pulls/73/files")) return Response.json([{ filename: "src/a.ts", status: "modified", additions: 1, deletions: 0, changes: 1, patch: "@@\n+export const ok = true;" }]);
+        if (url.endsWith("/pulls/73")) return Response.json({ number: 73, title: "Fix the retry loop", state: "open", user: { login: "contributor" }, head: { sha: "a73" }, labels: [], body: "Closes #1", mergeable_state: "clean" });
+        if (url.includes("/commits/a73/check-runs")) return Response.json({ total_count: 0, check_runs: [] });
+        if (url.includes("/commits/a73/status")) return Response.json({ state: "success", statuses: [] });
+        if (url.includes("/issues/1")) return Response.json({ number: 1, title: "Issue", state: "open", labels: [], user: { login: "reporter" } });
+        if (url.includes("/issues/73/labels") && method === "GET") return Response.json([{ name: "gittensor" }, { name: "gittensor:bug" }]);
+        if (url.includes("/branches/")) return Response.json({ protected: false, protection: { required_status_checks: { contexts: [] } } });
+        return Response.json({});
+      });
+      // The real return type of createOrUpdatePrIntelligenceComment is `{...} | null` (null on createIfMissing:
+      // false, never passed at this call site) -- mocking null here proves the `?? true` fallback keeps a
+      // never-actually-happens shape from EVER being misread as a proven no-op.
+      const commentSpy = vi.spyOn(commentsModule, "createOrUpdatePrIntelligenceComment").mockResolvedValue(null);
+
+      await processJob(env, { type: "agent-regate-pr", deliveryId: "webhook-open", repoFullName: "JSONbored/gittensory", prNumber: 73, installationId: 123 });
+      commentSpy.mockRestore();
+
+      const published = await env.DB.prepare("select count(*) as n from audit_events where event_type = ? and target_key = ?")
+        .bind("github_app.pr_public_surface_published", "JSONbored/gittensory#73")
+        .first<{ n: number }>();
+      expect(published?.n).toBe(1); // defaulted to changed:true, not misclassified as a no-op
+      const noopAudit = await env.DB.prepare("select count(*) as n from audit_events where event_type = ? and target_key = ?")
+        .bind("github_app.pr_public_surface_republish_noop", "JSONbored/gittensory#73")
+        .first<{ n: number }>();
+      expect(noopAudit?.n).toBe(0);
     });
 
     it("REGRESSION (#6685): a draft PR's repeat fork-CI-completion triggers stop republishing once the head is already current", async () => {

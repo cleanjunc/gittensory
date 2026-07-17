@@ -352,7 +352,7 @@ describe("GitHub PR intelligence comments", () => {
 
     const result = await createOrUpdatePrIntelligenceComment(createTestEnv({ GITHUB_APP_PRIVATE_KEY: privateKey }), 123, "JSONbored/gittensory", 12, body);
 
-    expect(result).toEqual({ id: 101, html_url: "https://github.com/comment/101" }); // html_url-present branch of the early return
+    expect(result).toEqual({ id: 101, html_url: "https://github.com/comment/101", changed: false }); // html_url-present branch of the early return; changed:false is the #6724 no-op signal
     expect(calls.some((call) => call.startsWith("PATCH "))).toBe(false); // identical body → NO GitHub write
   });
 
@@ -372,7 +372,7 @@ describe("GitHub PR intelligence comments", () => {
 
     const result = await createOrUpdatePrIntelligenceComment(createTestEnv({ GITHUB_APP_PRIVATE_KEY: privateKey }), 123, "JSONbored/gittensory", 12, body);
 
-    expect(result).toEqual({ id: 202 }); // html_url-absent branch → no html_url key on the early return
+    expect(result).toEqual({ id: 202, changed: false }); // html_url-absent branch → no html_url key; changed:false is the #6724 no-op signal
     expect(calls.some((call) => call.startsWith("PATCH "))).toBe(false);
   });
 

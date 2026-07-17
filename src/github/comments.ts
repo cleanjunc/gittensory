@@ -26,7 +26,7 @@ export async function createOrUpdatePrIntelligenceComment(
   pullNumber: number,
   body: string,
   options: { createIfMissing?: boolean | undefined; mode?: AgentActionMode } = {},
-): Promise<{ id: number; html_url?: string } | null> {
+): Promise<{ id: number; html_url?: string; changed: boolean } | null> {
   return createOrUpdateIssueCommentWithMarker(env, installationId, repoFullName, pullNumber, body, PR_INTELLIGENCE_COMMENT_MARKER, options);
 }
 
@@ -37,10 +37,15 @@ export async function createOrUpdateAgentCommandComment(
   issueNumber: number,
   body: string,
   mode: AgentActionMode = "live",
-): Promise<{ id: number; html_url?: string } | null> {
+): Promise<{ id: number; html_url?: string; changed: boolean } | null> {
   return createOrUpdateIssueCommentWithMarker(env, installationId, repoFullName, issueNumber, body, AGENT_COMMAND_COMMENT_MARKER, { mode });
 }
 
+// #6724 (review-burst): `changed` distinguishes a genuine no-op (the rendered body was byte-identical to what's
+// already posted, PATCH skipped -- see the idempotency comment below) from a real create/update, so a caller can
+// avoid double-counting a republish that produced no visible change. `false` ONLY on the proven-identical path;
+// every other return (created, updated, or `createIfMissing: false` returning null) is `true`/absent because
+// there's no cheap, safe way to prove those didn't change anything.
 async function createOrUpdateIssueCommentWithMarker(
   env: Env,
   installationId: number,
@@ -49,7 +54,7 @@ async function createOrUpdateIssueCommentWithMarker(
   body: string,
   marker: string,
   options: { createIfMissing?: boolean | undefined; mode?: AgentActionMode } = {},
-): Promise<{ id: number; html_url?: string } | null> {
+): Promise<{ id: number; html_url?: string; changed: boolean } | null> {
   const parts = repoFullName.split("/");
   const owner = parts[0];
   const repo = parts[1];
@@ -84,7 +89,7 @@ async function createOrUpdateIssueCommentWithMarker(
       // marker — also collapses a duplicate webhook delivery for the same commit.
       if (canonical.body === body) {
         await deleteDuplicateMarkerComments(octokit, owner, repo, existing, canonical.id);
-        return { id: canonical.id, ...(canonical.html_url !== undefined ? { html_url: canonical.html_url } : {}) };
+        return { id: canonical.id, ...(canonical.html_url !== undefined ? { html_url: canonical.html_url } : {}), changed: false };
       }
       const response = await octokit.request("PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}", {
         owner,
@@ -93,7 +98,7 @@ async function createOrUpdateIssueCommentWithMarker(
         body,
       });
       await deleteDuplicateMarkerComments(octokit, owner, repo, existing, canonical.id);
-      return response.data as { id: number; html_url?: string };
+      return { ...(response.data as { id: number; html_url?: string }), changed: true };
     }
     if (options.createIfMissing === false) return null;
     const response = await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
@@ -102,7 +107,7 @@ async function createOrUpdateIssueCommentWithMarker(
       issue_number: issueNumber,
       body,
     });
-    return response.data as { id: number; html_url?: string };
+    return { ...(response.data as { id: number; html_url?: string }), changed: true };
   });
 }
 

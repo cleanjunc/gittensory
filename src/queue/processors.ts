@@ -8303,6 +8303,12 @@ async function maybePublishPrPublicSurface(
   let autoReviewSkipReasonForPublish: string | null = null;
   const publishedOutputs: PublicSurfaceOutput[] = [];
   const failedOutputs: PublicSurfaceOutputFailure[] = [];
+  // #6724 (review-burst): true until a comment/label publish proves itself a no-op (byte-identical body / label
+  // already present) -- read by finishPublicSurfacePublication's final call below to avoid double-counting a
+  // republish that changed nothing on GitHub. Stay true (the safe default) for any output this pass doesn't
+  // attempt, and for output kinds with no cheap no-op signal (gate_check_run, check_run).
+  let commentContentChanged = true;
+  let labelContentChanged = true;
   const reviewedHeadSha = reviewedPullRequestHeadSha(pr.headSha, advisory.headSha);
   const freshnessForReviewOutput = (phase: string): Promise<PullRequestFreshness> =>
     reviewTargetFreshness(env, {
@@ -8352,7 +8358,10 @@ async function maybePublishPrPublicSurface(
       });
     return reviewFiles;
   };
-  const finishPublicSurfacePublication = async (): Promise<
+  // #6724 (review-burst): contentChanged defaults true so every existing caller (the three early-return call
+  // sites below, none of which reach the comment/label publish steps) keeps recording pr_public_surface_published
+  // exactly as before -- only the final "full" call site computes and passes the real value.
+  const finishPublicSurfacePublication = async (contentChanged = true): Promise<
     ReturnType<typeof evaluateGateCheck> | undefined
   > => {
     const gateSurfaceIncomplete = gateEnabled && !gateFinalized;
@@ -8467,41 +8476,61 @@ async function maybePublishPrPublicSurface(
           .then((startedAt) => reviewDurationMsSince(startedAt, Date.now()))
           .catch(() => undefined)
       : undefined;
-    await recordAuditEvent(env, {
-      eventType: "github_app.pr_public_surface_published",
-      actor: author,
-      targetKey: `${repoFullName}#${pr.number}`,
-      outcome: "completed",
-      metadata: {
-        deliveryId: webhook.deliveryId,
-        publicSurface: settings.publicSurface,
-        label: decision.willLabel ? settings.gittensorLabel : null,
-        checkRunMode: settings.checkRunMode,
-        reviewCheckMode: settings.reviewCheckMode,
-        publicAudienceMode: settings.publicAudienceMode,
-        publishedOutputs,
-        failedOutputs,
-        gateCheckFinalized: gateFinalized,
-        ...(reviewEffortMinutesForStats !== undefined ? { reviewEffortMinutes: reviewEffortMinutesForStats } : {}),
-        ...(reviewDurationMsForStats !== undefined ? { reviewDurationMs: reviewDurationMsForStats } : {}),
-      },
-    });
-    await recordGithubProductUsage(env, "pr_public_surface_published", {
-      actor: author,
-      repoFullName,
-      targetKey: `${repoFullName}#${pr.number}`,
-      outcome: "completed",
-      metadata: {
-        publicSurface: settings.publicSurface,
-        labelApplied: decision.willLabel,
-        checkRunMode: settings.checkRunMode,
-        reviewCheckMode: settings.reviewCheckMode,
-        publicAudienceMode: settings.publicAudienceMode,
-        publishedOutputs,
-        failedOutputs,
-        gateCheckFinalized: gateFinalized,
-      },
-    });
+    // #6724 (review-burst): a proven no-op republish (comment byte-identical, label already present) still
+    // completes every side effect below (surface-published stamp, AI-review-published stamp) -- those ARE
+    // accurate on a no-op, since the head genuinely is current -- but skips the two DURABLE "a review was
+    // published" records (this event feeds public-stats.ts/services/public-review-volume-trend.ts and is
+    // exempt from retention pruning, db/retention.ts), so a CI-flap/retry-storm that keeps re-rendering the
+    // same content stops inflating both the public "reviews completed" count and the review-burst anomaly
+    // counter (findHottestReviewTargetForRepo, db/repositories.ts) that reads this exact event type. A narrower
+    // event records the no-op instead, mirroring the existing github_app.public_surface_publish_skipped_current
+    // precedent (#6685) for the same "provably nothing changed" shape.
+    if (contentChanged) {
+      await recordAuditEvent(env, {
+        eventType: "github_app.pr_public_surface_published",
+        actor: author,
+        targetKey: `${repoFullName}#${pr.number}`,
+        outcome: "completed",
+        metadata: {
+          deliveryId: webhook.deliveryId,
+          publicSurface: settings.publicSurface,
+          label: decision.willLabel ? settings.gittensorLabel : null,
+          checkRunMode: settings.checkRunMode,
+          reviewCheckMode: settings.reviewCheckMode,
+          publicAudienceMode: settings.publicAudienceMode,
+          publishedOutputs,
+          failedOutputs,
+          gateCheckFinalized: gateFinalized,
+          ...(reviewEffortMinutesForStats !== undefined ? { reviewEffortMinutes: reviewEffortMinutesForStats } : {}),
+          ...(reviewDurationMsForStats !== undefined ? { reviewDurationMs: reviewDurationMsForStats } : {}),
+        },
+      });
+      await recordGithubProductUsage(env, "pr_public_surface_published", {
+        actor: author,
+        repoFullName,
+        targetKey: `${repoFullName}#${pr.number}`,
+        outcome: "completed",
+        metadata: {
+          publicSurface: settings.publicSurface,
+          labelApplied: decision.willLabel,
+          checkRunMode: settings.checkRunMode,
+          reviewCheckMode: settings.reviewCheckMode,
+          publicAudienceMode: settings.publicAudienceMode,
+          publishedOutputs,
+          failedOutputs,
+          gateCheckFinalized: gateFinalized,
+        },
+      });
+    } else {
+      await recordAuditEvent(env, {
+        eventType: "github_app.pr_public_surface_republish_noop",
+        actor: author,
+        targetKey: `${repoFullName}#${pr.number}`,
+        outcome: "completed",
+        detail: "republish produced no visible change (comment byte-identical / label already present)",
+        metadata: { deliveryId: webhook.deliveryId, repoFullName, publishedOutputs },
+      }).catch(() => undefined);
+    }
     // Stamp the head SHA only after every required public surface for this repo completed. For gate-enabled repos,
     // a comment/label without a finalized Orb gate check is incomplete and must stay repair-visible to the sweep.
     await markPullRequestSurfacePublished(env, repoFullName, pr.number, advisory.headSha).catch((error) => {
@@ -10551,7 +10580,7 @@ async function maybePublishPrPublicSurface(
       });
     }
     try {
-      await withReviewPipelineSpan(
+      const commentResult = await withReviewPipelineSpan(
         "selfhost.review.publish.comment",
         {
           installationId,
@@ -10570,6 +10599,10 @@ async function maybePublishPrPublicSurface(
             { mode },
           ),
       );
+      // #6724 (review-burst): only a proven byte-identical no-op (createOrUpdatePrIntelligenceComment's own
+      // idempotency check) sets this false -- a real create/update, or the createIfMissing:false null case
+      // (not reachable on this call site, which never sets that option), both default true.
+      commentContentChanged = commentResult?.changed ?? true;
       publishedOutputs.push("comment");
       incr("loopover_reviews_published_total", { repo: repoFullName });
       // Real end-to-end review latency (#review-latency-metric): pr.headShaObservedAt is the moment THIS
@@ -10616,7 +10649,7 @@ async function maybePublishPrPublicSurface(
   }
   if (decision.willLabel) {
     try {
-      await withReviewPipelineSpan(
+      const labelResult = await withReviewPipelineSpan(
         "selfhost.review.publish.label",
         {
           installationId,
@@ -10638,6 +10671,9 @@ async function maybePublishPrPublicSurface(
             },
           ),
       );
+      // #6724 (review-burst): applied:false means the label was already present -- a proven no-op, same idea
+      // as commentContentChanged above.
+      labelContentChanged = labelResult.applied;
       publishedOutputs.push("label");
     } catch (error) {
       const message = errorMessage(error);
@@ -10654,7 +10690,15 @@ async function maybePublishPrPublicSurface(
       if (isGitHubRateLimitedError(error)) throw error;
     }
   }
-  return finishPublicSurfacePublication();
+  // #6724 (review-burst): only a PUBLISHED-OUTPUTS SET of exactly comment/label (both proven no-ops, or absent
+  // entirely) counts as a no-op pass. Any other output kind in this pass (gate_check_run, check_run) has no
+  // cheap no-op signal, so its mere presence keeps this true -- conservative by design, this can only ever
+  // suppress a pr_public_surface_published record for a pass PROVEN to have changed nothing, never the reverse.
+  const surfaceContentChanged =
+    publishedOutputs.some((output) => output !== "comment" && output !== "label") ||
+    (publishedOutputs.includes("comment") && commentContentChanged) ||
+    (publishedOutputs.includes("label") && labelContentChanged);
+  return finishPublicSurfacePublication(surfaceContentChanged);
 }
 
 async function recordPublicSurfaceOutputFailure(

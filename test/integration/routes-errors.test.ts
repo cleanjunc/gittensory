@@ -8,7 +8,7 @@ import { handleMcpRequest } from "../../src/mcp/server";
 import { normalizeRegistryPayload } from "../../src/registry/normalize";
 import { persistRegistrySnapshot } from "../../src/registry/sync";
 import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader";
-import { createTestEnv } from "../helpers/d1";
+import { asCloudEnv, createTestEnv } from "../helpers/d1";
 
 describe("api route guards and error branches", () => {
   afterEach(() => {
@@ -1119,7 +1119,7 @@ describe("api route guards and error branches", () => {
     const app = createApp();
     const env = createTestEnv({ LOOPOVER_MCP_TOKEN: "" });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },

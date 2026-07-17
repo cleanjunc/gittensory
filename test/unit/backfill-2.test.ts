@@ -62,7 +62,7 @@ import { GITTENSORY_LEGACY_GATE_CHECK_NAME, LOOPOVER_CONTEXT_CHECK_NAME, LOOPOVE
 import { normalizeRegistryPayload } from "../../src/registry/normalize";
 import { persistRegistrySnapshot } from "../../src/registry/sync";
 import { renderMetrics, resetMetrics } from "../../src/selfhost/metrics";
-import { createTestEnv } from "../helpers/d1";
+import { asCloudEnv, createTestEnv } from "../helpers/d1";
 
 // #4682 incident (2026-07-10): the stored-body cap used to be 4000 chars -- well under what a compliant
 // screenshot-evidence table (or any sufficiently detailed PR/issue) actually needs -- and every body-content
@@ -73,7 +73,7 @@ import { createTestEnv } from "../helpers/d1";
 
 async function seedRegisteredRepo(env: Env) {
   await persistRegistrySnapshot(
-    env,
+    asCloudEnv(env),
     normalizeRegistryPayload(
       {
         "JSONbored/gittensory": {

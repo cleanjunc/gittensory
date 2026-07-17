@@ -6,7 +6,7 @@ import { persistRepoGithubTotalsSnapshot, upsertRepositoryFromGitHub } from "../
 import { LoopoverMcp } from "../../src/mcp/server";
 import { normalizeRegistryPayload } from "../../src/registry/normalize";
 import { persistRegistrySnapshot } from "../../src/registry/sync";
-import { createTestEnv } from "../helpers/d1";
+import { createCloudTestEnv, createTestEnv } from "../helpers/d1";
 
 async function connect(env: Env, identity?: AuthIdentity): Promise<Client> {
   const server = (identity ? new LoopoverMcp(env, identity) : new LoopoverMcp(env)).createServer();
@@ -19,7 +19,7 @@ async function connect(env: Env, identity?: AuthIdentity): Promise<Client> {
 
 describe("loopover_get_registration_readiness MCP tool (#5824)", () => {
   it("returns ready:true for a registered repo with clean config and a healthy queue", async () => {
-    const env = createTestEnv();
+    const env = createCloudTestEnv();
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -48,7 +48,7 @@ describe("loopover_get_registration_readiness MCP tool (#5824)", () => {
   });
 
   it("returns ready:false with the outstanding blockers for a registered repo in bad shape", async () => {
-    const env = createTestEnv();
+    const env = createCloudTestEnv();
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(

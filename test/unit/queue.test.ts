@@ -72,7 +72,7 @@ import {
   classifyPullRequestFreshness,
   fetchPullRequestFreshness,
 } from "../../src/github/pr-freshness";
-import { createTestEnv } from "../helpers/d1";
+import { asCloudEnv, createTestEnv } from "../helpers/d1";
 import { ISSUE_WAKE_MAX_PRS, MERGE_WAKE_MAX_PRS, SWEEP_MAX_PRS } from "../../src/settings/agent-sweep";
 import { AGENT_LABEL_PENDING_CLOSURE, DEFAULT_LINKED_ISSUE_HARD_RULES } from "../../src/review/linked-issue-hard-rules";
 
@@ -717,7 +717,7 @@ describe("queue processors", () => {
       } as unknown as Queue,
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         {
           "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false },
@@ -750,7 +750,7 @@ describe("queue processors", () => {
       } as unknown as Queue,
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "acme/registered-only": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false } },
         { kind: "raw-github", url: "fixture://registry" },
@@ -790,7 +790,7 @@ describe("queue processors", () => {
       } as unknown as Queue,
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false } },
         { kind: "raw-github", url: "fixture://registry" },
@@ -818,7 +818,7 @@ describe("queue processors", () => {
       } as unknown as Queue,
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         {
           "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false },
@@ -860,7 +860,7 @@ describe("queue processors", () => {
     await upsertRepositoryFromGitHub(env, { name: "installed-not-registered", full_name: "acme/installed-not-registered", private: false, owner: { login: "acme" } }, 9415);
     // Subnet-registered but not installed on this instance: this repo must NOT be covered.
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "acme/registered-not-installed": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false } },
         { kind: "raw-github", url: "fixture://registry" },
@@ -888,7 +888,7 @@ describe("queue processors", () => {
       } as unknown as Queue,
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         {
           "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false },
@@ -942,7 +942,7 @@ describe("queue processors", () => {
       } as unknown as Queue,
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false } },
         { kind: "raw-github", url: "fixture://registry" },
@@ -996,7 +996,7 @@ describe("queue processors", () => {
       } as unknown as Queue,
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         {
           "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false },
@@ -4248,7 +4248,7 @@ describe("queue processors", () => {
     // A real snapshot exists, but it does not list THIS repo -- a genuine "unregistered" signal, unlike the
     // companion test above where no snapshot has EVER been produced.
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "some-other/repo": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4350,7 +4350,7 @@ describe("queue processors", () => {
   describe("#regate-churn: scheduled re-gate idempotency", () => {
     async function seedRegateChurnRepo(env: Env, overrides: Partial<Parameters<typeof upsertRepositorySettings>[1]> = {}) {
       await persistRegistrySnapshot(
-        env,
+        asCloudEnv(env),
         normalizeRegistryPayload(
           { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
           { kind: "raw-github", url: "https://example.test" },

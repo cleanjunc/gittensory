@@ -44,7 +44,7 @@ import { upsertRepoFocusManifest } from "../../src/signals/focus-manifest-loader
 import { normalizeRegistryPayload } from "../../src/registry/normalize";
 import { persistRegistrySnapshot } from "../../src/registry/sync";
 import { recordOverrideAudit, writeLiveOverride, writeShadowOverride, type StorageEnv } from "../../src/review/auto-apply";
-import { createTestEnv } from "../helpers/d1";
+import { asCloudEnv, createTestEnv } from "../helpers/d1";
 import type { JsonValue } from "../../src/types";
 
 vi.mock("../../src/github/app", async (importOriginal) => ({
@@ -485,7 +485,7 @@ describe("api routes", () => {
     const app = createApp();
     const env = createTestEnv();
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         {
           "owner/removed": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false },
@@ -497,7 +497,7 @@ describe("api routes", () => {
       ),
     );
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         {
           "owner/added": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false },
@@ -561,7 +561,7 @@ describe("api routes", () => {
       654,
     );
     await persistRegistrySnapshot(
-      registeredEnv,
+      asCloudEnv(registeredEnv),
       normalizeRegistryPayload(
         { "acme/installed-and-registered": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false } },
         { kind: "raw-github", url: "fixture://registered-registry" },
@@ -4216,7 +4216,7 @@ describe("api routes", () => {
       return new Response("not found", { status: 404 });
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "octo/demo": { emission_share: 0.02, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false } },
         { kind: "raw-github", url: "fixture://registry" },
@@ -4959,7 +4959,7 @@ describe("api routes", () => {
 
     const staleEnv = createTestEnv({ GITHUB_PUBLIC_TOKEN: "public-token" });
     await persistRegistrySnapshot(
-      staleEnv,
+      asCloudEnv(staleEnv),
       normalizeRegistryPayload(
         { "entrius/allways-ui": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false } },
         { kind: "raw-github", url: "fixture://stale-registry" },
@@ -4987,7 +4987,7 @@ describe("api routes", () => {
 
     const missingSyncEnv = createTestEnv({ GITHUB_PUBLIC_TOKEN: "public-token" });
     await persistRegistrySnapshot(
-      missingSyncEnv,
+      asCloudEnv(missingSyncEnv),
       normalizeRegistryPayload(
         { "entrius/allways-ui": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false } },
         { kind: "raw-github", url: "fixture://registry" },
@@ -5203,7 +5203,7 @@ describe("api routes", () => {
     await seedSignalData(env);
     stubOktofeeshFetch();
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         {
           "owner/removed": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false },
@@ -5215,7 +5215,7 @@ describe("api routes", () => {
       ),
     );
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         {
           "owner/added": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false },
@@ -6157,7 +6157,7 @@ describe("api routes", () => {
     expect(JSON.stringify(policyPayload.policyReadiness)).not.toMatch(/wallet|hotkey|raw trust|private[-\s]?reviewability|farming|privateNoteCount|blockedPathCount/i);
 
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         {
           "entrius/allways-ui": {
@@ -6523,7 +6523,7 @@ describe("api routes", () => {
     );
 
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         {
           "owner/excellent": { emission_share: 0.02, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false, maintainer_cut: 0 },
@@ -7134,7 +7134,7 @@ async function seedSignalData(env: Env): Promise<void> {
     freshAt,
   );
   await persistRegistrySnapshot(
-    env,
+    asCloudEnv(env),
     normalizeRegistryPayload(
       {
         "entrius/allways-ui": {
@@ -7149,7 +7149,7 @@ async function seedSignalData(env: Env): Promise<void> {
       previousFreshAt,
     ),
   );
-  await persistRegistrySnapshot(env, snapshot);
+  await persistRegistrySnapshot(asCloudEnv(env), snapshot);
   await persistUpstreamRulesetSnapshot(env, {
     id: "upstream-ruleset-seed",
     sourceRepo: "entrius/gittensor",

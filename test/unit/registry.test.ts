@@ -3,7 +3,7 @@ import { getRepository, upsertRepositoryFromGitHub } from "../../src/db/reposito
 import { getRepoPoolAssociation, normalizeRegistryPayload } from "../../src/registry/normalize";
 import { DEFAULT_ISSUE_DISCOVERY_SHARE } from "../../src/scoring/model";
 import { getLatestRegistrySnapshot, persistRegistrySnapshot, refreshRegistry } from "../../src/registry/sync";
-import { createTestEnv } from "../helpers/d1";
+import { createCloudTestEnv, createTestEnv } from "../helpers/d1";
 
 describe("registry normalization", () => {
   afterEach(() => {
@@ -222,7 +222,7 @@ describe("registry normalization", () => {
   });
 
   it("marks previously registered repos as unregistered when they disappear from the latest snapshot", async () => {
-    const env = createTestEnv();
+    const env = createCloudTestEnv();
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(
@@ -256,7 +256,7 @@ describe("registry normalization", () => {
   });
 
   it("updates an existing case-variant repo row instead of inserting a duplicate", async () => {
-    const env = createTestEnv();
+    const env = createCloudTestEnv();
     // A GitHub-sourced row already exists under canonical casing.
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } });
 
@@ -278,7 +278,7 @@ describe("registry normalization", () => {
   });
 
   it("does not de-register a repo whose snapshot casing differs from the stored row", async () => {
-    const env = createTestEnv();
+    const env = createCloudTestEnv();
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.02, issue_discovery_share: 0 } }, { kind: "raw-github", url: "fixture://old" }, "2026-05-22T00:00:00.000Z"),
@@ -295,7 +295,7 @@ describe("registry normalization", () => {
   });
 
   it("does not de-register existing repos when the snapshot is empty", async () => {
-    const env = createTestEnv();
+    const env = createCloudTestEnv();
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.02, issue_discovery_share: 0 } }, { kind: "raw-github", url: "fixture://seed" }, "2026-05-22T00:00:00.000Z"),
@@ -306,7 +306,7 @@ describe("registry normalization", () => {
   });
 
   it("collapses case-variant duplicates within a single snapshot to one row", async () => {
-    const env = createTestEnv();
+    const env = createCloudTestEnv();
     await persistRegistrySnapshot(
       env,
       normalizeRegistryPayload(

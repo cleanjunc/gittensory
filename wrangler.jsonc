@@ -90,7 +90,7 @@
     // NEVER surfaced publicly. Default OFF — flag-OFF reads nothing, records nothing, and leaves the AI-spend
     // gate byte-identical.
     "LOOPOVER_REVIEW_REPUTATION": "false",
-    // Convergence (ops / observability): drive two OPERATOR surfaces off gittensory's own review-outcome data
+    // Convergence (ops / observability): drive two OPERATOR surfaces off loopover's own review-outcome data
     // — (1) a cron-tick anomaly scan over the gate-block ledger + recommendation/slop calibration that emits a
     // structured `ops_anomaly` log on drift, and (2) a bearer-gated GET /v1/internal/ops/stats outcome
     // aggregate. Read-only observability; the auto-tune/config-mutation self-improve loop is NOT wired here.
@@ -149,7 +149,7 @@
     // identical until deliberately enabled per-repo. See review/content-lane-wire.
     "LOOPOVER_REVIEW_CONTENT_LANE": "false",
     // Convergence (self-improve / auto-tune): run the ported self-improvement loop on the cron tick over
-    // gittensory's own review-outcome data — compute tuning recommendations, SHADOW-SOAK any strictly-
+    // loopover's own review-outcome data — compute tuning recommendations, SHADOW-SOAK any strictly-
     // tightening one, and AUTO-PROMOTE it to live ONLY after the soak window passes the gate; every action is
     // audited. It can ONLY EVER tighten the gate (a loosening recommendation is never applied). Default OFF —
     // flag-OFF the cron enqueues no selftune job, does zero tuning work, reads/writes no override, byte-
@@ -157,14 +157,14 @@
     // follow-up — see src/review/selftune-wire.ts.
     "LOOPOVER_REVIEW_SELFTUNE": "false",
     // Experimental `gittensor` plugin (the `experimental:` manifest block, first key): the operator-level
-    // kill-switch for gittensory's original subnet mining-registry/scoring integration, now opt-in rather than
+    // kill-switch for loopover's original subnet mining-registry/scoring integration, now opt-in rather than
     // a core dependency. ANDed with the per-repo `.loopover.yml experimental.gittensor` opt-in — neither
     // alone is sufficient, and unlike `features:` there is no LOOPOVER_REVIEW_REPOS allowlist fallback.
     // Default OFF — flag-OFF (or every repo unset), refresh-registry is never enqueued (see src/index.ts),
     // registry/sync.ts persists nothing for this instance, and a self-host box makes zero outbound contact
     // with the gittensor subnet registry. See src/review/gittensor-wire.ts.
     "LOOPOVER_EXPERIMENTAL_GITTENSOR": "false",
-    // Maintainer recap digest (#1963, #2248): deliver a cross-repo RecapReport -- gittensory's own gate-
+    // Maintainer recap digest (#1963, #2248): deliver a cross-repo RecapReport -- loopover's own gate-
     // precision + outcome-calibration data folded across every scanned repo -- to Discord on a cron cadence
     // (LOOPOVER_RECAP_CADENCE=daily|weekly, default weekly; LOOPOVER_RECAP_HOUR / LOOPOVER_RECAP_DAY
     // pick when). Default OFF — flag-OFF the cron enqueues no recap job, byte-identical to today.
@@ -175,7 +175,7 @@
     // ON, the GraphQL path reuses the REST-resolved required contexts and still falls back to REST on any error,
     // unexpected shape, or >100 rollup contexts.
     "GITHUB_STATUS_ROLLUP_GRAPHQL": "false",
-    // Convergence (#issue-coding-plan): the `@gittensory plan` command. Default OFF — `@gittensory plan` falls
+    // Convergence (#issue-coding-plan): the `@loopover plan` command. Default OFF — `@loopover plan` falls
     // through to the existing mention path (byte-identical). Hosted planning is retired with the Cloudflare AI
     // binding; self-host can run planning through the configured self-host AI provider.
     "LOOPOVER_REVIEW_PLANNER": "false",
@@ -192,7 +192,7 @@
     // Convergence (cutover): comma-separated allowlist of repo full-names ("owner/repo") that may run the
     // PER-PR converged review features (safety, grounding, RAG, reputation, unified comment). A feature
     // activates for a repo ONLY when its global flag above is ON AND the repo is listed here — so the cutover
-    // rolls forward one repo at a time (e.g. "JSONbored/gittensory,JSONbored/awesome-claude"). Default "" →
+    // rolls forward one repo at a time (e.g. "JSONbored/loopover,JSONbored/awesome-claude"). Default "" →
     // NO repos converged → the per-PR converged path stays dormant for every repo regardless of the global
     // flags (byte-identical to today). The cron/endpoint flags (ops/selftune/parity/draft) stay global.
     "LOOPOVER_REVIEW_REPOS": "",

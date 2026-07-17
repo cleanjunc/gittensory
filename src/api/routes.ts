@@ -2044,7 +2044,7 @@ export function createApp() {
 
   app.get("/v1/scoring/model", async (c) => c.json(await getOrCreateScoringModelSnapshot(c.env)));
 
-  // #6593: REST mirrors of the `loopover://finding-taxonomy` / `gittensory://enrichment-analyzers` MCP
+  // #6593: REST mirrors of the `loopover://finding-taxonomy` / `loopover://enrichment-analyzers` MCP
   // resources, so a plain HTTP client (a dashboard, a non-MCP integration) can discover the same static
   // documents. Both builders are pure, argument-free, and return no PR/user/private data — the same class of
   // public static discovery data as /v1/scoring/model and /v1/upstream/ruleset alongside them, so they carry no

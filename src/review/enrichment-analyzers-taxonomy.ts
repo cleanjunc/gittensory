@@ -1,7 +1,7 @@
 import analyzerMetadata from "../../review-enrichment/analyzer-metadata.json";
 
 /** MCP resource URI for the REES enrichment analyzer taxonomy (#2226). */
-export const ENRICHMENT_ANALYZERS_URI = "gittensory://enrichment-analyzers" as const;
+export const ENRICHMENT_ANALYZERS_URI = "loopover://enrichment-analyzers" as const;
 
 type AnalyzerMetadataFile = {
   defaultProfile: string;

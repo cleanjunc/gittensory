@@ -13,7 +13,7 @@ async function connectTestClient() {
   const mcpServer = new LoopoverMcp(createTestEnv()).createServer();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await mcpServer.connect(serverTransport);
-  const client = new Client({ name: "gittensory-enrichment-analyzers-test", version: "0.1.0" }, { capabilities: {} });
+  const client = new Client({ name: "loopover-enrichment-analyzers-test", version: "0.1.0" }, { capabilities: {} });
   await client.connect(clientTransport);
   return { client, mcpServer };
 }

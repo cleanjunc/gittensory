@@ -4,7 +4,7 @@ import { buildEnrichmentAnalyzersTaxonomyDocument } from "../../src/review/enric
 import { buildFindingTaxonomyDocument } from "../../src/review/finding-taxonomy";
 import { createTestEnv } from "../helpers/d1";
 
-// #6593: REST mirrors of the `loopover://finding-taxonomy` / `gittensory://enrichment-analyzers` MCP resources.
+// #6593: REST mirrors of the `loopover://finding-taxonomy` / `loopover://enrichment-analyzers` MCP resources.
 // Both delegate to a pure, argument-free builder, so these tests pin the ROUTE contract — served byte-identical
 // to the document the MCP resource already returns, and gated exactly like the sibling static-data routes it
 // sits with (no new auth middleware of its own) — rather than re-testing the builders themselves.

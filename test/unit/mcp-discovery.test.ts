@@ -117,7 +117,7 @@ describe("MCP resource discovery", () => {
     expect(uris).toContain("loopover://compatibility");
     // #6620: the two static-document mirrors, using the same URIs the remote server registers.
     expect(uris).toContain("loopover://finding-taxonomy");
-    expect(uris).toContain("gittensory://enrichment-analyzers");
+    expect(uris).toContain("loopover://enrichment-analyzers");
   });
 
   it("resource descriptions do not expose forbidden public terms", async () => {
@@ -154,7 +154,7 @@ describe("MCP resource discovery", () => {
     expect(() => JSON.parse(content.text ?? "")).not.toThrow();
   });
 
-  it.each(["loopover://finding-taxonomy", "gittensory://enrichment-analyzers"])(
+  it.each(["loopover://finding-taxonomy", "loopover://enrichment-analyzers"])(
     "can read the %s resource and get structured JSON (#6620)",
     async (uri) => {
       const result = await client.readResource({ uri });

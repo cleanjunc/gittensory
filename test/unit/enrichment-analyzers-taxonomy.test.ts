@@ -44,7 +44,7 @@ describe("enrichment analyzers taxonomy document", () => {
   });
 
   it("uses the stable MCP resource URI", () => {
-    expect(ENRICHMENT_ANALYZERS_URI).toBe("gittensory://enrichment-analyzers");
+    expect(ENRICHMENT_ANALYZERS_URI).toBe("loopover://enrichment-analyzers");
   });
 });
 

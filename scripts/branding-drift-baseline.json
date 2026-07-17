@@ -1,6 +1,6 @@
 {
   "packages/loopover-engine/src/signals/engine.ts": 2,
-  "packages/loopover-mcp/bin/loopover-mcp.js": 3,
+  "packages/loopover-mcp/bin/loopover-mcp.js": 2,
   "src/api/routes.ts": 2,
   "src/db/repositories.ts": 1,
   "src/github/app.ts": 11,

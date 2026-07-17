@@ -199,7 +199,7 @@ describe("handleGovernorRequest (#4857)", () => {
   function deps(overrides: Partial<GovernorApiDeps> = {}): GovernorApiDeps {
     return {
       loadGovernorStateModule: async () => ({
-        resolveGovernorStateDbPath: () => "/home/miner/.config/gittensory-miner/governor-state.sqlite3",
+        resolveGovernorStateDbPath: () => "/home/miner/.config/loopover-miner/governor-state.sqlite3",
         loadPauseState: () => pausedState,
         savePauseState: (input) => ({
           paused: input.paused,
@@ -339,7 +339,7 @@ function captureMiddleware(deps?: Partial<GovernorApiDeps>): CapturedRequestHand
     deps
       ? {
           loadGovernorStateModule: async () => ({
-            resolveGovernorStateDbPath: () => "/home/miner/.config/gittensory-miner/governor-state.sqlite3",
+            resolveGovernorStateDbPath: () => "/home/miner/.config/loopover-miner/governor-state.sqlite3",
             loadPauseState: () => defaultGovernorPauseState(),
             savePauseState: (input) => ({ paused: input.paused, reason: input.reason ?? null, pausedAt: null }),
           }),
@@ -396,7 +396,7 @@ describe("governorApiPlugin (#4857)", () => {
   it("serves GET /api/governor/pause-state from the real (injected) store", async () => {
     const middleware = captureMiddleware({
       loadGovernorStateModule: async () => ({
-        resolveGovernorStateDbPath: () => "/home/miner/.config/gittensory-miner/governor-state.sqlite3",
+        resolveGovernorStateDbPath: () => "/home/miner/.config/loopover-miner/governor-state.sqlite3",
         loadPauseState: () => pausedState,
         savePauseState: () => defaultGovernorPauseState(),
       }),
@@ -411,7 +411,7 @@ describe("governorApiPlugin (#4857)", () => {
   it("reads a POST body and pauses via the real (injected) store", async () => {
     const middleware = captureMiddleware({
       loadGovernorStateModule: async () => ({
-        resolveGovernorStateDbPath: () => "/home/miner/.config/gittensory-miner/governor-state.sqlite3",
+        resolveGovernorStateDbPath: () => "/home/miner/.config/loopover-miner/governor-state.sqlite3",
         loadPauseState: () => defaultGovernorPauseState(),
         savePauseState: (input) => ({
           paused: input.paused,

@@ -51,7 +51,7 @@ const PAYLOAD: PublicStats = {
       closed: 176,
       accuracyPct: 96.8,
     },
-    { project: "JSONbored/gittensory", reviewed: 193, merged: 24, closed: 24, accuracyPct: 93.8 },
+    { project: "JSONbored/loopover", reviewed: 193, merged: 24, closed: 24, accuracyPct: 93.8 },
   ],
   accuracyTrend: [
     { weekStart: "2026-05-04", merged: 40, closed: 10, reversed: 2, accuracyPct: 96 },

@@ -200,7 +200,7 @@ describe("chatApiPlugin middleware (#6517)", () => {
 
   it("registers on both the dev and preview servers", () => {
     const plugin = chatApiPlugin(deps());
-    expect(plugin.name).toBe("gittensory-miner-ui:chat-api");
+    expect(plugin.name).toBe("loopover-miner-ui:chat-api");
     expect(typeof plugin.configureServer).toBe("function");
     expect(typeof plugin.configurePreviewServer).toBe("function");
   });

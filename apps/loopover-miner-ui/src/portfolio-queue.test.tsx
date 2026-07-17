@@ -254,7 +254,7 @@ describe("handlePortfolioQueueRequest (#4306, reunified with the CLI's queue das
   function deps(overrides: Partial<PortfolioQueueApiDeps> = {}): PortfolioQueueApiDeps {
     return {
       loadPortfolioQueueModule: async () => ({
-        resolvePortfolioQueueDbPath: () => "/home/miner/.config/gittensory-miner/portfolio-queue.sqlite3",
+        resolvePortfolioQueueDbPath: () => "/home/miner/.config/loopover-miner/portfolio-queue.sqlite3",
         listQueue: () => rows,
       }),
       loadPortfolioDashboardModule: async () => ({ collectPortfolioDashboard: fakeCollectPortfolioDashboard }),
@@ -336,7 +336,7 @@ describe("handlePortfolioQueueRequest (#4306, reunified with the CLI's queue das
       "/api/portfolio-queue",
       deps({
         loadPortfolioQueueModule: async () => ({
-          resolvePortfolioQueueDbPath: () => "/home/miner/.config/gittensory-miner/portfolio-queue.sqlite3",
+          resolvePortfolioQueueDbPath: () => "/home/miner/.config/loopover-miner/portfolio-queue.sqlite3",
           listQueue: () => [rows[1]!, rows[2]!], // in_progress + done only, no queued row
         }),
       }),

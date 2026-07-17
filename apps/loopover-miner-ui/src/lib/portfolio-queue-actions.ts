@@ -1,5 +1,5 @@
 // Client for the local portfolio-queue release/requeue write API (#4857, the queue half of "Add real actions to
-// the miner-ui"). Mirrors the CLI's `gittensory-miner queue release` / `queue requeue` commands via the
+// the miner-ui"). Mirrors the CLI's `loopover-miner queue release` / `queue requeue` commands via the
 // authenticated dev-server bridge in vite-portfolio-queue-actions-api.ts.
 
 export const PORTFOLIO_QUEUE_ITEMS_API_PATH = "/api/portfolio-queue/items";
@@ -81,7 +81,7 @@ export async function fetchPortfolioQueueItems(fetchImpl: typeof fetch = fetch):
   }
 }
 
-/** Release a claimed (in_progress) item back to queued — mirrors `gittensory-miner queue release`. */
+/** Release a claimed (in_progress) item back to queued — mirrors `loopover-miner queue release`. */
 export function releasePortfolioQueueItem(
   item: Pick<PortfolioQueueActionItem, "repoFullName" | "identifier" | "apiBaseUrl">,
   fetchImpl: typeof fetch = fetch,
@@ -89,7 +89,7 @@ export function releasePortfolioQueueItem(
   return postPortfolioQueueAction(PORTFOLIO_QUEUE_RELEASE_API_PATH, item, fetchImpl);
 }
 
-/** Requeue a completed (done) item — mirrors `gittensory-miner queue requeue`. */
+/** Requeue a completed (done) item — mirrors `loopover-miner queue requeue`. */
 export function requeuePortfolioQueueItem(
   item: Pick<PortfolioQueueActionItem, "repoFullName" | "identifier" | "apiBaseUrl">,
   fetchImpl: typeof fetch = fetch,

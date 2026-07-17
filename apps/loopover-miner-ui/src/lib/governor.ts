@@ -67,12 +67,12 @@ async function postGovernorAction(
   }
 }
 
-/** Pause the governor, optionally with a reason (mirrors `gittensory-miner governor pause [--reason <text>]`). */
+/** Pause the governor, optionally with a reason (mirrors `loopover-miner governor pause [--reason <text>]`). */
 export function pauseGovernor(reason?: string, fetchImpl: typeof fetch = fetch): Promise<GovernorPauseStateResult> {
   return postGovernorAction(GOVERNOR_PAUSE_API_PATH, reason ? { reason } : {}, fetchImpl);
 }
 
-/** Resume the governor (mirrors `gittensory-miner governor resume`). */
+/** Resume the governor (mirrors `loopover-miner governor resume`). */
 export function resumeGovernor(fetchImpl: typeof fetch = fetch): Promise<GovernorPauseStateResult> {
   return postGovernorAction(GOVERNOR_RESUME_API_PATH, {}, fetchImpl);
 }

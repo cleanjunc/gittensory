@@ -8,7 +8,7 @@ import type { Plugin } from "vite";
 //
 // Reunified with the CLI's own richer dashboard (#4846): the aggregation is now
 // `packages/loopover-miner/lib/portfolio-dashboard.js`'s `collectPortfolioDashboard` -- the SAME pure
-// aggregator `gittensory-miner queue dashboard` and the read-only MCP tool already use -- instead of a
+// aggregator `loopover-miner queue dashboard` and the read-only MCP tool already use -- instead of a
 // narrower global-only re-implementation, so the miner-ui and the CLI share one data path. It still aggregates
 // server-side so the HTTP surface never republishes raw queue identifiers or rank-derived priorities; only
 // status counts, grouped globally and per repo, cross the wire.
@@ -102,7 +102,7 @@ export function portfolioQueueApiPlugin(deps: PortfolioQueueApiDeps = defaultDep
     });
   };
   return {
-    name: "gittensory-miner-ui:portfolio-queue-api",
+    name: "loopover-miner-ui:portfolio-queue-api",
     configureServer(server) {
       attach(server.middlewares);
     },

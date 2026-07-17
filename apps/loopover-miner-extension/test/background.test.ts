@@ -8,7 +8,7 @@ import {
 } from "../toolbar-badge.js";
 
 const rankedEntry = {
-  repoFullName: "JSONbored/gittensory",
+  repoFullName: "JSONbored/loopover",
   issueNumber: 145,
   rankScore: 0.82,
   laneFit: 0.9,
@@ -27,14 +27,14 @@ describe("background service worker", () => {
 
   it("returns ready issue context for a watched repo with a cached ranked candidate", async () => {
     const { backgroundInternals } = await loadExtensionModules({
-      watchedRepos: ["JSONbored/gittensory"],
+      watchedRepos: ["JSONbored/loopover"],
       rankedCandidates: [rankedEntry],
       rankedCandidatesSavedAt: Date.parse("2026-07-10T11:00:00.000Z"),
     });
 
     const payload = await backgroundInternals.loadIssueOpportunityContext({
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       issueNumber: 145,
     });
 
@@ -47,19 +47,19 @@ describe("background service worker", () => {
     const unwatched = await loadExtensionModules({ watchedRepos: ["other/repo"] });
     const notWatched = await unwatched.backgroundInternals.loadIssueOpportunityContext({
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       issueNumber: 145,
     });
     expect(notWatched.status).toBe("repo-not-watched");
     expect(notWatched.badge).toBeNull();
 
     const empty = await loadExtensionModules({
-      watchedRepos: ["JSONbored/gittensory"],
+      watchedRepos: ["JSONbored/loopover"],
       rankedCandidates: [],
     });
     const noSignal = await empty.backgroundInternals.loadIssueOpportunityContext({
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       issueNumber: 145,
     });
     expect(noSignal.status).toBe("no-signal");
@@ -68,13 +68,13 @@ describe("background service worker", () => {
 
   it("normalizes watched repos and degrades malformed ranked-candidate storage", async () => {
     const { backgroundInternals } = await loadExtensionModules({
-      watchedRepos: [" JSONbored/gittensory ", "", 42 as unknown as string],
+      watchedRepos: [" JSONbored/loopover ", "", 42 as unknown as string],
       rankedCandidates: "bad" as unknown as unknown[],
       rankedCandidatesSavedAt: "not-a-number" as unknown as number,
     });
 
     expect(await backgroundInternals.loadMinerExtensionSettings()).toEqual({
-      watchedRepos: ["JSONbored/gittensory", "42"],
+      watchedRepos: ["JSONbored/loopover", "42"],
     });
     expect(await backgroundInternals.loadRankedCandidates()).toEqual({
       rankedCandidates: [],
@@ -142,7 +142,7 @@ describe("background service worker", () => {
     expect(syncResult).toMatchObject({ ok: false, error: "offline" });
 
     const mod = await loadExtensionModules({
-      watchedRepos: ["JSONbored/gittensory"],
+      watchedRepos: ["JSONbored/loopover"],
       rankedCandidates: [rankedEntry],
       syncGetThrows: true,
       syncGetRejectsWith: "storage blew up",
@@ -150,7 +150,7 @@ describe("background service worker", () => {
     const response = await mod.dispatchMessage({
       type: mod.backgroundInternals.ISSUE_CONTEXT_MESSAGE,
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       issueNumber: 145,
     });
     expect((response as { ok: boolean; error: string }).error).toBeTruthy();
@@ -158,12 +158,12 @@ describe("background service worker", () => {
 
   it("matches watched repos case-insensitively", async () => {
     const { backgroundInternals } = await loadExtensionModules({
-      watchedRepos: ["jsonbored/gittensory"],
+      watchedRepos: ["jsonbored/loopover"],
       rankedCandidates: [rankedEntry],
     });
     const payload = await backgroundInternals.loadIssueOpportunityContext({
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       issueNumber: 145,
     });
     expect(payload.status).toBe("ready");
@@ -171,7 +171,7 @@ describe("background service worker", () => {
 
   it("routes runtime messages for ping, issue context, and sync", async () => {
     const mod = await loadExtensionModules({
-      watchedRepos: ["JSONbored/gittensory"],
+      watchedRepos: ["JSONbored/loopover"],
       rankedCandidates: [rankedEntry],
       fetchImpl: jsonFetch(200, { candidates: [rankedEntry] }),
     });
@@ -182,7 +182,7 @@ describe("background service worker", () => {
     const context = await mod.dispatchMessage({
       type: mod.backgroundInternals.ISSUE_CONTEXT_MESSAGE,
       owner: "JSONbored",
-      repo: "gittensory",
+      repo: "loopover",
       issueNumber: 145,
     });
     expect((context as { payload: { status: string } }).payload.status).toBe("ready");

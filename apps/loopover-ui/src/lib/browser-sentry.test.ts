@@ -56,13 +56,13 @@ describe("initBrowserSentry", () => {
 
   it("calls Sentry.init with the DSN/release/environment when configured", async () => {
     vi.stubEnv("VITE_SENTRY_DSN", "https://key@o0.ingest.sentry.io/0");
-    vi.stubEnv("VITE_SENTRY_RELEASE", "gittensory-ui@abc123");
+    vi.stubEnv("VITE_SENTRY_RELEASE", "loopover-ui@abc123");
     vi.stubEnv("VITE_SENTRY_ENVIRONMENT", "staging");
     initBrowserSentry();
     await vi.waitFor(() => expect(mocks.init).toHaveBeenCalledTimes(1));
     const options = mocks.init.mock.calls[0]![0] as Record<string, unknown>;
     expect(options.dsn).toBe("https://key@o0.ingest.sentry.io/0");
-    expect(options.release).toBe("gittensory-ui@abc123");
+    expect(options.release).toBe("loopover-ui@abc123");
     expect(options.environment).toBe("staging");
     expect(typeof options.beforeSend).toBe("function");
     expect(typeof options.beforeSendTransaction).toBe("function");

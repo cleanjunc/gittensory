@@ -13,16 +13,16 @@ describe("opportunity-badge exports", () => {
 
   it("builds stable repo#issue lookup keys and finds ranked entries", async () => {
     const { opportunityExports: badge } = await loadExtensionModules();
-    expect(badge.issueLookupKey("JSONbored/gittensory", 145)).toBe("jsonbored/gittensory#145");
+    expect(badge.issueLookupKey("JSONbored/loopover", 145)).toBe("jsonbored/loopover#145");
     expect(badge.issueLookupKey("", 1)).toBeNull();
     expect(badge.issueLookupKey("a/b", 0)).toBeNull();
 
     const ranked = [
-      { repoFullName: "JSONbored/gittensory", issueNumber: 145, rankScore: 0.8 },
+      { repoFullName: "JSONbored/loopover", issueNumber: 145, rankScore: 0.8 },
       { repoFullName: "owner/repo", issueNumber: 2, rankScore: 0.4 },
     ];
-    expect(badge.lookupRankedOpportunity(ranked, "JSONbored/gittensory", 145)?.rankScore).toBe(0.8);
-    expect(badge.lookupRankedOpportunity(ranked, "JSONbored/gittensory", 404)).toBeNull();
+    expect(badge.lookupRankedOpportunity(ranked, "JSONbored/loopover", 145)?.rankScore).toBe(0.8);
+    expect(badge.lookupRankedOpportunity(ranked, "JSONbored/loopover", 404)).toBeNull();
     expect(badge.lookupRankedOpportunity(null, "a/b", 1)).toBeNull();
   });
 
@@ -60,9 +60,9 @@ describe("opportunity-badge exports", () => {
     const ranked = [
       null,
       { repoFullName: "a/b", issueNumber: "nope" },
-      { repoFullName: "JSONbored/gittensory", issueNumber: 145, rankScore: 0.5 },
+      { repoFullName: "JSONbored/loopover", issueNumber: 145, rankScore: 0.5 },
     ];
-    expect(badge.lookupRankedOpportunity(ranked, "JSONbored/gittensory", 145)?.rankScore).toBe(0.5);
+    expect(badge.lookupRankedOpportunity(ranked, "JSONbored/loopover", 145)?.rankScore).toBe(0.5);
   });
 
   it("formats relative last-synced labels and escapes badge markup", async () => {

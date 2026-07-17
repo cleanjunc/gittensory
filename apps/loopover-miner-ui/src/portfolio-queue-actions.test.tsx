@@ -262,7 +262,7 @@ describe("matchPortfolioQueueActionRoute / handlePortfolioQueueActionsRequest (#
     ];
     return {
       loadPortfolioQueueModule: async () => ({
-        resolvePortfolioQueueDbPath: () => "/home/miner/.config/gittensory-miner/portfolio-queue.sqlite3",
+        resolvePortfolioQueueDbPath: () => "/home/miner/.config/loopover-miner/portfolio-queue.sqlite3",
         initPortfolioQueueStore: () => ({
           listQueue: () => entries,
           reclaimStuckItem: (repoFullName, identifier) => {
@@ -401,7 +401,7 @@ describe("portfolioQueueActionsApiPlugin (#4857)", () => {
     let captured: CapturedRequestHandler | undefined;
     const plugin = portfolioQueueActionsApiPlugin({
       loadPortfolioQueueModule: async () => ({
-        resolvePortfolioQueueDbPath: () => "/home/miner/.config/gittensory-miner/portfolio-queue.sqlite3",
+        resolvePortfolioQueueDbPath: () => "/home/miner/.config/loopover-miner/portfolio-queue.sqlite3",
         initPortfolioQueueStore: () => ({
           listQueue: () => [inProgressItem],
           reclaimStuckItem: () => null,

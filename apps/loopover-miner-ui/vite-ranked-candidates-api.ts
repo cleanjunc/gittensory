@@ -89,7 +89,7 @@ export function rankedCandidatesApiPlugin(deps: RankedCandidatesApiDeps = defaul
     });
   };
   return {
-    name: "gittensory-miner-ui:ranked-candidates-api",
+    name: "loopover-miner-ui:ranked-candidates-api",
     configureServer(server) {
       attach(server.middlewares);
     },

@@ -2335,7 +2335,7 @@ server.registerResource(
 
 // #6620: mirror the two remote static-document MCP resources over the local stdio server, proxying the new
 // unauthenticated REST routes the same way loopover_compatibility proxies /v1/mcp/compatibility. Reuse the exact
-// URIs the remote server registers (enrichment-analyzers keeps its legacy gittensory:// URI on purpose).
+// URIs the remote server registers.
 server.registerResource(
   "loopover_finding_taxonomy",
   "loopover://finding-taxonomy",

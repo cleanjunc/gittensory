@@ -307,15 +307,15 @@ describe("handleLedgersRequest (#4855)", () => {
   function deps(overrides: Partial<LedgersApiDeps> = {}): LedgersApiDeps {
     return {
       loadClaimLedgerModule: async () => ({
-        resolveClaimLedgerDbPath: () => "/home/miner/.config/gittensory-miner/claim-ledger.sqlite3",
+        resolveClaimLedgerDbPath: () => "/home/miner/.config/loopover-miner/claim-ledger.sqlite3",
         listClaims: () => rawClaimRows,
       }),
       loadEventLedgerModule: async () => ({
-        resolveEventLedgerDbPath: () => "/home/miner/.config/gittensory-miner/event-ledger.sqlite3",
+        resolveEventLedgerDbPath: () => "/home/miner/.config/loopover-miner/event-ledger.sqlite3",
         readEvents: () => rawEventRows,
       }),
       loadGovernorLedgerModule: async () => ({
-        resolveGovernorLedgerDbPath: () => "/home/miner/.config/gittensory-miner/governor-ledger.sqlite3",
+        resolveGovernorLedgerDbPath: () => "/home/miner/.config/loopover-miner/governor-ledger.sqlite3",
         readGovernorEvents: () => rawGovernorRows,
       }),
       fileExists: () => true,

@@ -205,7 +205,7 @@ export function portfolioQueueActionsApiPlugin(deps: PortfolioQueueActionsApiDep
     });
   };
   return {
-    name: "gittensory-miner-ui:portfolio-queue-actions-api",
+    name: "loopover-miner-ui:portfolio-queue-actions-api",
     configureServer(server) {
       attach(server.middlewares);
     },

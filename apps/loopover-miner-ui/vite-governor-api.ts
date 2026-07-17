@@ -151,7 +151,7 @@ export function governorApiPlugin(deps: GovernorApiDeps = defaultDeps): Plugin {
     });
   };
   return {
-    name: "gittensory-miner-ui:governor-api",
+    name: "loopover-miner-ui:governor-api",
     configureServer(server) {
       attach(server.middlewares);
     },

@@ -150,7 +150,7 @@ export function ledgersApiPlugin(deps: LedgersApiDeps = defaultDeps): Plugin {
     });
   };
   return {
-    name: "gittensory-miner-ui:ledgers-api",
+    name: "loopover-miner-ui:ledgers-api",
     configureServer(server) {
       attach(server.middlewares);
     },

@@ -103,7 +103,7 @@ export function authPlugin(deps: AuthDeps = defaultDeps): Plugin {
     });
   };
   return {
-    name: "gittensory-miner-ui:auth",
+    name: "loopover-miner-ui:auth",
     configureServer(server) {
       attach(server.middlewares);
     },

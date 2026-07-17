@@ -37,12 +37,12 @@ export default defineConfig({
     attemptApiPlugin(),
   ],
   server: {
-    // Offset from gittensory-ui (5173) so both apps can run side-by-side locally.
+    // Offset from loopover-ui (5173) so both apps can run side-by-side locally.
     port: 5174,
     strictPort: true,
   },
   preview: {
-    // Offset from gittensory-ui preview (4173).
+    // Offset from loopover-ui preview (4173).
     port: 4174,
     strictPort: true,
   },

@@ -174,7 +174,7 @@ export function discoverApiPlugin(deps: DiscoverApiDeps = defaultDeps): Plugin {
     });
   };
   return {
-    name: "gittensory-miner-ui:discover-api",
+    name: "loopover-miner-ui:discover-api",
     configureServer(server) {
       attach(server.middlewares);
     },

@@ -136,7 +136,7 @@ export function chatApiPlugin(deps: ChatApiDeps = defaultDeps): Plugin {
     });
   };
   return {
-    name: "gittensory-miner-ui:chat-api",
+    name: "loopover-miner-ui:chat-api",
     configureServer(server) {
       attach(server.middlewares);
     },

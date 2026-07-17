@@ -172,7 +172,7 @@ export function attemptApiPlugin(deps: AttemptApiDeps = defaultDeps): Plugin {
     });
   };
   return {
-    name: "gittensory-miner-ui:attempt-api",
+    name: "loopover-miner-ui:attempt-api",
     configureServer(server) {
       attach(server.middlewares);
     },

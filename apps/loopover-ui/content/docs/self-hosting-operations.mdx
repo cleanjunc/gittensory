@@ -533,7 +533,7 @@ error tracking, point the runtime at a project you control in your own Sentry or
 SENTRY_DSN=https://examplePublicKey@o0.ingest.sentry.io/0
 SENTRY_ENVIRONMENT=production
 SENTRY_SERVER_NAME=loopover-us-east
-SENTRY_RELEASE=gittensory-selfhost@2026.07.05
+SENTRY_RELEASE=loopover-selfhost@2026.07.05
 # Optional: sample review tracing spans (0.05 = 5%)
 # SENTRY_TRACES_SAMPLE_RATE=0.05`}
 />
@@ -1036,7 +1036,7 @@ git merge --ff-only origin/main
 the bundle inside a Dockerized Node container — the host itself never needs Node or npm
 installed — then restarts only the `loopover` service the same way as the image
 path. `SENTRY_RELEASE` defaults to
-`gittensory-selfhost@<short git SHA of the current HEAD>` unless you
+`loopover-selfhost@<short git SHA of the current HEAD>` unless you
 override it, so each deploy from a new commit gets a distinct release id automatically. When
 `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` are
 all configured, the script also injects and uploads Sentry source maps for that release

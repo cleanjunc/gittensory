@@ -84,7 +84,7 @@ export function runStateApiPlugin(deps: RunStateApiDeps = defaultDeps): Plugin {
     });
   };
   return {
-    name: "gittensory-miner-ui:run-state-api",
+    name: "loopover-miner-ui:run-state-api",
     configureServer(server) {
       attach(server.middlewares);
     },

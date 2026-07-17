@@ -139,7 +139,7 @@ export const AMS_ENV_REFERENCE_ROWS: MinerEnvReferenceRow[] = [
   {
     name: "LOOPOVER_MINER_WORKTREE_ALLOCATOR_DB",
     firstReference: "lib/worktree-allocator.js",
-    defaultValue: "",
+    defaultValue: null,
   },
   {
     name: "LOOPOVER_MINER_WORKTREE_DIR",
@@ -186,7 +186,7 @@ export const AMS_ENV_REFERENCE_MARKDOWN = [
   "| `LOOPOVER_MINER_SENTRY_DSN` | `lib/sentry.js` | (none) |",
   '| `LOOPOVER_MINER_SENTRY_ENVIRONMENT` | `lib/sentry.js` | `"production"` |',
   '| `LOOPOVER_MINER_VERSION` | `lib/version.js` | `""` |',
-  '| `LOOPOVER_MINER_WORKTREE_ALLOCATOR_DB` | `lib/worktree-allocator.js` | `""` |',
+  "| `LOOPOVER_MINER_WORKTREE_ALLOCATOR_DB` | `lib/worktree-allocator.js` | (none) |",
   '| `LOOPOVER_MINER_WORKTREE_DIR` | `lib/worktree-allocator.js` | `""` |',
   "| `MINER_CODING_AGENT_PROVIDER` | `lib/laptop-init.js` | (none) |",
   "",

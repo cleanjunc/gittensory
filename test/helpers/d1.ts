@@ -143,3 +143,28 @@ export function createTestEnv(overrides: Partial<Env> = {}): Env {
     ...overrides,
   };
 }
+
+/** #5027: createTestEnv() always carries SELFHOST_TRANSIENT_CACHE, so isSelfHostedReviewRuntime(env) reads
+ *  `true` by default -- combined with LOOPOVER_EXPERIMENTAL_GITTENSOR defaulting to "false", a plain
+ *  createTestEnv() now exercises persistRegistrySnapshot's self-host-scoped branch with zero repos opted
+ *  in, so a seeded registry snapshot never actually registers anything. Use this instead of createTestEnv
+ *  for any test that needs persistRegistrySnapshot to register a repo as unrelated setup scaffolding (most
+ *  callers), matching the pre-#5027 unscoped behavior those tests were written against. Tests that
+ *  specifically exercise the self-host-scoping behavior itself should use createTestEnv directly and
+ *  configure LOOPOVER_EXPERIMENTAL_GITTENSOR / a manifest opt-in explicitly instead. */
+export function createCloudTestEnv(overrides: Partial<Env> = {}): Env {
+  const env = createTestEnv(overrides);
+  delete env.SELFHOST_TRANSIENT_CACHE;
+  return env;
+}
+
+/** Same idea as {@link createCloudTestEnv}, but for a shared seed helper that receives an ALREADY-BUILT env
+ *  as a parameter (rather than constructing its own) -- shallow-clones it (same env.DB reference, so writes
+ *  still land in the caller's test database) with SELFHOST_TRANSIENT_CACHE stripped, so a single call to
+ *  persistRegistrySnapshot(asCloudEnv(env), ...) inside the helper is enough to un-scope that one write,
+ *  without having to touch every individual test's own createTestEnv() call. */
+export function asCloudEnv(env: Env): Env {
+  const cloudEnv = { ...env };
+  delete cloudEnv.SELFHOST_TRANSIENT_CACHE;
+  return cloudEnv;
+}

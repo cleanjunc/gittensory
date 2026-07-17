@@ -71,7 +71,7 @@ import {
   classifyPullRequestFreshness,
   fetchPullRequestFreshness,
 } from "../../src/github/pr-freshness";
-import { createTestEnv } from "../helpers/d1";
+import { asCloudEnv, createTestEnv } from "../helpers/d1";
 import { ISSUE_WAKE_MAX_PRS, MERGE_WAKE_MAX_PRS, SWEEP_MAX_PRS } from "../../src/settings/agent-sweep";
 import { AGENT_LABEL_PENDING_CLOSURE, DEFAULT_LINKED_ISSUE_HARD_RULES } from "../../src/review/linked-issue-hard-rules";
 
@@ -387,7 +387,7 @@ describe("queue processors", () => {
       AI_DAILY_NEURON_BUDGET: "100000",
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -612,7 +612,7 @@ describe("queue processors", () => {
       LOOPOVER_REVIEW_REPOS: "JSONbored/gittensory",
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -683,7 +683,7 @@ describe("queue processors", () => {
       LOOPOVER_REVIEW_CULTURE_PROFILE: "true",
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -758,7 +758,7 @@ describe("queue processors", () => {
       LOOPOVER_REVIEW_IMPACT_MAP: "true",
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -848,7 +848,7 @@ describe("queue processors", () => {
       LOOPOVER_REVIEW_REPOS: "JSONbored/gittensory",
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -927,7 +927,7 @@ describe("queue processors", () => {
       AI_DAILY_NEURON_BUDGET: "100000",
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -994,7 +994,7 @@ describe("queue processors", () => {
       AI_PUBLIC_COMMENTS_ENABLED: "false",
       AI_DAILY_NEURON_BUDGET: "100000",
     });
-    await persistRegistrySnapshot(env, normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"));
+    await persistRegistrySnapshot(asCloudEnv(env), normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"));
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
     await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", autoLabelEnabled: false });
     await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "advisory" } });
@@ -1062,7 +1062,7 @@ describe("queue processors", () => {
       AI_PUBLIC_COMMENTS_ENABLED: "false",
       AI_DAILY_NEURON_BUDGET: "100000",
     });
-    await persistRegistrySnapshot(env, normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"));
+    await persistRegistrySnapshot(asCloudEnv(env), normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"));
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
     await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", autoLabelEnabled: false });
     await upsertRepoFocusManifest(env, "JSONbored/gittensory", { settings: { commentMode: "all_prs", publicSurface: "comment_only", checkRunMode: "off", reviewCheckMode: "required", aiReviewMode: "advisory" } });
@@ -1108,7 +1108,7 @@ describe("queue processors", () => {
       AI_PUBLIC_COMMENTS_ENABLED: "false",
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -1191,7 +1191,7 @@ describe("queue processors", () => {
       AI_DAILY_NEURON_BUDGET: "100000",
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -1281,7 +1281,7 @@ describe("queue processors", () => {
       AI_DAILY_NEURON_BUDGET: "100000",
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -1371,7 +1371,7 @@ describe("queue processors", () => {
       AI_DAILY_NEURON_BUDGET: "100000",
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -1445,7 +1445,7 @@ describe("queue processors", () => {
       AI_DAILY_NEURON_BUDGET: "0",
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -3214,7 +3214,7 @@ describe("queue processors", () => {
       } as unknown as Queue,
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false } },
         { kind: "raw-github", url: "fixture://registry" },
@@ -3263,7 +3263,7 @@ describe("queue processors", () => {
       } as unknown as Queue,
     });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         {
           "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0, label_multipliers: {}, trusted_label_pipeline: false },
@@ -3307,7 +3307,7 @@ describe("queue processors", () => {
   it("marks installation health from queued installation metadata", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -3483,7 +3483,7 @@ describe("queue processors", () => {
   it("publishes an opt-in gate without comment output, blocking a non-confirmed author normally (#gate-nonconfirmed)", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -3558,7 +3558,7 @@ describe("queue processors", () => {
     // state — a contributor could cite an already-closed (or fabricated) issue number to fake compliance.
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -3607,7 +3607,7 @@ describe("queue processors", () => {
   it("does NOT block under linkedIssueGateMode:block when the cited issue is genuinely OPEN", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -3657,7 +3657,7 @@ describe("queue processors", () => {
   it("accepts PR-body validation evidence for configured manifest test expectations", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -3739,7 +3739,7 @@ describe("queue processors", () => {
   it("still flags manifest_missing_tests for a PR body that only claims tests were NOT run", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -3824,7 +3824,7 @@ describe("queue processors", () => {
   it("filters out a non-enforceable manifest finding (manifest_off_focus) while still surfacing an enforceable one", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -3915,7 +3915,7 @@ describe("queue processors", () => {
   it("still flags manifest_missing_tests for a PR with a null body", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4000,7 +4000,7 @@ describe("queue processors", () => {
   it("does NOT flag manifest_linked_issue_required on a first-ever sync whose payload omits body entirely", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4085,7 +4085,7 @@ describe("queue processors", () => {
   it("still flags manifest_linked_issue_required once a genuine empty body has been observed", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4170,7 +4170,7 @@ describe("queue processors", () => {
   it("treats a fully-green live CI rollup as validation evidence even with no body validation note (#4719)", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4258,7 +4258,7 @@ describe("queue processors", () => {
   it("still flags manifest_missing_tests for an ignored bot author without validation evidence", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4345,7 +4345,7 @@ describe("queue processors", () => {
   it("stamps a gate-only surface even when local Gate check-summary persistence fails", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4396,7 +4396,7 @@ describe("queue processors", () => {
   it("finalizes a permission-missing gate check through the neutral fallback before stamping the surface", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4455,7 +4455,7 @@ describe("queue processors", () => {
   it("does not stamp a permission-missing gate check when the neutral fallback cannot publish", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4513,7 +4513,7 @@ describe("queue processors", () => {
   it("suppresses public review output when the live PR head changed before publish", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4640,7 +4640,7 @@ describe("queue processors", () => {
     for (const scenario of cases) {
       const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
       await persistRegistrySnapshot(
-        env,
+        asCloudEnv(env),
         normalizeRegistryPayload(
           { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
           { kind: "raw-github", url: "https://example.test" },
@@ -4702,7 +4702,7 @@ describe("queue processors", () => {
   it("suppresses public review output for no-head reviews when the live PR is closed", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4774,7 +4774,7 @@ describe("queue processors", () => {
     });
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4837,7 +4837,7 @@ describe("queue processors", () => {
   it("finalizes the pending gate as skipped when the PR head changes after review work", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4927,7 +4927,7 @@ describe("queue processors", () => {
   it("still suppresses stale final output when the skipped gate check update fails", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
         { kind: "raw-github", url: "https://example.test" },
@@ -4991,7 +4991,7 @@ describe("queue processors", () => {
   it("auto-maintain (#778): a blocking gate on an agent-configured repo records the changes-requested label, never a formal request_changes (dry-run)", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
     );
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
@@ -5049,7 +5049,7 @@ describe("queue processors", () => {
   it("auto-maintain (#778): uses hard guardrails so guarded paths cannot be merged", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
     );
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
@@ -5200,7 +5200,7 @@ describe("queue processors", () => {
   it("pre-merge checks (#review-pre-merge-checks): an enforced check that fails blocks the auto-merge", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
     );
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
@@ -5275,7 +5275,7 @@ describe("queue processors", () => {
   it("CLA gate (#2564): claMode: block + a missing consent phrase blocks the auto-merge (acceptance criterion)", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
     );
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
@@ -5349,7 +5349,7 @@ describe("queue processors", () => {
   it("CLA gate (#2564): claMode: block + the consent phrase present in the PR body passes the gate", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
     );
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
@@ -5417,7 +5417,7 @@ describe("queue processors", () => {
   it("CLA gate (#2564) is OFF by default: no manifest opt-in ⇒ a PR with no CLA consent still passes (zero behavior change)", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
     );
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
@@ -5491,7 +5491,7 @@ describe("queue processors", () => {
   it("CLA gate (#2564): check-run-conclusion detection — a passing named CLA-bot check-run satisfies consent", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
     );
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
@@ -5563,7 +5563,7 @@ describe("queue processors", () => {
   it("CLA gate (#2564): check-run-conclusion detection — a failing named CLA-bot check-run blocks the auto-merge", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
     );
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);
@@ -5639,7 +5639,7 @@ describe("queue processors", () => {
   it("REGRESSION (gate finding): CLA gate (#2564) — a check-run-only config missing checkRunAppSlug BLOCKS the auto-merge instead of silently holding forever", async () => {
     const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem() });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload({ "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } }, { kind: "raw-github", url: "https://example.test" }, "2026-05-23T00:00:00.000Z"),
     );
     await upsertRepositoryFromGitHub(env, { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } }, 123);

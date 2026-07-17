@@ -18,7 +18,7 @@ import { normalizeRegistryPayload } from "../../src/registry/normalize";
 import { persistRegistrySnapshot } from "../../src/registry/sync";
 import { createD1Adapter, nodeSqliteDriver } from "../../src/selfhost/d1-adapter";
 import { runSelfHostMigrations } from "../../src/selfhost/migrate";
-import { createTestEnv } from "../helpers/d1";
+import { asCloudEnv, createTestEnv } from "../helpers/d1";
 
 describe("GitHub PR reviews cache scoping (#2537)", () => {
   afterEach(() => {
@@ -30,7 +30,7 @@ describe("GitHub PR reviews cache scoping (#2537)", () => {
 
   async function seedRegisteredRepo(env: Env) {
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0, trusted_label_pipeline: true, label_multipliers: {} } },
         { kind: "raw-github", url: "https://example.test/master_repositories.json" },

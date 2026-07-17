@@ -64,7 +64,7 @@ import {
 import { normalizeRegistryPayload } from "../../src/registry/normalize";
 import { persistRegistrySnapshot } from "../../src/registry/sync";
 import { renderMetrics, resetMetrics } from "../../src/selfhost/metrics";
-import { createTestEnv } from "../helpers/d1";
+import { asCloudEnv, createTestEnv } from "../helpers/d1";
 
 // #4682 incident (2026-07-10): the stored-body cap used to be 4000 chars -- well under what a compliant
 // screenshot-evidence table (or any sufficiently detailed PR/issue) actually needs -- and every body-content
@@ -188,7 +188,7 @@ describe("pull request / issue body storage cap (#4682 regression)", () => {
 
 async function seedRegisteredRepo(env: Env) {
   await persistRegistrySnapshot(
-    env,
+    asCloudEnv(env),
     normalizeRegistryPayload(
       {
         "JSONbored/gittensory": {
@@ -1493,7 +1493,7 @@ describe("GitHub backfill", () => {
     const env = createTestEnv({ GITHUB_PUBLIC_TOKEN: "public-token" });
     await upsertRepositoryFromGitHub(env, { name: "installed-only", full_name: "JSONbored/installed-only", private: false, owner: { login: "JSONbored" } }, 999);
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/registered-only": { emission_share: 0.01, issue_discovery_share: 0, trusted_label_pipeline: true, label_multipliers: {} } },
         { kind: "raw-github", url: "https://example.test/master_repositories.json" },
@@ -1518,7 +1518,7 @@ describe("GitHub backfill", () => {
   it("#5021: enqueueRepositoryOpenDataBackfill skips a registered-but-not-installed repo instead of proceeding", async () => {
     const env = createTestEnv({ GITHUB_PUBLIC_TOKEN: "public-token" });
     await persistRegistrySnapshot(
-      env,
+      asCloudEnv(env),
       normalizeRegistryPayload(
         { "JSONbored/registered-only": { emission_share: 0.01, issue_discovery_share: 0, trusted_label_pipeline: true, label_multipliers: {} } },
         { kind: "raw-github", url: "https://example.test/master_repositories.json" },

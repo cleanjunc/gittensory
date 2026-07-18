@@ -1115,9 +1115,17 @@ async function main(): Promise<void> {
 
   // Orb fleet-telemetry export — ALWAYS ON (the fleet-calibration contract of self-hosting). Self-gates
   // inside exportOrbBatch: a no-op until the GitHub App is configured, or when ORB_AIR_GAP=true.
+  //
+  // #4933: rides the SAME readiness() this instance's own /ready endpoint uses (readinessProbes, built
+  // above) rather than inventing a second, parallel health check -- so "healthy" reported to the fleet
+  // always means exactly what /ready already means locally. A readiness() failure here degrades to "no
+  // health signal this tick" (healthOk stays undefined) rather than reporting a wrong status.
   /* v8 ignore start -- self-host entrypoint timers start a live server; monitor semantics are covered in selfhost tests. */
   const runOrbExport = () =>
-    runOrbExportWithMonitor(() => exportOrbBatch(backend.db)).catch((error) =>
+    runOrbExportWithMonitor(async () => {
+      const health = await readiness(backend.db, readinessProbes).catch(() => null);
+      return exportOrbBatch(backend.db, undefined, undefined, health?.ok);
+    }).catch((error) =>
       console.error(
         JSON.stringify({
           level: "error",

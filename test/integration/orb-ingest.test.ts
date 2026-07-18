@@ -160,6 +160,60 @@ describe("handleOrbIngest()", () => {
   });
 });
 
+describe("handleOrbIngest() health ping (#4933)", () => {
+  function makeDb(): D1Database {
+    return new TestD1Database() as unknown as D1Database;
+  }
+  const ev = (o: Record<string, unknown> = {}) => ({ repo_hash: "rh", pr_hash: "ph", outcome: "merged", ...o });
+  const instanceRow = async (db: D1Database, instanceId: string) =>
+    (await (db as unknown as TestD1Database).prepare("SELECT healthy, health_reported_at FROM orb_instances WHERE instance_id=?").bind(instanceId).first<{ healthy: number | null; health_reported_at: string | null }>()) ?? null;
+
+  it("accepts a health-only payload with zero events (rejected on its own without a health field)", async () => {
+    const db = makeDb();
+    const result = await handleOrbIngest(JSON.stringify({ instance_id: "h1", events: [], health: { ok: true } }), db);
+    expect(result).toEqual({ accepted: 0 });
+    expect(await instanceRow(db, "h1")).toEqual({ healthy: 1, health_reported_at: expect.any(String) });
+  });
+
+  it("persists healthy=0 for health.ok === false", async () => {
+    const db = makeDb();
+    await handleOrbIngest(JSON.stringify({ instance_id: "h2", events: [], health: { ok: false } }), db);
+    expect((await instanceRow(db, "h2"))?.healthy).toBe(0);
+  });
+
+  it("a malformed health object (not an object / ok not boolean) is treated as absent", async () => {
+    const db = makeDb();
+    expect(await handleOrbIngest(JSON.stringify({ instance_id: "h3", events: [], health: "bad" }), db)).toEqual({ error: "invalid_payload" });
+    expect(await handleOrbIngest(JSON.stringify({ instance_id: "h4", events: [], health: { ok: "yes" } }), db)).toEqual({ error: "invalid_payload" });
+    expect(await handleOrbIngest(JSON.stringify({ instance_id: "h5", events: [], health: null }), db)).toEqual({ error: "invalid_payload" });
+  });
+
+  it("an outcome-only ingest (no health field) never overwrites a previously-reported health status", async () => {
+    const db = makeDb();
+    await handleOrbIngest(JSON.stringify({ instance_id: "h6", events: [], health: { ok: true } }), db);
+    const first = await instanceRow(db, "h6");
+    expect(first?.healthy).toBe(1);
+    // Same instance, later, exports real outcome events but (e.g. an older build) sends no health field.
+    await handleOrbIngest(JSON.stringify({ instance_id: "h6", events: [ev({ pr_hash: "h6-p" })] }), db);
+    const second = await instanceRow(db, "h6");
+    expect(second?.healthy).toBe(1); // unchanged, not wiped to null
+    expect(second?.health_reported_at).toBe(first?.health_reported_at); // unchanged timestamp too
+  });
+
+  it("a fresh health report on a later ingest overwrites the prior stored value", async () => {
+    const db = makeDb();
+    await handleOrbIngest(JSON.stringify({ instance_id: "h7", events: [], health: { ok: true } }), db);
+    await handleOrbIngest(JSON.stringify({ instance_id: "h7", events: [], health: { ok: false } }), db);
+    expect((await instanceRow(db, "h7"))?.healthy).toBe(0);
+  });
+
+  it("an instance that has never reported health stays NULL (unknown), not defaulted to any status", async () => {
+    const db = makeDb();
+    await handleOrbIngest(JSON.stringify({ instance_id: "h8", events: [ev({ pr_hash: "h8-p" })] }), db);
+    expect(await instanceRow(db, "h8")).toEqual({ healthy: null, health_reported_at: null });
+  });
+});
+
 describe("readOrbIngestBody()", () => {
   const reqWithBody = (body: BodyInit, headers?: Record<string, string>) =>
     new Request("http://collector/v1/orb/ingest", { method: "POST", body, ...(headers ? { headers } : {}) });

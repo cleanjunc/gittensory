@@ -272,4 +272,55 @@ describe("exportOrbBatch() — always-on; reads review_audit, ships anonymized r
     await exportOrbBatch(db, 200, async (_u, init) => { header = (init!.headers as Record<string, string>)["x-orb-instance"]; return new Response(null, { status: 200 }); });
     expect(header).toMatch(/^[a-f0-9]{16}$/);
   });
+
+  describe("health ping (#4933)", () => {
+    it("does NOT call the collector when healthOk is undefined and there's nothing new (unchanged pre-#4933 behavior)", async () => {
+      const db = makeDb();
+      let called = false;
+      const n = await exportOrbBatch(db, 200, async () => { called = true; return new Response(null, { status: 200 }); });
+      expect(n).toBe(0);
+      expect(called).toBe(false);
+    });
+
+    it("sends a health-only ping (events: []) when healthOk is provided and there's nothing new to export", async () => {
+      const db = makeDb();
+      let captured: { events: unknown[]; health?: { ok: boolean } } | undefined;
+      const n = await exportOrbBatch(db, 200, async (_u, init) => { captured = JSON.parse(init!.body as string); return new Response(null, { status: 200 }); }, true);
+      expect(n).toBe(0); // no outcome events exported
+      expect(captured).toEqual({ instance_id: expect.any(String), events: [], health: { ok: true } });
+    });
+
+    it("reports healthOk === false", async () => {
+      const db = makeDb();
+      let captured: { health?: { ok: boolean } } | undefined;
+      await exportOrbBatch(db, 200, async (_u, init) => { captured = JSON.parse(init!.body as string); return new Response(null, { status: 200 }); }, false);
+      expect(captured!.health).toEqual({ ok: false });
+    });
+
+    it("includes the health field ALONGSIDE real outcome events in the same tick", async () => {
+      const db = makeDb();
+      await audit(db, "owner/repo", 3, "gate_decision", "merge", "2026-01-01T00:00:00Z");
+      await audit(db, "owner/repo", 3, "pr_outcome", "merged", "2026-01-01T01:00:00Z");
+      let captured: { events: unknown[]; health?: { ok: boolean } } | undefined;
+      const n = await exportOrbBatch(db, 200, async (_u, init) => { captured = JSON.parse(init!.body as string); return new Response(null, { status: 200 }); }, true);
+      expect(n).toBe(1);
+      expect(captured!.events).toHaveLength(1);
+      expect(captured!.health).toEqual({ ok: true });
+    });
+
+    it("still gates on air-gap/App-configured BEFORE ever considering healthOk", async () => {
+      process.env.ORB_AIR_GAP = "true";
+      let called = false;
+      const n = await exportOrbBatch(makeDb(), 200, async () => { called = true; return new Response(null, { status: 200 }); }, true);
+      expect(n).toBe(0);
+      expect(called).toBe(false);
+    });
+
+    it("a health-only ping does not advance the export cursor (nothing new was actually exported)", async () => {
+      const db = makeDb();
+      await exportOrbBatch(db, 200, async () => new Response(null, { status: 200 }), true);
+      const cursor = await db.prepare("SELECT COUNT(*) AS n FROM orb_export_cursor").first<{ n: number }>();
+      expect(cursor?.n).toBe(0);
+    });
+  });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeFleetAnalytics } from "../../src/orb/analytics";
+import { computeFleetAnalytics, getFleetHealthSummary, HEALTH_STALE_HOURS } from "../../src/orb/analytics";
 import { createTestEnv, TestD1Database } from "../helpers/d1";
 
 let seq = 0;
@@ -308,5 +308,58 @@ describe("gamingPatternFlags — anti-farming detection (#2350)", () => {
     const broken = { DB: { prepare: () => ({ bind: () => ({ all: () => Promise.reject(new Error("boom")) }) }) } } as unknown as Env;
     const result = await computeFleetAnalytics(broken);
     expect(result.gamingPatternFlags).toEqual([]);
+  });
+});
+
+describe("getFleetHealthSummary() (#4933)", () => {
+  const NOW = new Date("2026-07-18T12:00:00.000Z");
+  const FRESH = "2026-07-18T11:30:00.000Z"; // 30m ago -- within the staleness window
+  const STALE = "2026-07-18T08:00:00.000Z"; // 4h ago -- older than HEALTH_STALE_HOURS
+
+  async function seedInstance(env: Env, id: string, opts: { registered?: boolean; healthy?: number | null; healthReportedAt?: string | null } = {}): Promise<void> {
+    await env.DB
+      .prepare(`INSERT INTO orb_instances (instance_id, registered, healthy, health_reported_at) VALUES (?, ?, ?, ?)`)
+      .bind(id, opts.registered === false ? 0 : 1, opts.healthy ?? null, opts.healthReportedAt ?? null)
+      .run();
+  }
+
+  it("empty store → all zero", async () => {
+    const env = createTestEnv();
+    expect(await getFleetHealthSummary(env, NOW)).toEqual({ healthyCount: 0, unhealthyCount: 0, unknownCount: 0, totalCount: 0 });
+  });
+
+  it("counts fresh healthy/unhealthy separately, and a never-reported instance as unknown", async () => {
+    const env = createTestEnv();
+    await seedInstance(env, "h1", { healthy: 1, healthReportedAt: FRESH });
+    await seedInstance(env, "h2", { healthy: 1, healthReportedAt: FRESH });
+    await seedInstance(env, "u1", { healthy: 0, healthReportedAt: FRESH });
+    await seedInstance(env, "n1"); // never reported -- healthy/health_reported_at both NULL
+    expect(await getFleetHealthSummary(env, NOW)).toEqual({ healthyCount: 2, unhealthyCount: 1, unknownCount: 1, totalCount: 4 });
+  });
+
+  it("a stale health report (older than HEALTH_STALE_HOURS) counts as unknown, not its last-known status", async () => {
+    const env = createTestEnv();
+    expect(HEALTH_STALE_HOURS).toBeGreaterThan(0);
+    await seedInstance(env, "stale-healthy", { healthy: 1, healthReportedAt: STALE });
+    await seedInstance(env, "stale-unhealthy", { healthy: 0, healthReportedAt: STALE });
+    expect(await getFleetHealthSummary(env, NOW)).toEqual({ healthyCount: 0, unhealthyCount: 0, unknownCount: 2, totalCount: 2 });
+  });
+
+  it("excludes unregistered instances entirely, matching computeFleetAnalytics's own trust gate", async () => {
+    const env = createTestEnv();
+    await seedInstance(env, "reg", { registered: true, healthy: 1, healthReportedAt: FRESH });
+    await seedInstance(env, "unreg", { registered: false, healthy: 1, healthReportedAt: FRESH });
+    expect(await getFleetHealthSummary(env, NOW)).toEqual({ healthyCount: 1, unhealthyCount: 0, unknownCount: 0, totalCount: 1 });
+  });
+
+  it("fails safe to an all-zero summary on a DB read error", async () => {
+    const broken = { DB: { prepare: () => ({ bind: () => ({ first: () => Promise.reject(new Error("boom")) }) }) } } as unknown as Env;
+    expect(await getFleetHealthSummary(broken, NOW)).toEqual({ healthyCount: 0, unhealthyCount: 0, unknownCount: 0, totalCount: 0 });
+  });
+
+  it("defaults `now` to the current time when omitted", async () => {
+    const env = createTestEnv();
+    await seedInstance(env, "h1", { healthy: 1, healthReportedAt: new Date().toISOString() });
+    expect(await getFleetHealthSummary(env)).toEqual({ healthyCount: 1, unhealthyCount: 0, unknownCount: 0, totalCount: 1 });
   });
 });

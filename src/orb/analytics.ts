@@ -248,3 +248,41 @@ export async function computeFleetAnalytics(env: Env, opts: { windowDays?: numbe
     gamingPatternFlags,
   };
 }
+
+/** #4933: fleet-wide instance READINESS, not gate-calibration quality -- deliberately separate from (and
+ *  named differently on the dashboard than) the "Fleet health" gate-precision card above, which this is
+ *  often confused with despite measuring something unrelated. */
+export interface FleetHealthSummary {
+  healthyCount: number;
+  unhealthyCount: number;
+  // Never reported a health status, or its last report is older than HEALTH_STALE_HOURS -- an
+  // unresponsive instance must read as "don't know," not silently keep counting as its last-known state.
+  unknownCount: number;
+  totalCount: number; // registered instances only, matching computeFleetAnalytics's own trust gate
+}
+
+// A bit over 2x the hourly export cron (server.ts's runOrbExport), so one missed tick doesn't immediately
+// flip an instance to "unknown."
+export const HEALTH_STALE_HOURS = 3;
+
+export async function getFleetHealthSummary(env: Env, now: Date = new Date()): Promise<FleetHealthSummary> {
+  const staleBefore = new Date(now.getTime() - HEALTH_STALE_HOURS * 60 * 60 * 1000).toISOString();
+  try {
+    const row = await env.DB.prepare(
+      `SELECT
+         SUM(CASE WHEN healthy = 1 AND health_reported_at IS NOT NULL AND health_reported_at > ? THEN 1 ELSE 0 END) AS healthy_count,
+         SUM(CASE WHEN healthy = 0 AND health_reported_at IS NOT NULL AND health_reported_at > ? THEN 1 ELSE 0 END) AS unhealthy_count,
+         COUNT(*) AS total_count
+       FROM orb_instances
+       WHERE registered = 1`,
+    )
+      .bind(staleBefore, staleBefore)
+      .first<{ healthy_count: number | null; unhealthy_count: number | null; total_count: number }>();
+    const healthyCount = Number(row?.healthy_count ?? 0);
+    const unhealthyCount = Number(row?.unhealthy_count ?? 0);
+    const totalCount = Number(row?.total_count ?? 0);
+    return { healthyCount, unhealthyCount, unknownCount: totalCount - healthyCount - unhealthyCount, totalCount };
+  } catch {
+    return { healthyCount: 0, unhealthyCount: 0, unknownCount: 0, totalCount: 0 };
+  }
+}

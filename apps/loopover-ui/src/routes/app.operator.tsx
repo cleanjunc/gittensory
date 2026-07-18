@@ -36,6 +36,12 @@ type OperatorDashboardResponse = {
   upstreamDrift?: { status?: string } | null;
   aiCostByTenant?: Array<{ installationId: string; totalCostUsd: number }>;
   storageRowCountByTenant?: Array<{ installationId: string; rowCount: number }>;
+  fleetHealth?: {
+    healthyCount: number;
+    unhealthyCount: number;
+    unknownCount: number;
+    totalCount: number;
+  };
 };
 
 type FleetMetrics = {
@@ -249,6 +255,36 @@ export function OperatorDashboard() {
                   label="Instance outliers"
                   value={String(data.fleetMetrics.outliers.length)}
                   hint="off the fleet median"
+                />
+              </div>
+            </section>
+          ) : null}
+
+          {data.fleetHealth && data.fleetHealth.totalCount > 0 ? (
+            <section className="rounded-token border border-border bg-transparent p-5">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="size-4 text-mint" />
+                <h2 className="font-display text-token-lg font-semibold">Instance status</h2>
+              </div>
+              <p className="mt-1 max-w-2xl text-token-xs text-muted-foreground">
+                Fleet instance readiness across {data.fleetHealth.totalCount} registered self-hosted
+                instance(s) — separate from the gate-calibration numbers above.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <Stat
+                  label="Healthy"
+                  value={String(data.fleetHealth.healthyCount)}
+                  hint="reported ready"
+                />
+                <Stat
+                  label="Unhealthy"
+                  value={String(data.fleetHealth.unhealthyCount)}
+                  hint="reported not ready"
+                />
+                <Stat
+                  label="Unknown"
+                  value={String(data.fleetHealth.unknownCount)}
+                  hint="no recent report"
                 />
               </div>
             </section>

@@ -30,7 +30,7 @@ import type {
   ScoringModelSnapshotRecord,
   WeeklyValueReport,
 } from "../types";
-import { computeFleetAnalytics, type FleetAnalytics } from "../orb/analytics";
+import { computeFleetAnalytics, getFleetHealthSummary, type FleetAnalytics, type FleetHealthSummary } from "../orb/analytics";
 import { computeAgentHealth, computeCalibration, type AgentHealth, type Calibration } from "../review/ops";
 import { computeGateEval, type GateEvalReport } from "../review/parity";
 import { computeCycleTimeAggregate, computeFindingAcceptance, type CycleTimeAggregate } from "../review/stats";
@@ -102,6 +102,9 @@ export type OperatorDashboardPayload = {
   // D1 storage cap already has alerting (src/selfhost/d1-size-probe.ts); this is the per-installation dimension
   // that alerting doesn't have. Same self-host-always-empty caveat as aiCostByTenant above.
   storageRowCountByTenant: RowCountByTenant[];
+  // #4933: fleet-wide instance READINESS (up/down/unknown), distinct from fleetMetrics above (gate-calibration
+  // quality). Always all-zero for a self-host operator (no registered peer instances).
+  fleetHealth: FleetHealthSummary;
 };
 
 const USAGE_WINDOW_DAYS = 7;
@@ -140,6 +143,7 @@ export async function buildOperatorDashboardPayload(
     findingAcceptance,
     aiCostByTenant,
     storageRowCountByTenant,
+    fleetHealth,
   ] = await Promise.all([
     listRepositories(env),
     listInstallations(env),
@@ -171,6 +175,8 @@ export async function buildOperatorDashboardPayload(
     listAiCostByTenantSince(env, usageSince),
     // #4890 (re-scoped): per-tenant row-count breakdown, same window as the rest of the usage metrics above.
     listRowCountByTenantSince(env, usageSince),
+    // #4933: fleet-wide instance readiness -- a point-in-time summary, no window needed.
+    getFleetHealthSummary(env),
   ]);
   const weeklyValueReport = buildWeeklyValueReport({
     generatedAt: nowIso(),
@@ -291,6 +297,7 @@ export async function buildOperatorDashboardPayload(
     acceptance,
     aiCostByTenant,
     storageRowCountByTenant,
+    fleetHealth,
   };
 }
 

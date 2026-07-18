@@ -51,6 +51,7 @@ interface FleetEvent {
 interface OrbExportPayload {
   instance_id: string;
   events: FleetEvent[];
+  health?: { ok: boolean };
 }
 
 /** Stable instance identifier (hash of the Orb/App ID — no PII). A brokered instance holds no App id, so its
@@ -154,11 +155,14 @@ export function cycleTimeMs(decidedAt: string, outcomeAt: string): number | null
 }
 
 /**
- * Export newly-resolved PR outcomes (since this instance's watermark) to the central collector. Reads from
- * review_audit (de-noised, reversal-aware), anonymizes, signs, POSTs, then advances the cursor.
- * Returns the number of events exported (0 if air-gapped, the App isn't configured, or nothing new).
+ * Export newly-resolved PR outcomes (since this instance's watermark) to the central collector, and --
+ * when `healthOk` is supplied (#4933, threaded from server.ts's own readiness() result) -- a health ping
+ * riding the same request, even in a tick with nothing new to export. Reads from review_audit (de-noised,
+ * reversal-aware), anonymizes, signs, POSTs, then advances the cursor.
+ * Returns the number of events exported (0 if air-gapped, the App isn't configured, or nothing new to
+ * export -- a health-only ping with zero events still returns 0, matching "nothing new" today).
  */
-export async function exportOrbBatch(db: D1Database, batchSize = 200, fetchFn: typeof fetch = fetch): Promise<number> {
+export async function exportOrbBatch(db: D1Database, batchSize = 200, fetchFn: typeof fetch = fetch, healthOk?: boolean): Promise<number> {
   // Air-gapped/offline deployments explicitly suppress every outbound telemetry call, including brokered mode.
   if ((process.env.ORB_AIR_GAP ?? "").toLowerCase() === "true") return 0;
 
@@ -185,11 +189,13 @@ export async function exportOrbBatch(db: D1Database, batchSize = 200, fetchFn: t
   const cursorTargetId = cursorRow?.last_exported_target_id ?? "";
 
   const { results } = await db.prepare(FLEET_QUERY).bind(cursorAt, cursorAt, cursorTargetId, batchSize).all<FleetRow>();
-  if (!results || results.length === 0) return 0;
+  // A health-only ping (healthOk !== undefined) still has something to send even with zero new events;
+  // otherwise, exactly as before, nothing new means nothing to do.
+  if ((!results || results.length === 0) && healthOk === undefined) return 0;
 
   const payload: OrbExportPayload = {
     instance_id: instance,
-    events: results.map((r) => ({
+    events: (results ?? []).map((r) => ({
       repo_hash: anonymize ? hmacAnonymize(r.project, secret) : r.project,
       pr_hash: anonymize ? hmacAnonymize(r.target_id, secret) : r.target_id,
       gate_verdict: r.verdict,
@@ -200,6 +206,7 @@ export async function exportOrbBatch(db: D1Database, batchSize = 200, fetchFn: t
       decision_timestamp: r.decided_at,
       outcome_timestamp: r.outcome_at,
     })),
+    ...(healthOk !== undefined ? { health: { ok: healthOk } } : {}),
   };
 
   const body = JSON.stringify(payload);
@@ -235,14 +242,18 @@ export async function exportOrbBatch(db: D1Database, batchSize = 200, fetchFn: t
   }
 
   // Advance the watermark to the newest event in this batch (rows are ordered by event_at, target_id).
-  const lastRow = results[results.length - 1]!;
-  await db
-    .prepare(
-      `INSERT OR REPLACE INTO orb_export_cursor (instance_hash, last_exported_at, last_exported_target_id, updated_at) VALUES (?, ?, ?, ?)`,
-    )
-    .bind(instance, lastRow.event_at, lastRow.target_id, new Date().toISOString())
-    .run();
+  // A health-only ping (no results) has no watermark to advance -- nothing new was read or sent as events.
+  if (results && results.length > 0) {
+    const lastRow = results[results.length - 1]!;
+    await db
+      .prepare(
+        `INSERT OR REPLACE INTO orb_export_cursor (instance_hash, last_exported_at, last_exported_target_id, updated_at) VALUES (?, ?, ?, ?)`,
+      )
+      .bind(instance, lastRow.event_at, lastRow.target_id, new Date().toISOString())
+      .run();
+  }
 
-  incr("loopover_orb_events_exported_total", {}, results.length);
-  return results.length;
+  const exportedCount = results?.length ?? 0;
+  if (exportedCount > 0) incr("loopover_orb_events_exported_total", {}, exportedCount);
+  return exportedCount;
 }

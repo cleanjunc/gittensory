@@ -170,3 +170,61 @@ describe("OperatorDashboard storage by tenant (#4890)", () => {
     expect(screen.getByText("2 rows")).toBeTruthy();
   });
 });
+
+describe("OperatorDashboard instance status (#4933)", () => {
+  function mockDashboard(fleetHealth?: {
+    healthyCount: number;
+    unhealthyCount: number;
+    unknownCount: number;
+    totalCount: number;
+  }) {
+    useApiResource.mockImplementation((path: string) => {
+      if (path === "/v1/app/operator-dashboard") {
+        return {
+          status: "ready",
+          data: {
+            metrics: [{ label: "Installs", value: "12", delta: "+2" }],
+            noiseReduction: [],
+            weeklyReport: [],
+            fleetHealth,
+          },
+          error: null,
+          loadedAt: "2026-07-17T00:00:00.000Z",
+          reload: () => {},
+        };
+      }
+      return {
+        status: "error",
+        data: null,
+        error: "unavailable in this test",
+        errorKind: "unknown",
+        loadedAt: null,
+        reload: () => {},
+      };
+    });
+  }
+
+  it("renders no section at all when fleetHealth is absent (self-host, the common case)", () => {
+    mockDashboard(undefined);
+    render(<OperatorDashboard />);
+    expect(screen.queryByText("Instance status")).toBeNull();
+  });
+
+  it("renders no section when fleetHealth.totalCount is 0", () => {
+    mockDashboard({ healthyCount: 0, unhealthyCount: 0, unknownCount: 0, totalCount: 0 });
+    render(<OperatorDashboard />);
+    expect(screen.queryByText("Instance status")).toBeNull();
+  });
+
+  it("renders the healthy/unhealthy/unknown counts, distinct from the gate-calibration Fleet health card", () => {
+    mockDashboard({ healthyCount: 3, unhealthyCount: 1, unknownCount: 2, totalCount: 6 });
+    render(<OperatorDashboard />);
+    expect(screen.getByText("Instance status")).toBeTruthy();
+    expect(screen.getByText("Healthy")).toBeTruthy();
+    expect(screen.getByText("3")).toBeTruthy();
+    expect(screen.getByText("Unhealthy")).toBeTruthy();
+    expect(screen.getByText("1")).toBeTruthy();
+    expect(screen.getByText("Unknown")).toBeTruthy();
+    expect(screen.getByText("2")).toBeTruthy();
+  });
+});

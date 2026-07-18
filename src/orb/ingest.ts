@@ -63,6 +63,9 @@ interface OrbIngestEvent {
 interface OrbIngestPayload {
   instance_id: string;
   events: OrbIngestEvent[];
+  // #4933: optional -- an older self-host build that hasn't upgraded yet simply omits this, and the
+  // instance's stored health stays whatever it last was (or NULL/unknown on first contact).
+  health?: { ok: boolean };
 }
 
 export type OrbIngestResult = { accepted: number } | { error: string };
@@ -89,19 +92,35 @@ export async function handleOrbIngest(body: string, db: D1Database): Promise<Orb
     return { error: "invalid_payload" };
   }
 
-  const { instance_id, events } = payload as OrbIngestPayload;
-  if (!instance_id || instance_id.length > MAX_INSTANCE_ID_CHARS || events.length === 0) {
+  const { instance_id, events, health } = payload as OrbIngestPayload;
+  // #4933: an empty batch is only valid when it's carrying a health-only ping (the hourly export still
+  // has to report health even in a tick with nothing new to export) -- a truly empty, health-less payload
+  // stays rejected exactly as before.
+  const healthy = typeof health === "object" && health !== null && typeof health.ok === "boolean" ? (health.ok ? 1 : 0) : null;
+  if (!instance_id || instance_id.length > MAX_INSTANCE_ID_CHARS || (events.length === 0 && healthy === null)) {
     return { error: "invalid_payload" };
   }
+  const healthReportedAt = healthy === null ? null : new Date().toISOString();
 
   // Record the instance on first contact (registered=0 by default) and bump last_seen. The registration
   // gate lives in computeFleetAnalytics: signals are stored for everyone, but only registered instances
   // count toward the fleet median — so open ingest can't be used to skew calibration (the das-github-mirror
   // model: every source is seen, trusted only once an operator opts it in).
+  //
+  // healthy/health_reported_at only move when THIS payload actually reported a health status (COALESCE
+  // falls back to whatever was already stored) -- an outcome-only ingest from a self-host build that
+  // hasn't upgraded to send health yet must never silently overwrite a real prior health reading with
+  // NULL, and must never look "healthy" just because the instance is otherwise active.
   try {
     await db
-      .prepare(`INSERT INTO orb_instances (instance_id) VALUES (?) ON CONFLICT(instance_id) DO UPDATE SET last_seen_at = CURRENT_TIMESTAMP`)
-      .bind(instance_id)
+      .prepare(
+        `INSERT INTO orb_instances (instance_id, healthy, health_reported_at) VALUES (?, ?, ?)
+         ON CONFLICT(instance_id) DO UPDATE SET
+           last_seen_at = CURRENT_TIMESTAMP,
+           healthy = COALESCE(excluded.healthy, orb_instances.healthy),
+           health_reported_at = COALESCE(excluded.health_reported_at, orb_instances.health_reported_at)`,
+      )
+      .bind(instance_id, healthy, healthReportedAt)
       .run();
   } catch {
     // best-effort: never fail ingest because the instance bookkeeping hiccupped

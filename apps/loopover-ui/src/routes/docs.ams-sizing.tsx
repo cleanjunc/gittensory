@@ -2,6 +2,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { Suspense } from "react";
 
 import { DocsPage } from "@/components/site/docs-page";
+import { LoadingState } from "@/components/site/state-views";
 import { docsClientLoader } from "@/lib/docs-client-loader";
 
 // Rendered from content/docs/ams-sizing.mdx via fumadocs-mdx's browser entry
@@ -41,7 +42,7 @@ function AmsSizing() {
   const Content = docsClientLoader.getComponent(path);
   return (
     <DocsPage eyebrow="Maintainers" title={title} description={description}>
-      <Suspense fallback={<p className="text-token-sm text-muted-foreground">Loading…</p>}>
+      <Suspense fallback={<LoadingState />}>
         <Content />
       </Suspense>
     </DocsPage>

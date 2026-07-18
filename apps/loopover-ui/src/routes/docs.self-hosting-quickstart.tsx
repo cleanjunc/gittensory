@@ -2,6 +2,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { Suspense } from "react";
 
 import { DocsPage } from "@/components/site/docs-page";
+import { LoadingState } from "@/components/site/state-views";
 import { docsClientLoader } from "@/lib/docs-client-loader";
 
 // SPIKE (#6037): rendered from content/docs/self-hosting-quickstart.mdx via fumadocs-mdx's
@@ -44,7 +45,7 @@ function SelfHostingQuickstart() {
   const Content = docsClientLoader.getComponent(path);
   return (
     <DocsPage eyebrow="Self-hosting" title={title} description={description}>
-      <Suspense fallback={<p className="text-token-sm text-muted-foreground">Loading…</p>}>
+      <Suspense fallback={<LoadingState />}>
         <Content />
       </Suspense>
     </DocsPage>

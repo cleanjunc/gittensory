@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { fetchLedgers, LEDGERS_API_PATH, type LedgersResult, type LedgersSummary } from "./lib/ledgers";
 import { type GovernorPauseState, type GovernorPauseStateResult } from "./lib/governor";
-import { LedgersPage, LedgersView } from "./routes/ledgers";
+import { GovernorControlSection, LedgersPage, LedgersView } from "./routes/ledgers";
 import { handleLedgersRequest, type LedgersApiDeps } from "../vite-ledgers-api";
 
 // Test-local fixture factories (were lib exports reachable only from tests; moved here per #6187).
@@ -527,5 +527,41 @@ describe("handleLedgersRequest (#4855)", () => {
       }),
     );
     expect(handled).toEqual({ status: 500, body: JSON.stringify({ error: "sqlite locked" }) });
+  });
+});
+
+describe("GovernorControlSection pause-reason reset (#7079)", () => {
+  const notPaused: GovernorPauseStateResult = { ok: true, pauseState: { paused: false, reason: null, pausedAt: null } };
+  const pausedResult: GovernorPauseStateResult = {
+    ok: true,
+    pauseState: { paused: true, reason: "investigating flaky test", pausedAt: "2026-07-18T00:00:00.000Z" },
+  };
+  const control = (result: GovernorPauseStateResult, onPause = vi.fn()) => (
+    <GovernorControlSection result={result} pending={false} onPause={onPause} onResume={vi.fn()} />
+  );
+
+  it("clears the reason after a successful pause, so a later resume→pause starts from a blank input", () => {
+    const onPause = vi.fn();
+    const { rerender } = render(control(notPaused, onPause));
+    fireEvent.change(screen.getByLabelText("Pause reason"), { target: { value: "investigating flaky test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Pause governor" }));
+    expect(onPause).toHaveBeenCalledWith("investigating flaky test");
+
+    // The poll reflects the successful pause (paused: true), then the operator resumes back to the pause form.
+    rerender(control(pausedResult, onPause));
+    rerender(control(notPaused, onPause));
+    expect((screen.getByLabelText("Pause reason") as HTMLInputElement).value).toBe("");
+  });
+
+  it("preserves the typed reason after a FAILED pause, so it can be retried without retyping", () => {
+    const onPause = vi.fn();
+    const { rerender } = render(control(notPaused, onPause));
+    fireEvent.change(screen.getByLabelText("Pause reason"), { target: { value: "investigating flaky test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Pause governor" }));
+
+    // The pause fails (ok: false): the reset must NOT fire. Re-render back to the form (a retry) and the reason stays.
+    rerender(control({ ok: false, error: "governor state write failed" }, onPause));
+    rerender(control(notPaused, onPause));
+    expect((screen.getByLabelText("Pause reason") as HTMLInputElement).value).toBe("investigating flaky test");
   });
 });

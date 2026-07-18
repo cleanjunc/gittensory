@@ -337,6 +337,16 @@ export function GovernorControlSection({
   // Optional pause reason, mirroring the CLI's `governor pause [--reason <text>]`; an empty field
   // is passed through as `undefined` so it matches the CLI's own optional-flag behavior.
   const [reason, setReason] = useState("");
+  // #7079: once a pause succeeds the polled `result` flips to paused; clear the reason so a later
+  // resume→pause starts from a blank input. Done with React's "info from previous renders" pattern (a
+  // render-phase reset when `paused` turns true) rather than an effect. A FAILED pause leaves `result.ok`
+  // false and never sets `paused`, so the reason is preserved for a retry.
+  const paused = result?.ok === true && result.pauseState.paused;
+  const [wasPaused, setWasPaused] = useState(paused);
+  if (paused !== wasPaused) {
+    setWasPaused(paused);
+    if (paused) setReason("");
+  }
   const errorText = result !== null && !result.ok ? result.error : undefined;
   return (
     <section className="grid gap-3">

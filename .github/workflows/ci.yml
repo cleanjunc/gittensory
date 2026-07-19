@@ -362,9 +362,31 @@ jobs:
       # engine) and after Typecheck (broke a real, non-vi.mock `import type` from the package specifier with
       # TS2307 in CI while passing locally against a stale leftover dist/ -- first hit by PR #5082). Now ahead
       # of both.
+      #
+      # Turborepo (turbo.json) owns the actual cache correctness here (content-hashes @loopover/engine's own
+      # inputs independently of whatever this restore serves) -- the .turbo/cache restore below is purely an
+      # accelerator, same accumulating-cache shape as "Restore TypeScript incremental build cache" below (a
+      # run_id-suffixed save key + prefix restore-keys fallback, not the hit-or-miss node_modules pattern),
+      # since turbo's cache directory grows additively rather than being wholesale-replaced per lockfile hash.
+      # This is also what lets each validate-tests shard (which independently needs this same package built)
+      # skip rebuilding it from scratch when a warm cache from this job or an earlier run is available.
+      - name: Restore Turborepo cache
+        if: ${{ github.event_name == 'push' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.engine == 'true' || needs.changes.outputs.ui == 'true' }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
+          restore-keys: |
+            turbo-${{ hashFiles('package-lock.json') }}-
       - name: Build engine package
         if: ${{ github.event_name == 'push' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.engine == 'true' || needs.changes.outputs.ui == 'true' }}
-        run: npm run build --workspace @loopover/engine
+        run: turbo run build --filter=@loopover/engine
+      - name: Save Turborepo cache
+        if: ${{ !cancelled() && (github.event_name == 'push' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.engine == 'true' || needs.changes.outputs.ui == 'true') }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
       # .tsbuildinfo mutates every run (tsc's own incremental state), unlike node_modules above which is
       # immutable per lockfile -- so this needs the run_id-suffixed-key + restore-keys-prefix pattern (always
       # creates a new cache entry to save into, restore falls back to the most recent matching prefix) rather
@@ -639,9 +661,25 @@ jobs:
             apps/loopover-ui/node_modules
           key: ${{ steps.node-modules-cache.outputs.cache-primary-key }}
       # Any backend test run needs the engine package's dist/ built first -- see the identical step's
-      # comment in validate-code (#ci-engine-build-order) for why.
+      # comment in validate-code (#ci-engine-build-order) for why. Same accumulating .turbo/cache
+      # restore/save pattern as validate-code's identical pair, sharing the same key lineage -- whichever
+      # job (this shard or another, in this run or an earlier one) saved a warm cache first, the rest can
+      # reuse it. Correctness is turbo's own content-hashing, not this restore -- see validate-code's comment.
+      - name: Restore Turborepo cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
+          restore-keys: |
+            turbo-${{ hashFiles('package-lock.json') }}-
       - name: Build engine package
-        run: npm run build --workspace @loopover/engine
+        run: turbo run build --filter=@loopover/engine
+      - name: Save Turborepo cache
+        if: ${{ !cancelled() }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ hashFiles('package-lock.json') }}-${{ github.run_id }}
       - name: Prepare test reports dir
         run: mkdir -p reports/junit
       - name: Test with coverage (shard ${{ matrix.shard }}/6)

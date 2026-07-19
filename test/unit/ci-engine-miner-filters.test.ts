@@ -15,7 +15,10 @@ describe("CI engine/miner path filters", () => {
     expect(ci).toContain("name: Build engine package");
     expect(ci).toContain("name: Build miner CLI");
     expect(ci).toContain("name: Miner package check");
-    expect(ci).toContain("npm run build --workspace @loopover/engine");
+    // Routed through Turborepo (turbo.json) rather than a bare npm workspace call, so its build cache is
+    // shared across validate-code and every validate-tests shard instead of rebuilding independently in
+    // each -- see the "Restore/Save Turborepo cache" steps alongside this one.
+    expect(ci).toContain("turbo run build --filter=@loopover/engine");
     expect(ci).toContain("npm run build:miner");
     expect(ci).toContain("npm run test:miner-pack");
   });

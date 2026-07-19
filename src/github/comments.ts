@@ -7,6 +7,10 @@ export const PR_INTELLIGENCE_COMMENT_MARKER = PR_PANEL_COMMENT_MARKER;
 export const AGENT_COMMAND_COMMENT_MARKER = PR_PANEL_COMMENT_MARKER;
 const LEGACY_PR_INTELLIGENCE_COMMENT_MARKER = "<!-- gittensory-pr-intelligence -->";
 const LEGACY_AGENT_COMMAND_COMMENT_MARKER = "<!-- gittensory-agent-command -->";
+/** #7372: the PR-closed maintainer-notify follow-up comment's own marker — deliberately a DIFFERENT comment
+ *  thread from the sticky PR panel above (that comment stops being useful the moment the PR closes), so this
+ *  must never collapse into `PR_PANEL_COMMENT_MARKER`'s aliases the way the two constants above do. */
+export const VISUAL_FOLLOWUP_COMMENT_MARKER = "<!-- loopover:visual-unrelated-followup -->";
 // Bound the marker-comment search at 10 pages (up to 1,000 comments), matching src/github's other pagination
 // caps (app.ts's MAX_WORKFLOW_RUN_LIST_PAGES, pr-actions.ts's REVIEW_PAGE_LIMIT). The old cap of 3 (300 comments)
 // let a PR/issue that accrued >300 comments before LoopOver's own marker comment hide it from this search, so
@@ -33,6 +37,23 @@ export async function createOrUpdatePrIntelligenceComment(
   options: { createIfMissing?: boolean | undefined; mode?: AgentActionMode } = {},
 ): Promise<{ id: number; html_url?: string; changed: boolean } | null> {
   return createOrUpdateIssueCommentWithMarker(env, installationId, repoFullName, pullNumber, body, PR_INTELLIGENCE_COMMENT_MARKER, options);
+}
+
+/** The PR-closed maintainer-notify follow-up comment (#7372, review.visual.bugAnalysisNotify) — its own
+ *  comment thread, separate from the sticky PR panel above. `createOrUpdate` (not create-only) so a PR that
+ *  cycles closed -> reopened -> closed again with a DIFFERENT set of unrelated findings the second time
+ *  updates the same comment instead of posting a confusing duplicate; a same-body repeat (a retried `closed`
+ *  webhook delivery) is a genuine no-op via the same byte-identical-body skip every other marker comment here
+ *  already gets. */
+export async function createOrUpdateVisualFollowupComment(
+  env: Env,
+  installationId: number,
+  repoFullName: string,
+  pullNumber: number,
+  body: string,
+  mode: AgentActionMode = "live",
+): Promise<{ id: number; html_url?: string; changed: boolean } | null> {
+  return createOrUpdateIssueCommentWithMarker(env, installationId, repoFullName, pullNumber, body, VISUAL_FOLLOWUP_COMMENT_MARKER, { mode });
 }
 
 export async function createOrUpdateAgentCommandComment(
@@ -144,6 +165,12 @@ async function deleteDuplicateMarkerComments(
   );
 }
 
-function markerAliases(_marker: string): string[] {
-  return [PR_PANEL_COMMENT_MARKER, LEGACY_PR_INTELLIGENCE_COMMENT_MARKER, LEGACY_AGENT_COMMAND_COMMENT_MARKER];
+// #7372: only PR_PANEL_COMMENT_MARKER (and its two legacy predecessors) collapse into one shared search set —
+// PR_INTELLIGENCE_COMMENT_MARKER/AGENT_COMMAND_COMMENT_MARKER are literally that SAME string value (see their
+// `= PR_PANEL_COMMENT_MARKER` aliases above), so this preserves their existing behavior exactly. Any OTHER
+// marker (e.g. VISUAL_FOLLOWUP_COMMENT_MARKER) searches for itself alone — collapsing it into the panel's own
+// alias set here would make createOrUpdateIssueCommentWithMarker find and PATCH the sticky PANEL comment
+// instead of that marker's own comment thread, silently corrupting it.
+function markerAliases(marker: string): string[] {
+  return marker === PR_PANEL_COMMENT_MARKER ? [PR_PANEL_COMMENT_MARKER, LEGACY_PR_INTELLIGENCE_COMMENT_MARKER, LEGACY_AGENT_COMMAND_COMMENT_MARKER] : [marker];
 }

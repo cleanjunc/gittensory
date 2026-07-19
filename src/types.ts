@@ -500,6 +500,14 @@ export type AdvisoryFinding = {
    *  no model confidence); an absent/unparseable reviewer confidence degrades to 1.0 upstream, so omitting it here
    *  behaves exactly like an at-or-above-floor confidence. */
   confidence?: number;
+  /** Public-safe screenshot evidence for a `visual_regression_finding` / `visual_unrelated_issue_finding`
+   *  (`review.visual.bugAnalysis`) — the SAME shot URLs already rendered in the "Visual preview" collapsible,
+   *  carried alongside the finding (not just referenced by route path) so a later consumer — the PR-closed
+   *  maintainer-notify follow-up comment — can embed them directly without re-deriving from the capture
+   *  routes, which are never re-fetched at close time and may reference an expired/rotated preview deploy by
+   *  then. Absent for every non-visual finding, and for a visual finding whose route carried no shot URL at
+   *  all (a capture failure — nothing to show). */
+  visualEvidence?: { path: string; beforeUrl?: string; afterUrl?: string };
 };
 
 export type Advisory = {

@@ -744,6 +744,13 @@ review:
 #     # rather than reading like something this PR broke). Never a gate blocker either way. Bool. Default:
 #     # false (the original regression-only prompt, no PR context sent, byte-identical to pre-bugAnalysis).
 #     bug_analysis: false
+#     # GitHub logins to @-mention on the standalone follow-up comment posted when a PR with a recorded
+#     # "unrelated" bug_analysis finding above is merged OR closed — describes each finding with its before/
+#     # after screenshots, formatted so GitHub's own "..." -> "Reference in new issue" action can spin one off
+#     # in one click. List of strings. Default: [] (empty) -- NOT hardcoded to a specific user; falls back at
+#     # RUNTIME to this repo's owner + the ADMIN_GITHUB_LOGINS fleet-operator allowlist, the same "maintainer"
+#     # resolution used elsewhere. Capped at 10 entries. (#7372)
+#     bug_analysis_notify: []
 #   # Maintainer overrides for the public review-panel CONTENT (not what loopover measures). The
 #   # Gittensor attribution + register link is always appended to the footer regardless; maintainer text
 #   # failing the public-safe filter is dropped, never published.

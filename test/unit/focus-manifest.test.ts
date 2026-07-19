@@ -4863,6 +4863,7 @@ describe("review.visual (#3609 preview.url_template / #3610 routes)", () => {
       themeStorageKey: null,
       actionsFallback: false,
       bugAnalysis: false,
+      bugAnalysisNotify: [],
       interactions: [],
     });
     expect(m.review.present).toBe(true);
@@ -4959,7 +4960,7 @@ describe("review.visual (#3609 preview.url_template / #3610 routes)", () => {
   it("resolveReviewVisualConfig: null manifest yields empty defaults; a set manifest passes through", () => {
     expect(resolveReviewVisualConfig(null)).toEqual({ ...EMPTY_VISUAL_CONFIG });
     const manifest = parseFocusManifest({ review: { visual: { routes: { paths: ["/app"] } } } });
-    expect(resolveReviewVisualConfig(manifest)).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: ["/app"], maxRoutes: null }, themes: [], gif: false, enabled: null, themeStorageKey: null, actionsFallback: false, bugAnalysis: false, interactions: [] });
+    expect(resolveReviewVisualConfig(manifest)).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: ["/app"], maxRoutes: null }, themes: [], gif: false, enabled: null, themeStorageKey: null, actionsFallback: false, bugAnalysis: false, bugAnalysisNotify: [], interactions: [] });
   });
 });
 
@@ -5105,7 +5106,7 @@ describe("review.visual.gif (#3612 scroll-through GIF capture)", () => {
 
   it("composes with themes — both configured independently and both round-trip", () => {
     const m = parseFocusManifest({ review: { visual: { gif: true, themes: ["dark"] } } });
-    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: ["dark"], gif: true, enabled: null, themeStorageKey: null, actionsFallback: false, bugAnalysis: false, interactions: [] });
+    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: ["dark"], gif: true, enabled: null, themeStorageKey: null, actionsFallback: false, bugAnalysis: false, bugAnalysisNotify: [], interactions: [] });
     expect(reviewConfigToJson(m.review)).toEqual({ visual: { themes: ["dark"], gif: true } });
   });
 
@@ -5208,7 +5209,7 @@ describe("review.visual.theme_storage_key (#4109 localStorage theme-forcing fall
 
   it("composes with themes — both configured independently and both round-trip", () => {
     const m = parseFocusManifest({ review: { visual: { themes: ["dark"], theme_storage_key: "theme" } } });
-    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: ["dark"], gif: false, enabled: null, themeStorageKey: "theme", actionsFallback: false, bugAnalysis: false, interactions: [] });
+    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: ["dark"], gif: false, enabled: null, themeStorageKey: "theme", actionsFallback: false, bugAnalysis: false, bugAnalysisNotify: [], interactions: [] });
     expect(reviewConfigToJson(m.review)).toEqual({ visual: { themes: ["dark"], theme_storage_key: "theme" } });
   });
 
@@ -5263,7 +5264,7 @@ describe("review.visual.actions_fallback (#4112 GitHub-Actions build-and-serve f
 
   it("composes with gif — both configured independently and both round-trip", () => {
     const m = parseFocusManifest({ review: { visual: { actions_fallback: true, gif: true } } });
-    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: [], gif: true, enabled: null, themeStorageKey: null, actionsFallback: true, bugAnalysis: false, interactions: [] });
+    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: [], gif: true, enabled: null, themeStorageKey: null, actionsFallback: true, bugAnalysis: false, bugAnalysisNotify: [], interactions: [] });
     expect(reviewConfigToJson(m.review)).toEqual({ visual: { gif: true, actions_fallback: true } });
   });
 
@@ -5318,7 +5319,7 @@ describe("review.visual.bugAnalysis (PR-intent-aware vision + out-of-scope issue
 
   it("composes with gif — both configured independently and both round-trip", () => {
     const m = parseFocusManifest({ review: { visual: { bug_analysis: true, gif: true } } });
-    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: [], gif: true, enabled: null, themeStorageKey: null, actionsFallback: false, bugAnalysis: true, interactions: [] });
+    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: [], gif: true, enabled: null, themeStorageKey: null, actionsFallback: false, bugAnalysis: true, bugAnalysisNotify: [], interactions: [] });
     expect(reviewConfigToJson(m.review)).toEqual({ visual: { gif: true, bug_analysis: true } });
   });
 
@@ -5337,6 +5338,69 @@ describe("review.visual.bugAnalysis (PR-intent-aware vision + out-of-scope issue
     const globalDefault = parseReviewConfigMapping({ visual: { bug_analysis: true } }, []);
     const perRepo = parseReviewConfigMapping({ visual: { routes: { paths: ["/app"] } } }, []);
     expect(overlayReviewConfig(globalDefault, perRepo).visual.bugAnalysis).toBe(true);
+    expect(overlayReviewConfig(globalDefault, perRepo).visual.routes.paths).toEqual(["/app"]);
+  });
+});
+
+describe("review.visual.bugAnalysisNotify (#7372: maintainer-tagging PR-closed follow-up)", () => {
+  it("parses a list of logins, marks present, and round-trips", () => {
+    const m = parseFocusManifest({ review: { visual: { bug_analysis_notify: ["jsonbored", "octocat"] } } });
+    expect(m.review.visual.bugAnalysisNotify).toEqual(["jsonbored", "octocat"]);
+    expect(m.review.present).toBe(true);
+    expect(reviewConfigToJson(m.review)).toEqual({ visual: { bug_analysis_notify: ["jsonbored", "octocat"] } });
+  });
+
+  it("absent bug_analysis_notify defaults to [] and does not mark review present on its own — the runtime maintainer fallback is NOT baked into the manifest default", () => {
+    expect(parseFocusManifest({}).review.visual.bugAnalysisNotify).toEqual([]);
+    expect(parseFocusManifest({ review: { visual: {} } }).review.present).toBe(false);
+  });
+
+  it("bug_analysis_notify: [] does not mark review present, so the whole review block round-trips to null", () => {
+    const m = parseFocusManifest({ review: { visual: { bug_analysis_notify: [] } } });
+    expect(m.review.visual.bugAnalysisNotify).toEqual([]);
+    expect(reviewConfigToJson(m.review)).toBeNull();
+  });
+
+  it("warns and drops the whole list when review.visual.bug_analysis_notify is not an array", () => {
+    const bad = parseFocusManifest({ review: { visual: { bug_analysis_notify: "jsonbored" } } });
+    expect(bad.review.visual.bugAnalysisNotify).toEqual([]);
+    expect(bad.warnings.some((w) => /review\.visual\.bug_analysis_notify.*must be a list of GitHub logins/.test(w))).toBe(true);
+  });
+
+  it("strips a leading '@', lowercases, and dedupes case-insensitively", () => {
+    const m = parseFocusManifest({ review: { visual: { bug_analysis_notify: ["@JSONbored", "jsonbored", "Octocat"] } } });
+    expect(m.review.visual.bugAnalysisNotify).toEqual(["jsonbored", "octocat"]);
+  });
+
+  it("warns and drops an entry that isn't a valid GitHub login (blank, non-string, or invalid characters)", () => {
+    const bad = parseFocusManifest({ review: { visual: { bug_analysis_notify: ["", 42, "-leading-hyphen", "trailing-hyphen-", "valid-login"] } } });
+    expect(bad.review.visual.bugAnalysisNotify).toEqual(["valid-login"]);
+    expect(bad.warnings.filter((w) => /review\.visual\.bug_analysis_notify\[\d+\].*must be a valid GitHub login/.test(w))).toHaveLength(4);
+  });
+
+  it("caps the manifest-level list at MAX_VISUAL_BUG_ANALYSIS_NOTIFY (10), warning about the rest", () => {
+    const logins = Array.from({ length: 12 }, (_, i) => `user-${i}`);
+    const m = parseFocusManifest({ review: { visual: { bug_analysis_notify: logins } } });
+    expect(m.review.visual.bugAnalysisNotify).toHaveLength(10);
+    expect(m.review.visual.bugAnalysisNotify).toEqual(logins.slice(0, 10));
+    expect(m.warnings.some((w) => /review\.visual\.bug_analysis_notify.*capped at 10 entries/.test(w))).toBe(true);
+  });
+
+  it("resolveReviewVisualConfig passes a configured bug_analysis_notify list through", () => {
+    const manifest = parseFocusManifest({ review: { visual: { bug_analysis_notify: ["jsonbored"] } } });
+    expect(resolveReviewVisualConfig(manifest).bugAnalysisNotify).toEqual(["jsonbored"]);
+  });
+
+  it("overlay: a per-repo bug_analysis_notify list wins over a global-default list", () => {
+    const globalDefault = parseReviewConfigMapping({ visual: { bug_analysis_notify: ["global-maintainer"] } }, []);
+    const perRepo = parseReviewConfigMapping({ visual: { bug_analysis_notify: ["repo-maintainer"] } }, []);
+    expect(overlayReviewConfig(globalDefault, perRepo).visual.bugAnalysisNotify).toEqual(["repo-maintainer"]);
+  });
+
+  it("overlay: an unset per-repo bug_analysis_notify falls back to the global-default list — this is how the operator sets it fleet-wide from the global-default .loopover.yml", () => {
+    const globalDefault = parseReviewConfigMapping({ visual: { bug_analysis_notify: ["global-maintainer"] } }, []);
+    const perRepo = parseReviewConfigMapping({ visual: { routes: { paths: ["/app"] } } }, []);
+    expect(overlayReviewConfig(globalDefault, perRepo).visual.bugAnalysisNotify).toEqual(["global-maintainer"]);
     expect(overlayReviewConfig(globalDefault, perRepo).visual.routes.paths).toEqual(["/app"]);
   });
 });

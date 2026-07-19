@@ -1004,6 +1004,14 @@ export type VisualConfig = {
    *  new issue for it). false (default, every existing manifest) ⇒ byte-identical to today: the original
    *  regression-only prompt, no PR context sent, no "unrelated" finding category ever produced. */
   bugAnalysis: boolean;
+  /** `review.visual.bugAnalysisNotify` (#7372): GitHub logins to @-mention on the standalone follow-up
+   *  comment posted when a PR with recorded `visual_unrelated_issue_finding` advisory findings is merged or
+   *  closed — a maintainer-tagging, screenshot-carrying digest formatted so GitHub's own "..." → "Reference in
+   *  new issue" action can spin one off in one click. Empty (default, every existing manifest) ⇒ falls back
+   *  to the repo owner + the `ADMIN_GITHUB_LOGINS` fleet-operator allowlist at RUNTIME (the same "maintainer"
+   *  resolution `linked-issue-label-propagation-fetch.ts` already uses) — deliberately never a literal
+   *  hardcoded username baked into this manifest field's own default. */
+  bugAnalysisNotify: readonly string[];
   /** `review.visual.interactions`: specific elements to interact with and capture as animated evidence
    *  (hover/click) — for behavior a static screenshot can't show that isn't scroll-linked (see `gif` above
    *  for scroll-linked evidence). Empty (default) ⇒ byte-identical to today, no interaction capture. */
@@ -1078,6 +1086,7 @@ export const EMPTY_VISUAL_CONFIG: VisualConfig = {
   themeStorageKey: null,
   actionsFallback: false,
   bugAnalysis: false,
+  bugAnalysisNotify: [],
   interactions: [],
 };
 
@@ -2985,6 +2994,7 @@ function overlayVisualConfig(base: VisualConfig, override: VisualConfig): Visual
     themeStorageKey: pickOverlayNullable(override.themeStorageKey, base.themeStorageKey),
     actionsFallback: override.actionsFallback ? override.actionsFallback : base.actionsFallback,
     bugAnalysis: override.bugAnalysis ? override.bugAnalysis : base.bugAnalysis,
+    bugAnalysisNotify: pickOverlayStringList(override.bugAnalysisNotify, base.bugAnalysisNotify),
     interactions: override.interactions.length > 0 ? [...override.interactions] : [...base.interactions],
   };
 }
@@ -3192,6 +3202,7 @@ function visualConfigPresent(config: VisualConfig): boolean {
     config.themeStorageKey !== null ||
     config.actionsFallback ||
     config.bugAnalysis ||
+    config.bugAnalysisNotify.length > 0 ||
     config.interactions.length > 0
   );
 }
@@ -3294,9 +3305,49 @@ function parseVisualConfig(value: JsonValue | undefined, warnings: string[]): Vi
   const themeStorageKey = parsePublicSafeText(record.theme_storage_key, "review.visual.theme_storage_key", warnings);
   const actionsFallback = normalizeOptionalBoolean(record.actions_fallback, "review.visual.actions_fallback", warnings) === true;
   const bugAnalysis = normalizeOptionalBoolean(record.bug_analysis, "review.visual.bug_analysis", warnings) === true;
+  const bugAnalysisNotify = parseVisualBugAnalysisNotify(record.bug_analysis_notify, warnings);
   const interactions = parseVisualInteractions(record.interactions, warnings);
 
-  return { productionUrl, preview: { urlTemplate }, routes: { paths, maxRoutes }, themes, gif, enabled, themeStorageKey, actionsFallback, bugAnalysis, interactions };
+  return { productionUrl, preview: { urlTemplate }, routes: { paths, maxRoutes }, themes, gif, enabled, themeStorageKey, actionsFallback, bugAnalysis, bugAnalysisNotify, interactions };
+}
+
+// A hard cap so a hostile/huge manifest can't turn every PR close into a giant @-mention blast — mirrors
+// MAX_VISUAL_INTERACTIONS's "bound the list, don't fail the whole manifest" reasoning, sized generously since
+// a login is cheap to store/render (unlike an interaction capture) but a maintainer list this large would be
+// a config mistake either way.
+const MAX_VISUAL_BUG_ANALYSIS_NOTIFY = 10;
+// Standard GitHub username shape: alphanumeric + single hyphens, never starting/ending with one, 1-39 chars.
+const GITHUB_LOGIN_PATTERN = /^[a-zA-Z\d](?:[a-zA-Z\d]|-(?=[a-zA-Z\d])){0,38}$/;
+
+/** Parse `review.visual.bug_analysis_notify` (#7372) — GitHub logins to @-mention on the PR-closed
+ *  maintainer-notify follow-up comment. A non-list, non-string, or malformed-login entry is dropped with a
+ *  warning rather than failing the whole list, same as every other manifest array here. Case-insensitively
+ *  deduped and lowercased (GitHub logins are case-insensitive; storing one canonical case avoids the same
+ *  maintainer appearing twice under different casing across the global-default + per-repo overlay). */
+function parseVisualBugAnalysisNotify(value: JsonValue | undefined, warnings: string[]): string[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) {
+    warnings.push(`Manifest "review.visual.bug_analysis_notify" must be a list of GitHub logins; ignoring it.`);
+    return [];
+  }
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const [index, entry] of value.entries()) {
+    if (out.length >= MAX_VISUAL_BUG_ANALYSIS_NOTIFY) {
+      warnings.push(`Manifest "review.visual.bug_analysis_notify" is capped at ${MAX_VISUAL_BUG_ANALYSIS_NOTIFY} entries; dropping the rest.`);
+      break;
+    }
+    const raw = typeof entry === "string" ? entry.trim().replace(/^@/, "") : "";
+    if (!raw || !GITHUB_LOGIN_PATTERN.test(raw)) {
+      warnings.push(`Manifest "review.visual.bug_analysis_notify[${index}]" must be a valid GitHub login; ignoring it.`);
+      continue;
+    }
+    const login = raw.toLowerCase();
+    if (seen.has(login)) continue;
+    seen.add(login);
+    out.push(login);
+  }
+  return out;
 }
 
 const VISUAL_INTERACTION_ACTION_VALUES: readonly VisualInteractionAction[] = ["hover", "click", "drag"];
@@ -3660,6 +3711,7 @@ export function reviewConfigToJson(review: FocusManifestReviewConfig): JsonValue
     if (review.visual.themeStorageKey !== null) visual.theme_storage_key = review.visual.themeStorageKey;
     if (review.visual.actionsFallback) visual.actions_fallback = true;
     if (review.visual.bugAnalysis) visual.bug_analysis = true;
+    if (review.visual.bugAnalysisNotify.length > 0) visual.bug_analysis_notify = [...review.visual.bugAnalysisNotify];
     if (review.visual.interactions.length > 0) {
       visual.interactions = review.visual.interactions.map((interaction) => {
         const entry: Record<string, JsonValue> = { selector: interaction.selector, action: interaction.action };

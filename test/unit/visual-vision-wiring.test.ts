@@ -344,6 +344,7 @@ describe("runVisualVisionForAdvisory", () => {
         title: "Possible visual regression: /app",
         detail: "The submit button is clipped on the right edge.",
         action: "Advisory only — verify against the Visual preview screenshots before deciding.",
+        visualEvidence: { path: "/app", beforeUrl: "https://x/loopover/shot?key=before-desktop", afterUrl: "https://x/loopover/shot?key=after-desktop" },
       },
     ]);
   });
@@ -383,6 +384,7 @@ describe("runVisualVisionForAdvisory", () => {
         title: "Possible visual regression: /app",
         detail: "Broke.",
         action: "Advisory only — verify against the Visual preview screenshots before deciding.",
+        visualEvidence: { path: "/app", beforeUrl: "https://x/loopover/shot?key=b", afterUrl: "https://x/loopover/shot?key=a" },
       },
     ]);
   });
@@ -428,6 +430,7 @@ describe("runVisualVisionForAdvisory", () => {
         title: "Possible visual regression: /app",
         detail: "This PR's own change clipped the submit button.",
         action: "Advisory only — verify against the Visual preview screenshots before deciding.",
+        visualEvidence: { path: "/app", beforeUrl: "https://x/loopover/shot?key=b", afterUrl: "https://x/loopover/shot?key=a" },
       },
       {
         code: "visual_unrelated_issue_finding",
@@ -435,6 +438,7 @@ describe("runVisualVisionForAdvisory", () => {
         title: "Possible unrelated visual issue: /app",
         detail: "The footer logo is stretched, unrelated to this change.",
         action: "Advisory only — this doesn't look related to this PR's stated change. Consider opening a new issue to track it separately.",
+        visualEvidence: { path: "/app", beforeUrl: "https://x/loopover/shot?key=b", afterUrl: "https://x/loopover/shot?key=a" },
       },
     ]);
   });
@@ -683,6 +687,7 @@ describe("runVisualVisionForAdvisory: self-host local vision provider (#4335)", 
         title: "Possible visual regression: /app",
         detail: "Nav bar overlaps the logo on the AFTER screenshot.",
         action: "Advisory only — verify against the Visual preview screenshots before deciding.",
+        visualEvidence: { path: "/app", beforeUrl: "https://x/loopover/shot?key=before", afterUrl: "https://x/loopover/shot?key=after" },
       },
     ]);
   });

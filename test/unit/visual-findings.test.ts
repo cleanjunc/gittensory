@@ -286,6 +286,77 @@ describe("buildVisualRegressionFindings", () => {
     ]);
     expect(findings.map((f) => f.code)).toEqual([VISUAL_REGRESSION_FINDING_CODE, VISUAL_UNRELATED_ISSUE_FINDING_CODE]);
   });
+
+  describe("visualEvidence (#7372: screenshot evidence for the PR-closed maintainer-notify follow-up)", () => {
+    it("attaches the matching route's before/after shot URLs by path", () => {
+      const findings = buildVisualRegressionFindings([{ path: "/pricing", body: "Broke." }], [changedRoute("/pricing")]);
+      expect(findings[0]?.visualEvidence).toEqual({
+        path: "/pricing",
+        beforeUrl: "https://api.example.dev/loopover/shot?key=before-/pricing",
+        afterUrl: "https://api.example.dev/loopover/shot?key=after-/pricing",
+      });
+    });
+
+    it("omits visualEvidence entirely when no route argument is passed (pre-#7372 call sites stay byte-identical)", () => {
+      const findings = buildVisualRegressionFindings([{ path: "/pricing", body: "Broke." }]);
+      expect(findings[0]).not.toHaveProperty("visualEvidence");
+    });
+
+    it("omits visualEvidence when no route matches the finding's path", () => {
+      const findings = buildVisualRegressionFindings([{ path: "/pricing", body: "Broke." }], [changedRoute("/footer")]);
+      expect(findings[0]).not.toHaveProperty("visualEvidence");
+    });
+
+    it("omits visualEvidence when the matching route has neither a before nor an after URL", () => {
+      const findings = buildVisualRegressionFindings([{ path: "/pricing", body: "Broke." }], [{ path: "/pricing" }]);
+      expect(findings[0]).not.toHaveProperty("visualEvidence");
+    });
+
+    it("falls back to the mobile shot URLs when the desktop before/after URLs are absent", () => {
+      const findings = buildVisualRegressionFindings(
+        [{ path: "/pricing", body: "Broke." }],
+        [{ path: "/pricing", beforeUrlMobile: "https://api.example.dev/loopover/shot?key=before-mobile", afterUrlMobile: "https://api.example.dev/loopover/shot?key=after-mobile" }],
+      );
+      expect(findings[0]?.visualEvidence).toEqual({
+        path: "/pricing",
+        beforeUrl: "https://api.example.dev/loopover/shot?key=before-mobile",
+        afterUrl: "https://api.example.dev/loopover/shot?key=after-mobile",
+      });
+    });
+
+    it("omits afterUrl entirely (not an empty string) when only beforeUrl is available on the route", () => {
+      const findings = buildVisualRegressionFindings([{ path: "/pricing", body: "Broke." }], [{ path: "/pricing", beforeUrl: "https://api.example.dev/loopover/shot?key=before" }]);
+      expect(findings[0]?.visualEvidence).toEqual({ path: "/pricing", beforeUrl: "https://api.example.dev/loopover/shot?key=before" });
+      expect(findings[0]?.visualEvidence).not.toHaveProperty("afterUrl");
+    });
+
+    it("omits beforeUrl entirely (not an empty string) when only afterUrl is available on the route", () => {
+      const findings = buildVisualRegressionFindings([{ path: "/pricing", body: "Broke." }], [{ path: "/pricing", afterUrl: "https://api.example.dev/loopover/shot?key=after" }]);
+      expect(findings[0]?.visualEvidence).toEqual({ path: "/pricing", afterUrl: "https://api.example.dev/loopover/shot?key=after" });
+      expect(findings[0]?.visualEvidence).not.toHaveProperty("beforeUrl");
+    });
+
+    it("attaches evidence to an 'unrelated' finding just the same as a 'regression' one", () => {
+      const findings = buildVisualRegressionFindings([{ path: "/footer", body: "Pre-existing stretched logo.", category: "unrelated" }], [changedRoute("/footer")]);
+      expect(findings[0]?.visualEvidence).toEqual({
+        path: "/footer",
+        beforeUrl: "https://api.example.dev/loopover/shot?key=before-/footer",
+        afterUrl: "https://api.example.dev/loopover/shot?key=after-/footer",
+      });
+    });
+
+    it("matches each finding against its OWN path in a mixed multi-route list, not just the first route", () => {
+      const findings = buildVisualRegressionFindings(
+        [
+          { path: "/pricing", body: "Broke A.", category: "regression" },
+          { path: "/footer", body: "Broke B.", category: "unrelated" },
+        ],
+        [changedRoute("/pricing"), changedRoute("/footer")],
+      );
+      expect(findings[0]?.visualEvidence?.path).toBe("/pricing");
+      expect(findings[1]?.visualEvidence?.path).toBe("/footer");
+    });
+  });
 });
 
 describe("REGRESSION (#4111): a visual-regression finding can NEVER become a gate blocker", () => {

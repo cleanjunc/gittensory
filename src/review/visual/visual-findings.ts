@@ -198,6 +198,19 @@ export function parseVisualVisionResponse(text: string): VisualVisionFinding[] {
   return out;
 }
 
+/** Find the captured route `finding.path` refers to and lift its public shot URLs into a finding's
+ *  `visualEvidence` (#7372: the PR-closed maintainer-notify follow-up comment embeds these directly, without
+ *  re-deriving them from the capture routes at close time). No match, or a route with neither a before nor
+ *  an after URL at all, ⇒ undefined (omit the field entirely) rather than an evidence-less placeholder. */
+function findVisualEvidence(path: string, routes: readonly CaptureRoute[]): AdvisoryFinding["visualEvidence"] {
+  const route = routes.find((candidate) => candidate.path === path);
+  if (!route) return undefined;
+  const beforeUrl = route.beforeUrl || route.beforeUrlMobile || undefined;
+  const afterUrl = route.afterUrl || route.afterUrlMobile || undefined;
+  if (!beforeUrl && !afterUrl) return undefined;
+  return { path, ...(beforeUrl ? { beforeUrl } : {}), ...(afterUrl ? { afterUrl } : {}) };
+}
+
 /** Build the ADVISORY-ONLY findings for the unified comment (#4111 / `review.visual.bugAnalysis`) — one per
  *  vision observation, feeding the SAME `advisory.findings` pipeline `ai_consensus_defect`/`ai_review_split`
  *  already ride (see this file's header for why neither finding code can ever become a blocker).
@@ -205,16 +218,21 @@ export function parseVisualVisionResponse(text: string): VisualVisionFinding[] {
  *  carries `"warning"`-severity findings into `gate.warnings` at all, so anything else would silently vanish
  *  from the rendered comment. An `"unrelated"`-category finding (only ever produced by
  *  {@link VISUAL_BUG_ANALYSIS_SYSTEM_PROMPT}) gets its own code + a distinct message suggesting the observer
- *  open a separate issue, since it is — by construction — not this PR's fault and must never read like one. */
-export function buildVisualRegressionFindings(findings: readonly VisualVisionFinding[]): AdvisoryFinding[] {
-  return findings.map((finding) =>
-    finding.category === "unrelated"
+ *  open a separate issue, since it is — by construction — not this PR's fault and must never read like one.
+ *  `routes` (#7372) is the SAME capture-route list the vision call was built from — used only to attach
+ *  `visualEvidence` (screenshot URLs) to each finding; passing `[]` (or routes with no matching path) is safe
+ *  and simply omits evidence, matching this function's pre-#7372 behavior exactly. */
+export function buildVisualRegressionFindings(findings: readonly VisualVisionFinding[], routes: readonly CaptureRoute[] = []): AdvisoryFinding[] {
+  return findings.map((finding) => {
+    const visualEvidence = findVisualEvidence(finding.path, routes);
+    return finding.category === "unrelated"
       ? {
           code: VISUAL_UNRELATED_ISSUE_FINDING_CODE,
           severity: "warning",
           title: `Possible unrelated visual issue: ${finding.path}`,
           detail: finding.body,
           action: "Advisory only — this doesn't look related to this PR's stated change. Consider opening a new issue to track it separately.",
+          ...(visualEvidence ? { visualEvidence } : {}),
         }
       : {
           code: VISUAL_REGRESSION_FINDING_CODE,
@@ -222,6 +240,7 @@ export function buildVisualRegressionFindings(findings: readonly VisualVisionFin
           title: `Possible visual regression: ${finding.path}`,
           detail: finding.body,
           action: "Advisory only — verify against the Visual preview screenshots before deciding.",
-        },
-  );
+          ...(visualEvidence ? { visualEvidence } : {}),
+        };
+  });
 }

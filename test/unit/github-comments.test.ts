@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createOrUpdatePrIntelligenceComment, PR_INTELLIGENCE_COMMENT_MARKER } from "../../src/github/comments";
+import { createOrUpdatePrIntelligenceComment, createOrUpdateVisualFollowupComment, PR_INTELLIGENCE_COMMENT_MARKER, VISUAL_FOLLOWUP_COMMENT_MARKER } from "../../src/github/comments";
 import { createTestEnv } from "../helpers/d1";
 
 describe("GitHub PR intelligence comments", () => {
@@ -421,6 +421,78 @@ describe("GitHub PR intelligence comments", () => {
 
   it("rejects invalid repository names before calling GitHub", async () => {
     await expect(createOrUpdatePrIntelligenceComment(createTestEnv(), 123, "invalid", 12, "body")).rejects.toThrow(/Invalid repository full name/);
+  });
+
+  describe("createOrUpdateVisualFollowupComment (#7372)", () => {
+    it("creates its OWN comment thread even when a sticky PR panel comment already exists — never finds/PATCHes it", async () => {
+      const privateKey = await generatePrivateKeyPem();
+      const calls: string[] = [];
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString();
+        const method = init?.method ?? "GET";
+        calls.push(`${method} ${url}`);
+        if (url.includes("/access_tokens")) return Response.json({ token: "installation-token" });
+        if (url.includes("/issues/12/comments") && method === "GET") {
+          // The sticky PR panel comment (a DIFFERENT marker) is present -- if markerAliases ever regressed
+          // back to ignoring its argument, this would be found as "canonical" and PATCHed, corrupting it.
+          return Response.json([{ id: 101, body: `${PR_INTELLIGENCE_COMMENT_MARKER}\nsticky panel`, user: { login: "loopover-orb[bot]", type: "Bot" } }]);
+        }
+        if (url.includes("/issues/12/comments") && method === "POST") {
+          const body = JSON.parse(String(init?.body ?? "{}")) as { body: string };
+          expect(body.body).toContain(VISUAL_FOLLOWUP_COMMENT_MARKER);
+          return Response.json({ id: 909, html_url: "https://github.com/comment/909" });
+        }
+        return new Response("not found", { status: 404 });
+      });
+
+      const result = await createOrUpdateVisualFollowupComment(
+        createTestEnv({ GITHUB_APP_PRIVATE_KEY: privateKey }),
+        123,
+        "JSONbored/gittensory",
+        12,
+        `@jsonbored — found something.\n\n${VISUAL_FOLLOWUP_COMMENT_MARKER}`,
+      );
+
+      expect(result?.id).toBe(909);
+      // A POST (new comment), never a PATCH against the sticky panel's id 101.
+      expect(calls.some((call) => call.startsWith("POST ") && call.includes("/issues/12/comments"))).toBe(true);
+      expect(calls.some((call) => call.includes("/issues/comments/101"))).toBe(false);
+    });
+
+    it("updates its OWN prior follow-up comment on a second close, without touching the sticky panel", async () => {
+      const privateKey = await generatePrivateKeyPem();
+      const calls: string[] = [];
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString();
+        const method = init?.method ?? "GET";
+        calls.push(`${method} ${url}`);
+        if (url.includes("/access_tokens")) return Response.json({ token: "installation-token" });
+        if (url.includes("/issues/12/comments") && method === "GET") {
+          return Response.json([
+            { id: 101, body: `${PR_INTELLIGENCE_COMMENT_MARKER}\nsticky panel`, user: { login: "loopover-orb[bot]", type: "Bot" } },
+            { id: 909, body: `@jsonbored — old finding.\n\n${VISUAL_FOLLOWUP_COMMENT_MARKER}`, user: { login: "loopover-orb[bot]", type: "Bot" } },
+          ]);
+        }
+        if (url.includes("/issues/comments/909") && method === "PATCH") {
+          const body = JSON.parse(String(init?.body ?? "{}")) as { body: string };
+          expect(body.body).toContain("new finding");
+          return Response.json({ id: 909, html_url: "https://github.com/comment/909" });
+        }
+        return new Response("not found", { status: 404 });
+      });
+
+      const result = await createOrUpdateVisualFollowupComment(
+        createTestEnv({ GITHUB_APP_PRIVATE_KEY: privateKey }),
+        123,
+        "JSONbored/gittensory",
+        12,
+        `@jsonbored — new finding.\n\n${VISUAL_FOLLOWUP_COMMENT_MARKER}`,
+      );
+
+      expect(result?.id).toBe(909);
+      expect(calls.some((call) => call.startsWith("PATCH ") && call.includes("/issues/comments/909"))).toBe(true);
+      expect(calls.some((call) => call.includes("/issues/comments/101"))).toBe(false);
+    });
   });
 
   it("rejects a malformed three-segment repository name instead of silently truncating it", async () => {

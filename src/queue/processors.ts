@@ -88,6 +88,7 @@ import {
   upsertIssueFromGitHub,
   upsertPullRequestFromGitHub,
   upsertRepositoryFromGitHub,
+  getLatestAdvisoryForPullRequest,
 } from "../db/repositories";
 import { renameRepositoryIdentity } from "../db/repo-identity-rename";
 import {
@@ -144,6 +145,7 @@ import {
   AGENT_COMMAND_COMMENT_MARKER,
   createOrUpdateAgentCommandComment,
   createOrUpdatePrIntelligenceComment,
+  createOrUpdateVisualFollowupComment,
   PR_PANEL_COMMENT_MARKER,
 } from "../github/comments";
 import {
@@ -467,6 +469,7 @@ import {
   VISUAL_BUG_ANALYSIS_SYSTEM_PROMPT,
   VISUAL_VISION_SYSTEM_PROMPT,
 } from "../review/visual/visual-findings";
+import { buildVisualFollowupComment, resolveVisualFollowupNotifyLogins } from "../review/visual/visual-followup";
 import { incr, observe, REVIEW_LATENCY_BUCKETS } from "../selfhost/metrics";
 import { withAdvisoryAiEnv } from "../selfhost/ai";
 import {
@@ -5806,11 +5809,17 @@ async function handlePullRequestWebhookEvent(
       });
       return true;
     }
-    const [repo, cachedOtherOpenPullRequests, { linkedIssueAuthorLogins, confirmedNoOpenLinkedIssue }] =
+    // #7372: read BEFORE buildPullRequestAdvisory/persistAdvisory below overwrite "most recent" with THIS
+    // pass's own fresh (visual-finding-less) advisory row -- the advisories table has no separate "current"
+    // column, so reading late would always see this pass's own bookkeeping write instead of the real prior
+    // review pass's recorded visual_unrelated_issue_finding. Gated on `closed` (the only action
+    // maybePostVisualFollowupComment ever fires for) so every other action skips this read entirely.
+    const [repo, cachedOtherOpenPullRequests, { linkedIssueAuthorLogins, confirmedNoOpenLinkedIssue }, priorAdvisoryForVisualFollowup] =
       await Promise.all([
         getRepository(env, repoFullName),
         listOtherOpenPullRequests(env, repoFullName, pr.number),
         resolveLinkedIssueAdvisoryContext(env, installationId, repoFullName, pr.linkedIssues, settings),
+        payload.action === "closed" && installationId ? getLatestAdvisoryForPullRequest(env, repoFullName, pr.number) : Promise.resolve(null),
       ]);
     // #dup-winner / audit #15: drop any cached-open duplicate sibling already closed on GitHub before the
     // advisory (and the disposition) elect the cluster winner, so the real lowest-OPEN PR is never auto-closed.
@@ -5864,6 +5873,14 @@ async function handlePullRequestWebhookEvent(
         payload,
         settings,
       );
+    }
+    // PR-closed maintainer-notify follow-up (#7372, review.visual.bugAnalysisNotify): fires on EITHER a
+    // genuine merge OR an ordinary close -- unlike maybeEnqueueSiblingRegateForMergedPr above, this is NOT
+    // merge-only, since an "unrelated" visual finding is just as real and just as easy to lose track of
+    // either way. Independent of every review-evasion/draft-dodge guard around it; those enforce close
+    // POLICY, this just makes sure an already-recorded advisory finding gets one last chance to be seen.
+    if (payload.action === "closed" && installationId) {
+      await maybePostVisualFollowupComment(env, installationId, repoFullName, pr.number, priorAdvisoryForVisualFollowup);
     }
     // Draft-dodge guard (#converted-to-draft): a contributor converting an OPEN PR to draft cannot use
     // draft state to keep a gate-rejected PR alive. When a prior gate failure exists for the PR's current
@@ -7416,7 +7433,7 @@ export async function runVisualVisionForAdvisory(
       }
     }
     const visionFindings = parseVisualVisionResponse(visionText);
-    const findings = buildVisualRegressionFindings(visionFindings);
+    const findings = buildVisualRegressionFindings(visionFindings, args.routes);
     args.advisory.findings.push(...findings);
     await recordVisualVisionUsage(
       env,
@@ -7462,6 +7479,48 @@ async function recordVisualVisionUsage(
     detail,
     metadata: { repoFullName: args.repoFullName, pullNumber: args.pr.number },
   });
+}
+
+/**
+ * PR-closed maintainer-notify follow-up (#7372, review.visual.bugAnalysisNotify): when a PR closes (merged
+ * OR not -- either outcome leaves the same unrelated-but-real issue behind, so this is not merge-only) and its
+ * last recorded advisory (`priorAdvisory`, read by the caller BEFORE this same webhook pass's own
+ * `buildPullRequestAdvisory`/`persistAdvisory` calls overwrite "most recent" -- see the call site's own
+ * comment for why that ordering matters) carried at least one `visual_unrelated_issue_finding`, post a
+ * standalone comment describing each one with its screenshot evidence, @-mentioning the configured (or
+ * default-maintainer) notify list. Gated on `review.visual.bugAnalysis` being on for this repo -- off (the
+ * default) means no unrelated finding was ever produced in the first place, so this is a cheap no-op for
+ * every repo that hasn't opted in. `createOrUpdateVisualFollowupComment` is itself idempotent (its own
+ * marker, create-or-update, byte-identical-body skip), so a retried "closed" delivery is a safe no-op rather
+ * than a duplicate post. Best-effort: any failure here is logged and swallowed, never lets a comment-posting
+ * error block or retry the rest of this webhook delivery.
+ */
+async function maybePostVisualFollowupComment(
+  env: Env,
+  installationId: number,
+  repoFullName: string,
+  pullNumber: number,
+  priorAdvisory: { findings: AdvisoryFinding[] } | null,
+): Promise<void> {
+  try {
+    if (!priorAdvisory || priorAdvisory.findings.length === 0) return;
+    const visualConfig = await resolveVisualCaptureConfig(env, repoFullName);
+    if (!visualConfig.bugAnalysis) return;
+    const { owner } = repoParts(repoFullName);
+    const notifyLogins = resolveVisualFollowupNotifyLogins(visualConfig.bugAnalysisNotify, owner, parseGitHubLoginList(env.ADMIN_GITHUB_LOGINS));
+    const body = buildVisualFollowupComment(priorAdvisory.findings, notifyLogins);
+    if (!body) return;
+    await createOrUpdateVisualFollowupComment(env, installationId, repoFullName, pullNumber, body);
+  } catch (error) {
+    console.log(
+      JSON.stringify({
+        event: "visual_followup_comment_error",
+        repoFullName,
+        pullNumber,
+        message: errorMessage(error).slice(0, 200),
+      }),
+    );
+  }
 }
 
 async function recordScreenshotTableVisionUsage(

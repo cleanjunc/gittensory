@@ -58,6 +58,7 @@ import {
   recordReviewSuppression,
   listReviewSuppressions,
   setGlobalAgentFrozen,
+  persistAdvisory,
 } from "../../src/db/repositories";
 import { agentMaintenanceHeadMatchesGate, changedPathsForGuardrail, claimAiReviewLock, claimPrActuationLock, contributorEvidenceBatchSize, enrichOpenPullRequestsWithChangedFiles, processJob, reconcileLiveDuplicateSiblings, releaseAiReviewLock, releasePrActuationLock, reviewDurationMsSince, SWEEP_FANOUT_RESOLUTION_CONCURRENCY } from "../../src/queue/processors";
 import type { PullRequestRecord } from "../../src/types";
@@ -3699,6 +3700,269 @@ describe("queue processors", () => {
       isVisualDiffAvailableSpy.mockRestore();
       compareScreenshotsSpy.mockRestore();
     }
+  });
+
+  // review.visual.bugAnalysisNotify (#7372): threads from the real .loopover.yml raw-fetch through
+  // resolveVisualCaptureConfig -> maybePostVisualFollowupComment -> a standalone, @-mention, screenshot-
+  // carrying comment on the PR's REAL "closed" webhook action -- not merge-only (no merged_at on this
+  // fixture's pull_request payload). The advisory itself is persisted directly via persistAdvisory rather
+  // than re-driving a live vision-provider call (already proven end-to-end by the sibling wiring test above)
+  // -- this test isolates the NEW code this feature actually adds: the closed-webhook hook, the latest-
+  // advisory read, the default-maintainer fallback resolution, and the follow-up comment's own content.
+  it("posts a maintainer-notify follow-up comment with screenshots when a PR with an unrelated visual finding is closed (not merged)", async () => {
+    const env = createTestEnv({
+      GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(),
+      LOOPOVER_REVIEW_SCREENSHOTS: "true",
+    });
+    await persistRegistrySnapshot(
+      asCloudEnv(env),
+      normalizeRegistryPayload(
+        { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
+        { kind: "raw-github", url: "https://example.test" },
+        "2026-05-23T00:00:00.000Z",
+      ),
+    );
+    await upsertRepositorySettings(env, {
+      repoFullName: "JSONbored/gittensory",
+      autoLabelEnabled: false,
+      autonomy: { update_branch: "auto" },
+    });
+    // The PREVIOUS review pass (a synchronize this fixture doesn't re-drive) already recorded an unrelated
+    // visual finding for this PR — exactly the shape buildVisualRegressionFindings (visual-findings.ts)
+    // produces, screenshot evidence included.
+    await persistAdvisory(env, {
+      id: crypto.randomUUID(),
+      targetType: "pull_request",
+      targetKey: "JSONbored/gittensory#43",
+      repoFullName: "JSONbored/gittensory",
+      pullNumber: 43,
+      headSha: "closed123",
+      conclusion: "neutral",
+      severity: "warning",
+      title: "LoopOver advisory available",
+      summary: "1 advisory finding generated.",
+      findings: [
+        {
+          code: "visual_unrelated_issue_finding",
+          severity: "warning",
+          title: "Possible unrelated visual issue: /footer",
+          detail: "The footer logo is stretched, unrelated to this change.",
+          action: "Advisory only — this doesn't look related to this PR's stated change. Consider opening a new issue to track it separately.",
+          visualEvidence: { path: "/footer", beforeUrl: "https://api.example.dev/loopover/shot?key=before", afterUrl: "https://api.example.dev/loopover/shot?key=after" },
+        },
+      ],
+      generatedAt: "2026-05-23T00:00:00.000Z",
+    });
+    let followupCommentBody = "";
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      const method = init?.method ?? "GET";
+      if (url === "https://raw.githubusercontent.com/JSONbored/gittensory/HEAD/.loopover.yml") {
+        return new Response("review:\n  visual:\n    bug_analysis: true\n");
+      }
+      if (url.includes("/access_tokens")) {
+        return Response.json({ token: "installation-token", expires_at: "2026-05-28T00:04:00.000Z" });
+      }
+      if (url.includes("/issues/43/comments") && method === "GET") return Response.json([]);
+      if (url.includes("/issues/43/comments") && method === "POST") {
+        followupCommentBody = String((JSON.parse(String(init?.body ?? "{}")) as { body?: string }).body ?? "");
+        return Response.json({ id: 909, html_url: "https://github.com/comment/909" }, { status: 201 });
+      }
+      if (url.includes("/check-runs") && method === "GET") return Response.json({ total_count: 0, check_runs: [] });
+      if (url.includes("/check-runs") && method === "POST") return Response.json({ id: 901 }, { status: 201 });
+      return new Response("not found", { status: 404 });
+    });
+
+    await processJob(env, {
+      type: "github-webhook",
+      deliveryId: "pr-visual-followup-closed",
+      eventName: "pull_request",
+      payload: {
+        action: "closed",
+        installation: { id: 123, account: { login: "JSONbored", id: 1, type: "User" } },
+        repository: { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } },
+        // No merged_at — an ORDINARY close, not a merge, proving this fires on either outcome.
+        pull_request: { number: 43, title: "Add a footer redesign", state: "closed", user: { login: "contributor" }, head: { sha: "closed123" }, labels: [], body: "Fixes #1" },
+      },
+    });
+
+    // Default-maintainer fallback: no bug_analysis_notify configured, so the repo owner ("JSONbored",
+    // lowercased) is who gets @-mentioned — never a hardcoded username.
+    expect(followupCommentBody).toContain("@jsonbored");
+    expect(followupCommentBody).toContain("Possible unrelated visual issue: /footer");
+    expect(followupCommentBody).toContain("The footer logo is stretched, unrelated to this change.");
+    expect(followupCommentBody).toContain("![before](https://api.example.dev/loopover/shot?key=before)");
+    expect(followupCommentBody).toContain("![after](https://api.example.dev/loopover/shot?key=after)");
+    expect(followupCommentBody).toContain("Reference in new issue");
+    expect(followupCommentBody).toContain("<!-- loopover:visual-unrelated-followup -->");
+  });
+
+  it("does NOT post a follow-up comment on close when review.visual.bugAnalysis is off, even with a recorded unrelated finding (stale from before the operator turned it off)", async () => {
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_REVIEW_SCREENSHOTS: "true" });
+    await persistRegistrySnapshot(
+      asCloudEnv(env),
+      normalizeRegistryPayload(
+        { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
+        { kind: "raw-github", url: "https://example.test" },
+        "2026-05-23T00:00:00.000Z",
+      ),
+    );
+    await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", autoLabelEnabled: false, autonomy: { update_branch: "auto" } });
+    await persistAdvisory(env, {
+      id: crypto.randomUUID(),
+      targetType: "pull_request",
+      targetKey: "JSONbored/gittensory#44",
+      repoFullName: "JSONbored/gittensory",
+      pullNumber: 44,
+      headSha: "closed124",
+      conclusion: "neutral",
+      severity: "warning",
+      title: "LoopOver advisory available",
+      summary: "1 advisory finding generated.",
+      findings: [{ code: "visual_unrelated_issue_finding", severity: "warning", title: "Possible unrelated visual issue: /footer", detail: "Stale finding." }],
+      generatedAt: "2026-05-23T00:00:00.000Z",
+    });
+    let commentPosted = false;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      const method = init?.method ?? "GET";
+      if (url === "https://raw.githubusercontent.com/JSONbored/gittensory/HEAD/.loopover.yml") return new Response("settings: {}\n");
+      if (url.includes("/access_tokens")) return Response.json({ token: "installation-token", expires_at: "2026-05-28T00:04:00.000Z" });
+      if (url.includes("/issues/44/comments") && method === "GET") return Response.json([]);
+      if (url.includes("/issues/44/comments") && method === "POST") {
+        commentPosted = true;
+        return Response.json({ id: 910 }, { status: 201 });
+      }
+      if (url.includes("/check-runs") && method === "GET") return Response.json({ total_count: 0, check_runs: [] });
+      if (url.includes("/check-runs") && method === "POST") return Response.json({ id: 901 }, { status: 201 });
+      return new Response("not found", { status: 404 });
+    });
+
+    await processJob(env, {
+      type: "github-webhook",
+      deliveryId: "pr-visual-followup-off",
+      eventName: "pull_request",
+      payload: {
+        action: "closed",
+        installation: { id: 123, account: { login: "JSONbored", id: 1, type: "User" } },
+        repository: { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } },
+        pull_request: { number: 44, title: "Add a footer redesign", state: "closed", user: { login: "contributor" }, head: { sha: "closed124" }, labels: [], body: "Fixes #1" },
+      },
+    });
+
+    expect(commentPosted).toBe(false);
+  });
+
+  it("does NOT post a follow-up comment when the prior advisory has findings but NONE are visual_unrelated_issue_finding", async () => {
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_REVIEW_SCREENSHOTS: "true" });
+    await persistRegistrySnapshot(
+      asCloudEnv(env),
+      normalizeRegistryPayload(
+        { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
+        { kind: "raw-github", url: "https://example.test" },
+        "2026-05-23T00:00:00.000Z",
+      ),
+    );
+    await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", autoLabelEnabled: false, autonomy: { update_branch: "auto" } });
+    await persistAdvisory(env, {
+      id: crypto.randomUUID(),
+      targetType: "pull_request",
+      targetKey: "JSONbored/gittensory#45",
+      repoFullName: "JSONbored/gittensory",
+      pullNumber: 45,
+      headSha: "closed125",
+      conclusion: "neutral",
+      severity: "warning",
+      title: "LoopOver advisory available",
+      summary: "1 advisory finding generated.",
+      // A visual_regression_finding (THIS PR's own fault, already surfaced while open) — never worth a
+      // follow-up comment, unlike visual_unrelated_issue_finding.
+      findings: [{ code: "visual_regression_finding", severity: "warning", title: "Possible visual regression: /pricing", detail: "This PR broke the layout." }],
+      generatedAt: "2026-05-23T00:00:00.000Z",
+    });
+    let commentPosted = false;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      const method = init?.method ?? "GET";
+      if (url === "https://raw.githubusercontent.com/JSONbored/gittensory/HEAD/.loopover.yml") return new Response("review:\n  visual:\n    bug_analysis: true\n");
+      if (url.includes("/access_tokens")) return Response.json({ token: "installation-token", expires_at: "2026-05-28T00:04:00.000Z" });
+      if (url.includes("/issues/45/comments") && method === "GET") return Response.json([]);
+      if (url.includes("/issues/45/comments") && method === "POST") {
+        commentPosted = true;
+        return Response.json({ id: 911 }, { status: 201 });
+      }
+      if (url.includes("/check-runs") && method === "GET") return Response.json({ total_count: 0, check_runs: [] });
+      if (url.includes("/check-runs") && method === "POST") return Response.json({ id: 901 }, { status: 201 });
+      return new Response("not found", { status: 404 });
+    });
+
+    await processJob(env, {
+      type: "github-webhook",
+      deliveryId: "pr-visual-followup-no-unrelated",
+      eventName: "pull_request",
+      payload: {
+        action: "closed",
+        installation: { id: 123, account: { login: "JSONbored", id: 1, type: "User" } },
+        repository: { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } },
+        pull_request: { number: 45, title: "Fix the pricing layout", state: "closed", user: { login: "contributor" }, head: { sha: "closed125" }, labels: [], body: "Fixes #1" },
+      },
+    });
+
+    expect(commentPosted).toBe(false);
+  });
+
+  it("swallows a follow-up comment posting failure (never lets it throw or block the rest of the closed webhook)", async () => {
+    const env = createTestEnv({ GITHUB_APP_PRIVATE_KEY: await generatePrivateKeyPem(), LOOPOVER_REVIEW_SCREENSHOTS: "true" });
+    await persistRegistrySnapshot(
+      asCloudEnv(env),
+      normalizeRegistryPayload(
+        { "JSONbored/gittensory": { emission_share: 0.01, issue_discovery_share: 0 } },
+        { kind: "raw-github", url: "https://example.test" },
+        "2026-05-23T00:00:00.000Z",
+      ),
+    );
+    await upsertRepositorySettings(env, { repoFullName: "JSONbored/gittensory", autoLabelEnabled: false, autonomy: { update_branch: "auto" } });
+    await persistAdvisory(env, {
+      id: crypto.randomUUID(),
+      targetType: "pull_request",
+      targetKey: "JSONbored/gittensory#46",
+      repoFullName: "JSONbored/gittensory",
+      pullNumber: 46,
+      headSha: "closed126",
+      conclusion: "neutral",
+      severity: "warning",
+      title: "LoopOver advisory available",
+      summary: "1 advisory finding generated.",
+      findings: [{ code: "visual_unrelated_issue_finding", severity: "warning", title: "Possible unrelated visual issue: /footer", detail: "The footer logo is stretched." }],
+      generatedAt: "2026-05-23T00:00:00.000Z",
+    });
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      const method = init?.method ?? "GET";
+      if (url === "https://raw.githubusercontent.com/JSONbored/gittensory/HEAD/.loopover.yml") return new Response("review:\n  visual:\n    bug_analysis: true\n");
+      if (url.includes("/access_tokens")) return Response.json({ token: "installation-token", expires_at: "2026-05-28T00:04:00.000Z" });
+      // The comment-search GET itself fails -- createOrUpdateVisualFollowupComment propagates this rejection,
+      // which maybePostVisualFollowupComment's own try/catch must swallow.
+      if (url.includes("/issues/46/comments") && method === "GET") throw new Error("network unreachable");
+      if (url.includes("/check-runs") && method === "GET") return Response.json({ total_count: 0, check_runs: [] });
+      if (url.includes("/check-runs") && method === "POST") return Response.json({ id: 901 }, { status: 201 });
+      return new Response("not found", { status: 404 });
+    });
+
+    // The webhook delivery completes normally (no throw) despite the follow-up comment's own failure.
+    await expect(
+      processJob(env, {
+        type: "github-webhook",
+        deliveryId: "pr-visual-followup-post-fails",
+        eventName: "pull_request",
+        payload: {
+          action: "closed",
+          installation: { id: 123, account: { login: "JSONbored", id: 1, type: "User" } },
+          repository: { name: "gittensory", full_name: "JSONbored/gittensory", private: false, owner: { login: "JSONbored" } },
+          pull_request: { number: 46, title: "Add a footer redesign", state: "closed", user: { login: "contributor" }, head: { sha: "closed126" }, labels: [], body: "Fixes #1" },
+        },
+      }),
+    ).resolves.not.toThrow();
   });
 
   // review.visual.interactions (config-as-code): threads all the way from the real .loopover.yml raw-fetch

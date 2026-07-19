@@ -4780,6 +4780,27 @@ export async function persistAdvisory(env: Env, advisory: Advisory): Promise<voi
   });
 }
 
+/** The most recently PERSISTED advisory for a pull request (#7372) — `persistAdvisory` above writes ONE
+ *  append-only row per review pass (a fresh `crypto.randomUUID()` id every call, see
+ *  `buildPullRequestAdvisory`), so the table has no single "current" row without an explicit ORDER BY; this
+ *  is the first reader that needs one, for the PR-closed maintainer-notify follow-up comment to see whatever
+ *  findings the LAST review pass recorded (including any `visual_unrelated_issue_finding`s). Queries by
+ *  `target_key` (the SAME `${repoFullName}#${pullNumber}` key `buildPullRequestAdvisory` derives) rather than
+ *  `repo_full_name` + `pull_number` separately, so this reuses the existing `advisories_target_idx` index
+ *  instead of the coarser repo-only one. Orders by `updated_at DESC, rowid DESC` — the rowid tiebreak matters
+ *  because `updated_at` is millisecond-precision text and two review passes for the same PR (a rapid
+ *  synchronize burst) can genuinely tie on it; rowid, SQLite's own monotonic insertion-order column, always
+ *  breaks the tie toward whichever row was actually written last. No row ⇒ null (a PR that never got a review
+ *  pass, or predates this table). */
+export async function getLatestAdvisoryForPullRequest(env: Env, repoFullName: string, pullNumber: number): Promise<{ findings: AdvisoryFinding[]; headSha: string | null } | null> {
+  const row = await env.DB
+    .prepare("SELECT findings_json AS findingsJson, head_sha AS headSha FROM advisories WHERE target_type = 'pull_request' AND target_key = ? ORDER BY updated_at DESC, rowid DESC LIMIT 1")
+    .bind(`${repoFullName}#${pullNumber}`)
+    .first<{ findingsJson: string | null; headSha: string | null }>();
+  if (!row) return null;
+  return { findings: parseJson<AdvisoryFinding[]>(row.findingsJson, []), headSha: row.headSha };
+}
+
 /** #1 self-host AI-review cache. Returns the cached AI review for this exact (repo, pull, head SHA) ONLY when the
  *  stored review mode matches — the LLM output changes only with the code (head SHA) or the review mode, so a re-run
  *  at the same SHA+mode reuses it instead of re-spending the call. A nullish head SHA (no commit to key on) is a miss.

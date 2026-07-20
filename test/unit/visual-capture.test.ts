@@ -2272,6 +2272,206 @@ describe("buildCapture interaction-GIF wiring (#interaction-gif-capture)", () =>
   });
 });
 
+describe("buildCapture auto-detected interaction wiring (#auto-interaction-detection)", () => {
+  const hoverPatch = "+.blocks-row:hover {\n+  background: blue;\n+}";
+
+  it("captures an auto-detected hover selector when auto_detect_interactions is on and changedCssFiles carries a new :hover rule", async () => {
+    const gifAvailableSpy = vi.spyOn(scrollGifModule, "isScrollGifAvailable").mockReturnValue(true);
+    const captureInteractionSpy = vi.spyOn(shotModule, "captureInteractionFrames").mockResolvedValue({
+      frames: [new Uint8Array([1, 2, 3])],
+      authWalled: false,
+    });
+    const encodeSpy = vi.spyOn(scrollGifModule, "encodeScrollGif").mockResolvedValue(new Uint8Array([7, 8, 9]));
+    try {
+      const env = createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://prod.example.com", REVIEW_AUDIT: memoryReviewAudit() });
+      const result = await buildCapture(
+        env,
+        "installation-token",
+        { repoFullName: "owner/repo", prNumber: 71, previewUrl: "https://preview.example.com" },
+        ["apps/loopover-ui/src/styles.css"],
+        undefined,
+        { autoDetectInteractions: true },
+        [{ path: "apps/loopover-ui/src/styles.css", patch: hoverPatch }],
+      );
+      expect(result.interactions).toHaveLength(1);
+      expect(result.interactions[0]?.selector).toBe(".blocks-row");
+    } finally {
+      gifAvailableSpy.mockRestore();
+      captureInteractionSpy.mockRestore();
+      encodeSpy.mockRestore();
+    }
+  });
+
+  it("never auto-detects when auto_detect_interactions is unset, even with a qualifying CSS diff", async () => {
+    const gifAvailableSpy = vi.spyOn(scrollGifModule, "isScrollGifAvailable").mockReturnValue(true);
+    const captureInteractionSpy = vi.spyOn(shotModule, "captureInteractionFrames");
+    try {
+      const result = await buildCapture(
+        createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://prod.example.com" }),
+        "installation-token",
+        { repoFullName: "owner/repo", prNumber: 72, previewUrl: "https://preview.example.com" },
+        ["apps/loopover-ui/src/styles.css"],
+        undefined,
+        undefined,
+        [{ path: "apps/loopover-ui/src/styles.css", patch: hoverPatch }],
+      );
+      expect(captureInteractionSpy).not.toHaveBeenCalled();
+      expect(result.interactions).toEqual([]);
+    } finally {
+      gifAvailableSpy.mockRestore();
+      captureInteractionSpy.mockRestore();
+    }
+  });
+
+  it("never auto-detects when auto_detect_interactions is on but changedCssFiles is omitted entirely", async () => {
+    const gifAvailableSpy = vi.spyOn(scrollGifModule, "isScrollGifAvailable").mockReturnValue(true);
+    const captureInteractionSpy = vi.spyOn(shotModule, "captureInteractionFrames");
+    try {
+      const result = await buildCapture(
+        createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://prod.example.com" }),
+        "installation-token",
+        { repoFullName: "owner/repo", prNumber: 73, previewUrl: "https://preview.example.com" },
+        ["apps/loopover-ui/src/styles.css"],
+        undefined,
+        { autoDetectInteractions: true },
+      );
+      expect(captureInteractionSpy).not.toHaveBeenCalled();
+      expect(result.interactions).toEqual([]);
+    } finally {
+      gifAvailableSpy.mockRestore();
+      captureInteractionSpy.mockRestore();
+    }
+  });
+
+  it("targets the PR's own first captured route for an auto-detected selector, not '/'", async () => {
+    const gifAvailableSpy = vi.spyOn(scrollGifModule, "isScrollGifAvailable").mockReturnValue(true);
+    const captureInteractionSpy = vi.spyOn(shotModule, "captureInteractionFrames").mockResolvedValue({
+      frames: [new Uint8Array([1, 2, 3])],
+      authWalled: false,
+    });
+    const encodeSpy = vi.spyOn(scrollGifModule, "encodeScrollGif").mockResolvedValue(new Uint8Array([7, 8, 9]));
+    try {
+      const env = createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://prod.example.com", REVIEW_AUDIT: memoryReviewAudit() });
+      await buildCapture(
+        env,
+        "installation-token",
+        { repoFullName: "owner/repo", prNumber: 74, previewUrl: "https://preview.example.com" },
+        ["apps/loopover-ui/src/routes/pricing.tsx"],
+        undefined,
+        { autoDetectInteractions: true, routes: { paths: ["/pricing"] } },
+        [{ path: "apps/loopover-ui/src/styles.css", patch: hoverPatch }],
+      );
+      expect(captureInteractionSpy).toHaveBeenCalledWith(env, "https://prod.example.com/pricing", ".blocks-row", "hover", expect.anything(), {}, undefined);
+    } finally {
+      gifAvailableSpy.mockRestore();
+      captureInteractionSpy.mockRestore();
+      encodeSpy.mockRestore();
+    }
+  });
+
+  it("a manually-configured selector wins over the SAME selector auto-detected, without duplicating it", async () => {
+    const gifAvailableSpy = vi.spyOn(scrollGifModule, "isScrollGifAvailable").mockReturnValue(true);
+    const captureInteractionSpy = vi.spyOn(shotModule, "captureInteractionFrames").mockResolvedValue({
+      frames: [new Uint8Array([1, 2, 3])],
+      authWalled: false,
+    });
+    const encodeSpy = vi.spyOn(scrollGifModule, "encodeScrollGif").mockResolvedValue(new Uint8Array([7, 8, 9]));
+    try {
+      const env = createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://prod.example.com", REVIEW_AUDIT: memoryReviewAudit() });
+      const result = await buildCapture(
+        env,
+        "installation-token",
+        { repoFullName: "owner/repo", prNumber: 75, previewUrl: "https://preview.example.com" },
+        ["apps/loopover-ui/src/styles.css"],
+        undefined,
+        { autoDetectInteractions: true, interactions: [{ selector: ".blocks-row", action: "hover", label: "Blocks row hover" }] },
+        [{ path: "apps/loopover-ui/src/styles.css", patch: hoverPatch }],
+      );
+      expect(result.interactions).toHaveLength(1);
+      expect(result.interactions[0]?.label).toBe("Blocks row hover");
+    } finally {
+      gifAvailableSpy.mockRestore();
+      captureInteractionSpy.mockRestore();
+      encodeSpy.mockRestore();
+    }
+  });
+
+  it("a manually-configured selector list still leaves room for a DIFFERENT auto-detected selector, up to the cap", async () => {
+    const gifAvailableSpy = vi.spyOn(scrollGifModule, "isScrollGifAvailable").mockReturnValue(true);
+    const captureInteractionSpy = vi.spyOn(shotModule, "captureInteractionFrames").mockResolvedValue({
+      frames: [new Uint8Array([1, 2, 3])],
+      authWalled: false,
+    });
+    const encodeSpy = vi.spyOn(scrollGifModule, "encodeScrollGif").mockResolvedValue(new Uint8Array([7, 8, 9]));
+    try {
+      const env = createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://prod.example.com", REVIEW_AUDIT: memoryReviewAudit() });
+      const result = await buildCapture(
+        env,
+        "installation-token",
+        { repoFullName: "owner/repo", prNumber: 76, previewUrl: "https://preview.example.com" },
+        ["apps/loopover-ui/src/styles.css"],
+        undefined,
+        { autoDetectInteractions: true, interactions: [{ selector: ".manual-target", action: "hover" }] },
+        [{ path: "apps/loopover-ui/src/styles.css", patch: hoverPatch }],
+      );
+      expect(result.interactions.map((interaction) => interaction.selector).sort()).toEqual([".blocks-row", ".manual-target"]);
+    } finally {
+      gifAvailableSpy.mockRestore();
+      captureInteractionSpy.mockRestore();
+      encodeSpy.mockRestore();
+    }
+  });
+
+  it("caps the TOTAL (manual + auto-detected) at MAX_INTERACTIONS, not each independently", async () => {
+    const gifAvailableSpy = vi.spyOn(scrollGifModule, "isScrollGifAvailable").mockReturnValue(true);
+    const captureInteractionSpy = vi.spyOn(shotModule, "captureInteractionFrames").mockResolvedValue({
+      frames: [new Uint8Array([1, 2, 3])],
+      authWalled: false,
+    });
+    const encodeSpy = vi.spyOn(scrollGifModule, "encodeScrollGif").mockResolvedValue(new Uint8Array([7, 8, 9]));
+    try {
+      const env = createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://prod.example.com", REVIEW_AUDIT: memoryReviewAudit() });
+      const manyHoverPatch = "+.a:hover {\n+  color: red;\n+}\n+.b:hover {\n+  color: red;\n+}\n+.c:hover {\n+  color: red;\n+}";
+      const result = await buildCapture(
+        env,
+        "installation-token",
+        { repoFullName: "owner/repo", prNumber: 77, previewUrl: "https://preview.example.com" },
+        ["apps/loopover-ui/src/styles.css"],
+        undefined,
+        { autoDetectInteractions: true, interactions: [{ selector: ".manual-1", action: "hover" }, { selector: ".manual-2", action: "hover" }] },
+        [{ path: "apps/loopover-ui/src/styles.css", patch: manyHoverPatch }],
+      );
+      expect(result.interactions).toHaveLength(3);
+      expect(result.interactions.map((interaction) => interaction.selector)).toEqual([".manual-1", ".manual-2", ".a"]);
+    } finally {
+      gifAvailableSpy.mockRestore();
+      captureInteractionSpy.mockRestore();
+      encodeSpy.mockRestore();
+    }
+  });
+
+  it("never calls captureInteractionFrames when the diff has no qualifying :hover rule at all", async () => {
+    const gifAvailableSpy = vi.spyOn(scrollGifModule, "isScrollGifAvailable").mockReturnValue(true);
+    const captureInteractionSpy = vi.spyOn(shotModule, "captureInteractionFrames");
+    try {
+      const result = await buildCapture(
+        createTestEnv({ PUBLIC_API_ORIGIN: "https://worker.example", PUBLIC_SITE_ORIGIN: "https://prod.example.com" }),
+        "installation-token",
+        { repoFullName: "owner/repo", prNumber: 78, previewUrl: "https://preview.example.com" },
+        ["apps/loopover-ui/src/app.tsx"],
+        undefined,
+        { autoDetectInteractions: true },
+        [{ path: "apps/loopover-ui/src/app.tsx", patch: "+const x = 1;" }],
+      );
+      expect(captureInteractionSpy).not.toHaveBeenCalled();
+      expect(result.interactions).toEqual([]);
+    } finally {
+      gifAvailableSpy.mockRestore();
+      captureInteractionSpy.mockRestore();
+    }
+  });
+});
+
 describe("hasSuccessfulBotCapture (#4110)", () => {
   const REAL_BEFORE = "https://api.example/loopover/shot?key=loopover%2Fshots%2Fbefore.png";
   const REAL_AFTER = "https://api.example/loopover/shot?key=loopover%2Fshots%2Fafter.png";

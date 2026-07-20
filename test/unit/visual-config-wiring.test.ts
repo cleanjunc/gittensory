@@ -27,6 +27,7 @@ describe("review.visual wiring (#3609 / #3610)", () => {
       bugAnalysis: false,
       bugAnalysisNotify: [],
       interactions: [],
+      autoDetectInteractions: false,
     });
     expect(loadSpy).toHaveBeenCalledWith(expect.anything(), "acme/widgets");
     loadSpy.mockRestore();

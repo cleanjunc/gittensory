@@ -10384,6 +10384,13 @@ async function maybePublishPrPublicSurface(
       const visualFiles = unifiedFiles
         .map((file) => file.path)
         .filter(isVisualPath);
+      // #auto-interaction-detection: only ever read by buildCapture when review.visual.autoDetectInteractions
+      // is on for this repo -- carries each changed file's own diff patch text (visualFiles above is bare
+      // paths), the same file.payload?.patch shape review-diff.ts/grounding-wire.ts already read elsewhere.
+      const changedCssFiles = unifiedFiles.map((file) => ({
+        path: file.path,
+        patch: typeof file.payload?.patch === "string" ? file.payload.patch : undefined,
+      }));
       if (resolveConvergedFeature(env, repoFocusManifestForComment, "screenshots", repoFullName) && visualFiles.length > 0) {
         try {
           const token = await createInstallationToken(env, installationId);
@@ -10410,7 +10417,7 @@ async function maybePublishPrPublicSurface(
           const capture =
             reviewVisualConfig.enabled === false
               ? { routes: [], interactions: [], previewPending: false }
-              : await buildCapture(env, token, captureTarget, visualFiles, githubRateLimitAdmissionKeyForInstallation(installationId), reviewVisualConfig);
+              : await buildCapture(env, token, captureTarget, visualFiles, githubRateLimitAdmissionKeyForInstallation(installationId), reviewVisualConfig, changedCssFiles);
           beforeAfter = capture.routes;
           interactionPreviews = capture.interactions;
           // Screenshot-table gate satisfaction (#4110): a successful capture (a real before+after render pair

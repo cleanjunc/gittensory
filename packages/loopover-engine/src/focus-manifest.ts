@@ -1016,6 +1016,12 @@ export type VisualConfig = {
    *  (hover/click) — for behavior a static screenshot can't show that isn't scroll-linked (see `gif` above
    *  for scroll-linked evidence). Empty (default) ⇒ byte-identical to today, no interaction capture. */
   interactions: VisualInteraction[];
+  /** `review.visual.autoDetectInteractions` (#auto-interaction-detection): capture a hover-interaction GIF
+   *  for any CSS selector this PR's OWN diff newly adds a `:hover`/`:focus-visible` rule for — zero
+   *  maintainer selector-authoring required, unlike `interactions` above (still available for a hand-
+   *  curated demonstration; the two compose, deduped against each other). false (default) ⇒ byte-identical
+   *  to today. Self-host only, same gate as `interactions`/`gif` (isScrollGifAvailable). */
+  autoDetectInteractions: boolean;
 };
 
 /** A `prefers-color-scheme` value the capture pipeline can emulate before rendering (#3678). */
@@ -1088,6 +1094,7 @@ export const EMPTY_VISUAL_CONFIG: VisualConfig = {
   bugAnalysis: false,
   bugAnalysisNotify: [],
   interactions: [],
+  autoDetectInteractions: false,
 };
 
 /** One `review.path_instructions[]` entry: a manifest path glob + the public-safe instructions to apply when a
@@ -2996,6 +3003,7 @@ function overlayVisualConfig(base: VisualConfig, override: VisualConfig): Visual
     bugAnalysis: override.bugAnalysis ? override.bugAnalysis : base.bugAnalysis,
     bugAnalysisNotify: pickOverlayStringList(override.bugAnalysisNotify, base.bugAnalysisNotify),
     interactions: override.interactions.length > 0 ? [...override.interactions] : [...base.interactions],
+    autoDetectInteractions: override.autoDetectInteractions ? override.autoDetectInteractions : base.autoDetectInteractions,
   };
 }
 
@@ -3203,7 +3211,8 @@ function visualConfigPresent(config: VisualConfig): boolean {
     config.actionsFallback ||
     config.bugAnalysis ||
     config.bugAnalysisNotify.length > 0 ||
-    config.interactions.length > 0
+    config.interactions.length > 0 ||
+    config.autoDetectInteractions
   );
 }
 
@@ -3307,8 +3316,9 @@ function parseVisualConfig(value: JsonValue | undefined, warnings: string[]): Vi
   const bugAnalysis = normalizeOptionalBoolean(record.bug_analysis, "review.visual.bug_analysis", warnings) === true;
   const bugAnalysisNotify = parseVisualBugAnalysisNotify(record.bug_analysis_notify, warnings);
   const interactions = parseVisualInteractions(record.interactions, warnings);
+  const autoDetectInteractions = normalizeOptionalBoolean(record.auto_detect_interactions, "review.visual.auto_detect_interactions", warnings) === true;
 
-  return { productionUrl, preview: { urlTemplate }, routes: { paths, maxRoutes }, themes, gif, enabled, themeStorageKey, actionsFallback, bugAnalysis, bugAnalysisNotify, interactions };
+  return { productionUrl, preview: { urlTemplate }, routes: { paths, maxRoutes }, themes, gif, enabled, themeStorageKey, actionsFallback, bugAnalysis, bugAnalysisNotify, interactions, autoDetectInteractions };
 }
 
 // A hard cap so a hostile/huge manifest can't turn every PR close into a giant @-mention blast — mirrors
@@ -3721,6 +3731,7 @@ export function reviewConfigToJson(review: FocusManifestReviewConfig): JsonValue
         return entry;
       });
     }
+    if (review.visual.autoDetectInteractions) visual.auto_detect_interactions = true;
     out.visual = visual;
   }
   if (review.linkedIssueSatisfaction !== null) out.linkedIssueSatisfaction = review.linkedIssueSatisfaction;

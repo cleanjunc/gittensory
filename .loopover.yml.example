@@ -705,6 +705,14 @@ review:
 #         drag_to: ".done-column"        # Drag DESTINATION selector. Required when action is "drag"; an entry
 #                                         #   missing it is dropped at parse time. Ignored for hover/click.
 #         label: "Reorder card into Done"
+#     # Zero-configuration alternative to interactions above: capture a hover-interaction GIF for any CSS
+#     # selector THIS PR'S OWN DIFF newly adds a `:hover`/`:focus-visible` rule for -- no maintainer selector-
+#     # authoring needed at all. Scoped to plain .css/.scss/.sass/.less files (a Tailwind utility class or
+#     # CSS-in-JS `:hover` state has no selector to extract this way). Composes with interactions above (a
+#     # manually-configured selector always wins over the same one auto-detected); both draw from the SAME
+#     # 3-per-PR cap. Bool. Default: false (byte-identical to today, no auto-detection). SELF-HOST ONLY (same
+#     # gate as interactions/gif above).
+#     auto_detect_interactions: true
 #     # Config-as-code enable/disable for this repo, layered ON TOP OF (never a replacement for) the
 #     # LOOPOVER_REVIEW_SCREENSHOTS + per-repo cutover-allowlist env-var gate above (#4083). Bool or null.
 #     # Default: null (unset) ⇒ defers entirely to that env-var gate's own decision -- byte-identical to today.

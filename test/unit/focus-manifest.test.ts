@@ -4865,6 +4865,7 @@ describe("review.visual (#3609 preview.url_template / #3610 routes)", () => {
       bugAnalysis: false,
       bugAnalysisNotify: [],
       interactions: [],
+      autoDetectInteractions: false,
     });
     expect(m.review.present).toBe(true);
     expect(parseFocusManifest({ review: reviewConfigToJson(m.review) }).review.visual).toEqual(m.review.visual);
@@ -4960,7 +4961,7 @@ describe("review.visual (#3609 preview.url_template / #3610 routes)", () => {
   it("resolveReviewVisualConfig: null manifest yields empty defaults; a set manifest passes through", () => {
     expect(resolveReviewVisualConfig(null)).toEqual({ ...EMPTY_VISUAL_CONFIG });
     const manifest = parseFocusManifest({ review: { visual: { routes: { paths: ["/app"] } } } });
-    expect(resolveReviewVisualConfig(manifest)).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: ["/app"], maxRoutes: null }, themes: [], gif: false, enabled: null, themeStorageKey: null, actionsFallback: false, bugAnalysis: false, bugAnalysisNotify: [], interactions: [] });
+    expect(resolveReviewVisualConfig(manifest)).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: ["/app"], maxRoutes: null }, themes: [], gif: false, enabled: null, themeStorageKey: null, actionsFallback: false, bugAnalysis: false, bugAnalysisNotify: [], interactions: [], autoDetectInteractions: false });
   });
 });
 
@@ -5106,7 +5107,7 @@ describe("review.visual.gif (#3612 scroll-through GIF capture)", () => {
 
   it("composes with themes — both configured independently and both round-trip", () => {
     const m = parseFocusManifest({ review: { visual: { gif: true, themes: ["dark"] } } });
-    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: ["dark"], gif: true, enabled: null, themeStorageKey: null, actionsFallback: false, bugAnalysis: false, bugAnalysisNotify: [], interactions: [] });
+    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: ["dark"], gif: true, enabled: null, themeStorageKey: null, actionsFallback: false, bugAnalysis: false, bugAnalysisNotify: [], interactions: [], autoDetectInteractions: false });
     expect(reviewConfigToJson(m.review)).toEqual({ visual: { themes: ["dark"], gif: true } });
   });
 
@@ -5209,7 +5210,7 @@ describe("review.visual.theme_storage_key (#4109 localStorage theme-forcing fall
 
   it("composes with themes — both configured independently and both round-trip", () => {
     const m = parseFocusManifest({ review: { visual: { themes: ["dark"], theme_storage_key: "theme" } } });
-    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: ["dark"], gif: false, enabled: null, themeStorageKey: "theme", actionsFallback: false, bugAnalysis: false, bugAnalysisNotify: [], interactions: [] });
+    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: ["dark"], gif: false, enabled: null, themeStorageKey: "theme", actionsFallback: false, bugAnalysis: false, bugAnalysisNotify: [], interactions: [], autoDetectInteractions: false });
     expect(reviewConfigToJson(m.review)).toEqual({ visual: { themes: ["dark"], theme_storage_key: "theme" } });
   });
 
@@ -5264,7 +5265,7 @@ describe("review.visual.actions_fallback (#4112 GitHub-Actions build-and-serve f
 
   it("composes with gif — both configured independently and both round-trip", () => {
     const m = parseFocusManifest({ review: { visual: { actions_fallback: true, gif: true } } });
-    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: [], gif: true, enabled: null, themeStorageKey: null, actionsFallback: true, bugAnalysis: false, bugAnalysisNotify: [], interactions: [] });
+    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: [], gif: true, enabled: null, themeStorageKey: null, actionsFallback: true, bugAnalysis: false, bugAnalysisNotify: [], interactions: [], autoDetectInteractions: false });
     expect(reviewConfigToJson(m.review)).toEqual({ visual: { gif: true, actions_fallback: true } });
   });
 
@@ -5319,7 +5320,7 @@ describe("review.visual.bugAnalysis (PR-intent-aware vision + out-of-scope issue
 
   it("composes with gif — both configured independently and both round-trip", () => {
     const m = parseFocusManifest({ review: { visual: { bug_analysis: true, gif: true } } });
-    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: [], gif: true, enabled: null, themeStorageKey: null, actionsFallback: false, bugAnalysis: true, bugAnalysisNotify: [], interactions: [] });
+    expect(m.review.visual).toEqual({ productionUrl: null, preview: { urlTemplate: null }, routes: { paths: [], maxRoutes: null }, themes: [], gif: true, enabled: null, themeStorageKey: null, actionsFallback: false, bugAnalysis: true, bugAnalysisNotify: [], interactions: [], autoDetectInteractions: false });
     expect(reviewConfigToJson(m.review)).toEqual({ visual: { gif: true, bug_analysis: true } });
   });
 
@@ -5497,6 +5498,59 @@ describe("review.visual.interactions (#interaction-gif-capture)", () => {
     const globalDefault = parseReviewConfigMapping({ visual: { interactions: [{ selector: ".global", action: "hover" }] } }, []);
     const perRepo = parseReviewConfigMapping({ visual: { routes: { paths: ["/app"] } } }, []);
     expect(overlayReviewConfig(globalDefault, perRepo).visual.interactions).toEqual([{ selector: ".global", action: "hover", dragTo: null, path: null, label: null }]);
+    expect(overlayReviewConfig(globalDefault, perRepo).visual.routes.paths).toEqual(["/app"]);
+  });
+});
+
+describe("review.visual.autoDetectInteractions (#auto-interaction-detection)", () => {
+  it("parses auto_detect_interactions: true, marks present, and round-trips", () => {
+    const m = parseFocusManifest({ review: { visual: { auto_detect_interactions: true } } });
+    expect(m.review.visual.autoDetectInteractions).toBe(true);
+    expect(m.review.present).toBe(true);
+    expect(reviewConfigToJson(m.review)).toEqual({ visual: { auto_detect_interactions: true } });
+  });
+
+  it("absent auto_detect_interactions defaults to false and does not mark review present on its own", () => {
+    expect(parseFocusManifest({}).review.visual.autoDetectInteractions).toBe(false);
+    expect(parseFocusManifest({ review: { visual: {} } }).review.present).toBe(false);
+  });
+
+  it("auto_detect_interactions: false does not mark review present, so the whole review block round-trips to null", () => {
+    const m = parseFocusManifest({ review: { visual: { auto_detect_interactions: false } } });
+    expect(m.review.visual.autoDetectInteractions).toBe(false);
+    expect(reviewConfigToJson(m.review)).toBeNull();
+  });
+
+  it("warns and defaults to false when auto_detect_interactions is not a boolean", () => {
+    const bad = parseFocusManifest({ review: { visual: { auto_detect_interactions: "yes" } } });
+    expect(bad.review.visual.autoDetectInteractions).toBe(false);
+    expect(bad.warnings.some((w) => /review\.visual\.auto_detect_interactions.*must be a boolean/.test(w))).toBe(true);
+  });
+
+  it("composes with a manually-configured interactions list — both round-trip independently", () => {
+    const m = parseFocusManifest({ review: { visual: { auto_detect_interactions: true, interactions: [{ selector: ".x", action: "hover" }] } } });
+    expect(m.review.visual.autoDetectInteractions).toBe(true);
+    expect(m.review.visual.interactions).toEqual([{ selector: ".x", action: "hover", dragTo: null, path: null, label: null }]);
+    expect(reviewConfigToJson(m.review)).toEqual({
+      visual: { interactions: [{ selector: ".x", action: "hover" }], auto_detect_interactions: true },
+    });
+  });
+
+  it("resolveReviewVisualConfig passes a configured auto_detect_interactions: true through", () => {
+    const manifest = parseFocusManifest({ review: { visual: { auto_detect_interactions: true } } });
+    expect(resolveReviewVisualConfig(manifest).autoDetectInteractions).toBe(true);
+  });
+
+  it("overlay: a per-repo auto_detect_interactions: true wins over a global-default false", () => {
+    const globalDefault = parseReviewConfigMapping({ visual: { auto_detect_interactions: false } }, []);
+    const perRepo = parseReviewConfigMapping({ visual: { auto_detect_interactions: true } }, []);
+    expect(overlayReviewConfig(globalDefault, perRepo).visual.autoDetectInteractions).toBe(true);
+  });
+
+  it("overlay: an unset per-repo auto_detect_interactions falls back to the global-default true — this is how the operator turns it on fleet-wide from the global-default .loopover.yml", () => {
+    const globalDefault = parseReviewConfigMapping({ visual: { auto_detect_interactions: true } }, []);
+    const perRepo = parseReviewConfigMapping({ visual: { routes: { paths: ["/app"] } } }, []);
+    expect(overlayReviewConfig(globalDefault, perRepo).visual.autoDetectInteractions).toBe(true);
     expect(overlayReviewConfig(globalDefault, perRepo).visual.routes.paths).toEqual(["/app"]);
   });
 });

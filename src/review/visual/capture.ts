@@ -31,6 +31,7 @@ import {
 import { captureInteractionFrames, captureScrollFrames, captureShot, DESKTOP_VIEWPORT, MOBILE_VIEWPORT, type InteractionAction, type ShotTheme, type Viewport } from "./shot";
 import { compareCapturedScreenshots, isVisualDiffAvailable, type VisualDiffOutcome } from "./pixel-diff";
 import { encodeScrollGif, isScrollGifAvailable } from "./scroll-gif";
+import { detectAutoHoverInteractions, type ChangedCssFile } from "./interaction-detection";
 
 const NAMESPACE = "loopover";
 const DEFAULT_ROUTES = ["/"];
@@ -608,6 +609,12 @@ export type VisualCaptureConfig = {
    *  ⇒ byte-identical to today, no interaction capture. Capped at MAX_INTERACTIONS regardless of how many
    *  are configured. */
   interactions?: readonly VisualInteractionInput[] | null | undefined;
+  /** `review.visual.autoDetectInteractions` (#auto-interaction-detection): capture a hover-interaction GIF
+   *  for any CSS selector this PR's OWN diff newly adds a `:hover`/`:focus-visible` rule for — no maintainer
+   *  selector-authoring needed, unlike `interactions` above (the two compose, deduped against each other).
+   *  false/absent (default) ⇒ byte-identical to today. Requires `changedCssFiles` (below) to be passed too;
+   *  without it there is nothing to detect against regardless of this flag. */
+  autoDetectInteractions?: boolean | null | undefined;
 };
 
 /**
@@ -616,7 +623,19 @@ export type VisualCaptureConfig = {
  * collapsible). Fully fail-safe — a missing preview / failed render degrades to placeholders or dashes; this
  * NEVER throws (the caller also wraps it in try/catch so a capture failure can't sink a review).
  */
-export async function buildCapture(env: Env, token: string, target: CaptureTarget, visualFiles: string[], rateLimitAdmissionKey?: GitHubRateLimitAdmissionKey | undefined, visualConfig?: VisualCaptureConfig | null | undefined): Promise<CaptureResult> {
+export async function buildCapture(
+  env: Env,
+  token: string,
+  target: CaptureTarget,
+  visualFiles: string[],
+  rateLimitAdmissionKey?: GitHubRateLimitAdmissionKey | undefined,
+  visualConfig?: VisualCaptureConfig | null | undefined,
+  // #auto-interaction-detection: the SAME changed-file set visualFiles is derived from, but carrying each
+  // file's diff patch text too (visualFiles alone is bare paths) -- only ever read when
+  // visualConfig.autoDetectInteractions is true. Absent/undefined (every pre-existing call site) ⇒
+  // byte-identical to today, no auto-detection attempted regardless of the config flag.
+  changedCssFiles?: readonly ChangedCssFile[] | undefined,
+): Promise<CaptureResult> {
   const repo = parseRepo(target.repoFullName);
   const apiVersion = "2022-11-28";
   // before = production. review.visual.production_url (#3611 follow-up) ALWAYS wins when set -- PUBLIC_SITE_ORIGIN
@@ -791,7 +810,29 @@ export async function buildCapture(env: Env, token: string, target: CaptureTarge
   // interaction target" shape. Gated on isScrollGifAvailable() (reused: the encode step is frame-source-
   // agnostic, see scroll-gif.ts) since there is no point capturing frames this build can never assemble into
   // a GIF -- self-host only, same as the scroll-GIF path above.
-  const interactionsConfigured = (visualConfig?.interactions ?? []).slice(0, MAX_INTERACTIONS);
+  const manualInteractions = visualConfig?.interactions ?? [];
+  // #auto-interaction-detection: a maintainer-configured selector always wins on overlap -- an explicit
+  // entry may carry a label/path/action the detector could never infer, so a hand-authored duplicate is
+  // dropped from the auto-detected set rather than the other way around. Both selector sets are compared
+  // case-insensitively, matching detectAutoHoverInteractions' own dedup.
+  const manualSelectors = new Set(manualInteractions.map((interaction) => interaction.selector.toLowerCase()));
+  const autoDetectedInteractions: VisualInteractionInput[] =
+    visualConfig?.autoDetectInteractions && changedCssFiles
+      ? detectAutoHoverInteractions(changedCssFiles)
+          .filter((selector) => !manualSelectors.has(selector.toLowerCase()))
+          .map((selector) => ({
+            selector,
+            action: "hover" as const,
+            // captureRoutes[0] is unreachable-undefined by construction here, not a reachable false case:
+            // `themes` above is always at least `[undefined]` and `routes` (resolveVisualRoutes ->
+            // mapFilesToRoutes) always falls back to DEFAULT_ROUTES when nothing else resolves, so the
+            // routes x themes double loop above always pushes at least one entry -- noUncheckedIndexedAccess
+            // still requires the optional chaining at the type level.
+            /* v8 ignore next */
+            path: captureRoutes[0]?.path ?? null,
+          }))
+      : [];
+  const interactionsConfigured = [...manualInteractions, ...autoDetectedInteractions].slice(0, MAX_INTERACTIONS);
   const interactionRoutes: CaptureInteractionRoute[] = [];
   // Interactions aren't multiplied per-theme (see comment above) -- when review.visual.themes configures more
   // than one, the first configured theme is what interaction GIFs render in; themes[0] is `undefined` by

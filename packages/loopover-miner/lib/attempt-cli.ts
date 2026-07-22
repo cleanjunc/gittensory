@@ -49,6 +49,7 @@ import { buildCodingTaskSpec } from "./coding-task-spec.js";
 import type { buildCodingTaskSpec as BuildCodingTaskSpecFn } from "./coding-task-spec.js";
 import { resolveAmsPolicy } from "./ams-policy.js";
 import type { resolveAmsPolicy as ResolveAmsPolicyFn } from "./ams-policy.js";
+import { buildAmsAttemptFailedPayload, buildAmsAttemptStartedPayload, scheduleAmsNotificationEvents } from "./ams-notifications.js";
 import { checkMinerKillSwitch, recordMinerKillSwitchTransition } from "./governor-kill-switch.js";
 import type { checkMinerKillSwitch as CheckMinerKillSwitchFn } from "./governor-kill-switch.js";
 import { captureMinerError } from "./sentry.js";
@@ -141,6 +142,8 @@ export type RunAttemptOptions = {
   /** Hosted soft-claim coordination at work-start/work-end, when the plane is enabled (#7168). Defaults to
    *  discovery-index-client.js's own submitSoftClaim. */
   submitSoftClaim?: typeof SubmitSoftClaimFn;
+  /** AMS badge notifications (#7657). Defaults to scheduleAmsNotificationEvents (fire-and-forget session POST). */
+  scheduleAmsNotifications?: typeof scheduleAmsNotificationEvents;
   /** Invoked with the real structured result at every return point, in addition to (never instead of) the
    *  plain exit-code return -- the loop orchestrator's real hook into what actually happened. */
   onResult?: (result: AttemptCliResult) => void;
@@ -666,6 +669,19 @@ export async function runAttempt(args: string[], options: RunAttemptOptions = {}
     }
 
     const runAttemptPipeline = options.runMinerAttempt ?? runMinerAttempt;
+    const scheduleAmsNotifications = options.scheduleAmsNotifications ?? scheduleAmsNotificationEvents;
+    // AMS badge notify (#7657): attempt start. Fire-and-forget — a notify miss never blocks the attempt.
+    scheduleAmsNotifications(
+      [
+        buildAmsAttemptStartedPayload({
+          recipientLogin: parsed.minerLogin,
+          repoFullName: parsed.repoFullName,
+          issueNumber: parsed.issueNumber,
+          attemptId,
+        }),
+      ],
+      { env },
+    );
     let result;
     try {
       result = await runAttemptPipeline(
@@ -691,10 +707,37 @@ export async function runAttempt(args: string[], options: RunAttemptOptions = {}
       // `undefined` and the finally block's `?? true` default (meant for the earlier blocked paths that never
       // ran anything in the worktree) deleted it -- inverting shouldRetainWorktree's documented policy.
       worktreeResult.attemptOk = false;
+      scheduleAmsNotifications(
+        [
+          buildAmsAttemptFailedPayload({
+            recipientLogin: parsed.minerLogin,
+            repoFullName: parsed.repoFullName,
+            issueNumber: parsed.issueNumber,
+            attemptId,
+            reason: "attempt_crashed",
+          }),
+        ],
+        { env },
+      );
       throw error;
     }
 
     worktreeResult.attemptOk = result.outcome === "submitted";
+    // AMS badge notify (#7657): any non-submitted terminal outcome is a failed attempt from the miner's side.
+    if (result.outcome !== "submitted") {
+      scheduleAmsNotifications(
+        [
+          buildAmsAttemptFailedPayload({
+            recipientLogin: parsed.minerLogin,
+            repoFullName: parsed.repoFullName,
+            issueNumber: parsed.issueNumber,
+            attemptId,
+            reason: result.outcome,
+          }),
+        ],
+        { env },
+      );
+    }
 
     // Real claim-conflict resolution (#4848): only meaningful once a real PR exists, so this only ever runs
     // on a real "submitted" outcome. checkSubmissionFreshness (inside runMinerAttempt) already caught the

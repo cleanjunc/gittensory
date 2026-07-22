@@ -54,6 +54,52 @@ export function buildIssueWatchNotification(event: DetectedNotificationEvent): {
   };
 }
 
+// AMS attempt lifecycle (#7657) — `pullNumber` carries the ISSUE number (same overload issue_watch_match
+// uses). Public-safe: outcome framing only, never raw figures.
+export function buildAmsAttemptStartedNotification(event: DetectedNotificationEvent): { title: string; body: string } {
+  const ref = `${event.repoFullName}#${event.pullNumber}`;
+  return {
+    title: sanitizePublicComment(`Attempt started on ${ref}`),
+    body: sanitizePublicComment(`Your AMS miner started an attempt on ${ref}. Watch the attempt log for progress and the outcome.`),
+  };
+}
+
+export function buildAmsAttemptFailedNotification(event: DetectedNotificationEvent): { title: string; body: string } {
+  const ref = `${event.repoFullName}#${event.pullNumber}`;
+  return {
+    title: sanitizePublicComment(`Attempt failed on ${ref}`),
+    body: sanitizePublicComment(`Your AMS miner attempt on ${ref} did not complete. Check the attempt log, then retry or move to the next high-fit issue.`),
+  };
+}
+
+// Governor pause (#7657) is miner-global, not repo-scoped, so the content ignores the event's synthetic scope.
+export function buildAmsGovernorPausedNotification(_event: DetectedNotificationEvent): { title: string; body: string } {
+  return {
+    title: sanitizePublicComment("AMS governor paused"),
+    body: sanitizePublicComment("Your AMS governor is paused. New attempt cycles wait until you run `loopover-miner governor resume`."),
+  };
+}
+
+export function buildAmsPrOutcomeNotification(event: DetectedNotificationEvent): { title: string; body: string } {
+  const ref = `${event.repoFullName}#${event.pullNumber}`;
+  // dedupKey layout from buildAmsPrOutcomeEvent: ams_pr_outcome:{merged|closed}:{repo}#{n}:{closedAt}.
+  const merged = event.dedupKey.startsWith("ams_pr_outcome:merged:");
+  if (merged) {
+    return {
+      title: sanitizePublicComment(`AMS recorded merge: ${ref}`),
+      body: sanitizePublicComment(
+        `Your AMS miner recorded that ${ref} merged. Merged contributions strengthen your standing on ${event.repoFullName} — check your decision pack for the next high-fit issue.`,
+      ),
+    };
+  }
+  return {
+    title: sanitizePublicComment(`AMS recorded close: ${ref}`),
+    body: sanitizePublicComment(
+      `Your AMS miner recorded that ${ref} closed without merging. Review the close feedback, then pick the next high-fit issue on ${event.repoFullName}.`,
+    ),
+  };
+}
+
 // Maps a detected event to its public-safe notification content.
 export function buildNotificationContent(event: DetectedNotificationEvent): { title: string; body: string } {
   switch (event.eventType) {
@@ -61,9 +107,42 @@ export function buildNotificationContent(event: DetectedNotificationEvent): { ti
       return buildMergedOutcomeNotification(event);
     case "issue_watch_match":
       return buildIssueWatchNotification(event);
-    default:
+    case "ams_attempt_started":
+      return buildAmsAttemptStartedNotification(event);
+    case "ams_attempt_failed":
+      return buildAmsAttemptFailedNotification(event);
+    case "ams_governor_paused":
+      return buildAmsGovernorPausedNotification(event);
+    case "ams_pr_outcome":
+      return buildAmsPrOutcomeNotification(event);
+    case "pull_request_changes_requested":
       return buildChangesRequestedNotification(event);
   }
+}
+
+/**
+ * Mirrors job-dispatch.ts's notify-evaluate handoff (#7657): evaluate each event, then enqueue one
+ * `notify-deliver` job per freshly-created pending delivery. The AMS ingest route uses this so AMS kinds
+ * ride the exact same evaluate → deliver path as webhook-detected kinds, never a parallel one.
+ */
+export async function evaluateAndEnqueueNotificationDeliveries(
+  env: Env,
+  events: DetectedNotificationEvent[],
+): Promise<NotificationDeliveryRecord[]> {
+  const pending: NotificationDeliveryRecord[] = [];
+  for (const event of events) {
+    pending.push(...(await evaluateNotificationEvent(env, event)));
+  }
+  await Promise.all(
+    pending.map((delivery) =>
+      env.JOBS.send({
+        type: "notify-deliver",
+        requestedBy: "notify-evaluate",
+        deliveryId: delivery.id,
+      }),
+    ),
+  );
+  return pending;
 }
 
 /**

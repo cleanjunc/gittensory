@@ -1133,6 +1133,10 @@ export const notificationSubscriptions = sqliteTable(
   }),
 );
 
+// event_type carries the NotificationEventType vocabulary as free text: the webhook-detected kinds
+// (pull_request_changes_requested / pull_request_merged / issue_watch_match) plus the AMS-ingested kinds
+// (#7657: ams_attempt_started / ams_attempt_failed / ams_governor_paused / ams_pr_outcome). Subscriptions
+// stay channel-scoped; no schema change was needed for the AMS kinds.
 export const notificationDeliveries = sqliteTable(
   "notification_deliveries",
   {

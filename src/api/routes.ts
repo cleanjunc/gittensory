@@ -284,7 +284,8 @@ import { attachDataQuality, buildCoreSignalFidelity, buildFreshnessSloReport, bu
 import { buildContributorOpenPrMonitor } from "../signals/contributor-open-pr-monitor";
 import { buildContributorPrOutcomes } from "../signals/contributor-pr-outcomes";
 import { buildReviewRiskExplanation } from "../signals/review-risk";
-import { buildNotificationFeed } from "../notifications/service";
+import { buildNotificationFeed, evaluateAndEnqueueNotificationDeliveries } from "../notifications/service";
+import { AMS_NOTIFICATION_EVENT_TYPES, normalizeAmsNotificationEventInput } from "../notifications/ams-events";
 import { buildPullRequestReviewability, type PullRequestReviewability } from "../signals/reward-risk";
 import { buildLocalBranchAnalysis, findCurrentBranchPullRequest } from "../signals/local-branch";
 import { buildIssueSlopAssessment } from "../signals/issue-slop";
@@ -467,6 +468,25 @@ const MAX_LOCAL_BRANCH_TEXT_CHARS = 4000;
 // (src/mcp/server.ts) minus `login` (which is the path param): `ids` is optional (absent = mark all delivered).
 const markNotificationsReadBodySchema = z.object({
   ids: z.array(z.string().min(1).max(MAX_NOTIFICATION_DELIVERY_ID_LENGTH)).max(MAX_NOTIFICATION_MARK_READ_IDS).optional(),
+});
+
+// #7657: body of POST /v1/contributors/:login/ams-notifications. The miner posts AMS-kind events shaped like
+// DetectedNotificationEvent minus recipient/actor — both are forced to the authenticated path login server-side
+// (normalizeAmsNotificationEventInput), so a payload can never notify or impersonate someone else.
+const amsNotificationsBodySchema = z.object({
+  events: z
+    .array(
+      z.object({
+        eventType: z.enum(AMS_NOTIFICATION_EVENT_TYPES),
+        repoFullName: z.string().min(1).max(200),
+        pullNumber: z.number().int().min(0),
+        dedupKey: z.string().min(1).max(500),
+        deeplink: z.string().min(1).max(2000),
+        detectedAt: z.string().min(1).max(64),
+      }),
+    )
+    .min(1)
+    .max(20),
 });
 
 // #6746: body of POST/DELETE /v1/contributors/:login/watches. Mirrors watchIssuesShape (src/mcp/server.ts) minus
@@ -3594,6 +3614,25 @@ export function createApp() {
     return c.json({ login: login.toLowerCase(), marked });
   });
 
+  // #7657: the AMS miner posts its own AMS-relevant notification events (attempt start/fail, governor pause,
+  // PR outcome). Self-scoped via requireContributorAccess; every event is re-stamped onto the authenticated
+  // login and evaluated through evaluateAndEnqueueNotificationDeliveries — the same
+  // evaluateNotificationEvent → notify-deliver handoff job-dispatch.ts uses for webhook-detected kinds.
+  app.post("/v1/contributors/:login/ams-notifications", async (c) => {
+    const login = c.req.param("login");
+    const unauthorized = await requireContributorAccess(c, login);
+    if (unauthorized) return unauthorized;
+    const parsed = amsNotificationsBodySchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: "invalid_ams_notifications", issues: parsed.error.issues }, 400);
+    const events = parsed.data.events
+      .map((raw) => normalizeAmsNotificationEventInput(raw, login))
+      .filter((event): event is NonNullable<typeof event> => event !== null);
+    // Reachable past zod: `.min(1)` admits whitespace-only strings that normalize's `.trim()` checks reject.
+    if (events.length === 0) return c.json({ error: "invalid_ams_notifications", detail: "no_valid_events" }, 400);
+    const deliveries = await evaluateAndEnqueueNotificationDeliveries(c.env, events);
+    return c.json({ login: login.toLowerCase(), accepted: events.length, enqueued: deliveries.length });
+  });
+
   // #6746: REST mirror of the `loopover_watch_issues` MCP tool (LoopoverMcp.watchIssues) — manage a contributor's
   // own issue-watch subscriptions. The MCP tool's `action` enum splits across the HTTP verbs: GET=list, POST=watch,
   // DELETE=unwatch. Every verb is self-scoped via requireContributorAccess (a session may only touch its own
@@ -6478,7 +6517,14 @@ function canSessionAccessPath(env: Env, identity: Extract<AuthIdentity, { kind: 
   // Contributor extension scope reaches only `/v1/extension/contributors/<login>/*`; the handler's
   // requireContributorAccess then enforces actor === login (self-only).
   if (isExtensionContributorContextPath(path) && isExtensionContributorScopedSession(identity)) return true;
+  // #7657: the AMS miner posts its own notification events with its loopover-mcp session token; the
+  // handler's requireContributorAccess enforces actor === login (self-only).
+  if (isContributorAmsNotificationsPath(path)) return true;
   return false;
+}
+
+function isContributorAmsNotificationsPath(path: string): boolean {
+  return /^\/v1\/contributors\/[^/]+\/ams-notifications$/.test(path);
 }
 
 function isRepoSettingsPath(path: string): boolean {

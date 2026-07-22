@@ -11,6 +11,7 @@
 
 import { REJECTION_REASONS } from "./rejection-templates.js";
 import type { AppendEventInput, LedgerEntry } from "./event-ledger.js";
+import { buildAmsPrOutcomePayload, scheduleAmsNotificationEvents } from "./ams-notifications.js";
 
 /** Event-ledger vocabulary for a miner-local PR outcome. */
 export const MINER_PR_OUTCOME_EVENT = "pr_outcome" as const;
@@ -40,6 +41,11 @@ export type RecordPrOutcomeOptions = {
    *  writer throws `invalid_event_ledger` at runtime when this is absent or lacks `appendEvent`. Reuses the
    *  real EventLedger#appendEvent signature so a genuine EventLedger (not just a same-shaped stub) type-checks. */
   eventLedger?: { appendEvent(event: AppendEventInput): LedgerEntry };
+  /** AMS badge notify (#7657): when the recording miner's login is known (loop-cli passes --miner-login), the
+   *  recorded outcome also fires a fire-and-forget badge notification. Absent = ledger write only. */
+  recipientLogin?: string;
+  env?: Record<string, string | undefined>;
+  scheduleAmsNotifications?: typeof scheduleAmsNotificationEvents;
 };
 
 export type PrOutcomeLedgerReader = {
@@ -97,7 +103,26 @@ export function recordPrOutcomeSnapshot(input: PrOutcomeInput, options: RecordPr
     reason: input.reason,
   });
   if (!payload) return null;
-  return eventLedger.appendEvent({ type: MINER_PR_OUTCOME_EVENT, repoFullName, payload });
+  const entry = eventLedger.appendEvent({ type: MINER_PR_OUTCOME_EVENT, repoFullName, payload });
+  // AMS badge notify (#7657): only once the ledger write above succeeded, so the notification never claims
+  // an outcome the miner's own record doesn't hold. Fire-and-forget; skipped when no recipient is known.
+  const recipientLogin = typeof options.recipientLogin === "string" ? options.recipientLogin.trim() : "";
+  if (recipientLogin) {
+    const schedule = options.scheduleAmsNotifications ?? scheduleAmsNotificationEvents;
+    schedule(
+      [
+        buildAmsPrOutcomePayload({
+          recipientLogin,
+          repoFullName,
+          pullNumber: payload.prNumber,
+          decision: payload.decision,
+          closedAt: payload.closedAt,
+        }),
+      ],
+      { env: options.env ?? process.env },
+    );
+  }
+  return entry;
 }
 
 /**

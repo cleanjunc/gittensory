@@ -9,6 +9,8 @@
 import { argsWantJson, describeCliError, reportCliFailure } from "./cli-error.js";
 import { openGovernorState } from "./governor-state.js";
 import type { GovernorPauseState, GovernorState } from "./governor-state.js";
+import { buildAmsGovernorPausedPayload, publishAmsNotificationEvents } from "./ams-notifications.js";
+import { resolveLoopoverBackendSession } from "./github-token-resolution.js";
 
 const GOVERNOR_PAUSE_USAGE = "Usage: loopover-miner governor pause [--reason <text>] [--dry-run] [--json]";
 const GOVERNOR_RESUME_USAGE = "Usage: loopover-miner governor resume [--dry-run] [--json]";
@@ -24,6 +26,11 @@ export type ParsedGovernorNoArgsSubcommand = { json: boolean } | { error: string
 
 export type GovernorPauseCliOptions = {
   openGovernorState?: () => GovernorState;
+  env?: Record<string, string | undefined>;
+  /** AMS badge notify on a real pause (#7657). Defaults to publishAmsNotificationEvents. */
+  publishAmsNotifications?: typeof publishAmsNotificationEvents;
+  /** Resolve the session's login (defaults to GET /v1/auth/session with the on-disk session). */
+  fetchSessionLogin?: () => Promise<string | null>;
 };
 
 export function parseGovernorPauseArgs(args: string[]): ParsedGovernorPauseArgs {
@@ -101,6 +108,45 @@ function renderPauseState(pauseState: GovernorPauseState): string {
   return `governor is PAUSED since ${pauseState.pausedAt}${reason}`;
 }
 
+// AMS badge notify (#7657) needs a recipient, and this CLI has no --miner-login flag (pausing is not
+// attempt-scoped work) -- resolve the login the same place the ingest will re-check it: the on-disk
+// loopover-mcp session, via GET /v1/auth/session. No session (or any failure) resolves null = skip notify.
+async function fetchSessionLoginFromDisk(env: Record<string, string | undefined>): Promise<string | null> {
+  const session = resolveLoopoverBackendSession(env as NodeJS.ProcessEnv);
+  if (!session) return null;
+  try {
+    const response = await fetch(`${session.apiUrl}/v1/auth/session`, {
+      headers: { authorization: `Bearer ${session.sessionToken}`, accept: "application/json" },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json().catch(() => null)) as { login?: unknown } | null;
+    return typeof payload?.login === "string" && payload.login.trim() ? payload.login.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+// Best-effort: a notify miss (no session, backend down) must never fail the pause that already persisted.
+async function notifyGovernorPaused(pauseState: GovernorPauseState, options: GovernorPauseCliOptions): Promise<void> {
+  const env = options.env ?? process.env;
+  const login = await (options.fetchSessionLogin ?? (() => fetchSessionLoginFromDisk(env)))();
+  if (!login) return;
+  const publish = options.publishAmsNotifications ?? publishAmsNotificationEvents;
+  await publish(
+    [
+      buildAmsGovernorPausedPayload({
+        recipientLogin: login,
+        reason: pauseState.reason,
+        // Always a fresh string right after savePauseState({ paused: true }); the builder's own
+        // `?? detectedAt` fallback absorbs the type-level null.
+        pausedAt: pauseState.pausedAt,
+      }),
+    ],
+    { env },
+  );
+}
+
 export async function runGovernorPause(args: string[], options: GovernorPauseCliOptions = {}): Promise<number> {
   const parsed = parseGovernorPauseArgs(args);
   if ("error" in parsed) {
@@ -119,15 +165,18 @@ export async function runGovernorPause(args: string[], options: GovernorPauseCli
   }
 
   try {
-    return await withGovernorState(options, (governorState) => {
-      const pauseState = governorState.savePauseState({ paused: true, reason: parsed.reason });
-      if (parsed.json) {
-        console.log(JSON.stringify(pauseState));
-      } else {
-        console.log(renderPauseState(pauseState));
-      }
-      return 0;
-    });
+    const pauseState = await withGovernorState(options, (governorState) =>
+      governorState.savePauseState({ paused: true, reason: parsed.reason }),
+    );
+    // AMS badge notify (#7657) AFTER the persisted write, so the notification never claims a pause that
+    // failed to save; a notify miss is swallowed (the pause itself already succeeded).
+    await notifyGovernorPaused(pauseState, options).catch(() => undefined);
+    if (parsed.json) {
+      console.log(JSON.stringify(pauseState));
+    } else {
+      console.log(renderPauseState(pauseState));
+    }
+    return 0;
   } catch (error) {
     return reportCliFailure(parsed.json, describeCliError(error));
   }

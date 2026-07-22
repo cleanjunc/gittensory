@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAmsAttemptFailedNotification,
+  buildAmsAttemptStartedNotification,
+  buildAmsGovernorPausedNotification,
+  buildAmsPrOutcomeNotification,
   buildChangesRequestedNotification,
   buildNotificationContent,
   buildNotificationFeed,
   deliverNotification,
+  evaluateAndEnqueueNotificationDeliveries,
   evaluateNotificationEvent,
   NOTIFICATION_RATE_LIMIT,
   resolveNotificationChannels,
@@ -332,5 +337,80 @@ describe("notification repository helpers", () => {
   it("returns null for an unknown delivery id", async () => {
     const env = createTestEnv();
     expect(await getNotificationDeliveryById(env, "missing")).toBeNull();
+  });
+});
+
+describe("AMS notification kinds (#7657)", () => {
+  it("routes each AMS event type to its own public-safe copy", () => {
+    const started = buildNotificationContent(event({ eventType: "ams_attempt_started", pullNumber: 41 }));
+    expect(started.title).toContain("Attempt started on owner/repo#41");
+    const failed = buildNotificationContent(event({ eventType: "ams_attempt_failed", pullNumber: 41 }));
+    expect(failed.title).toContain("Attempt failed on owner/repo#41");
+    const paused = buildNotificationContent(event({ eventType: "ams_governor_paused", repoFullName: "ams/governor", pullNumber: 0 }));
+    expect(paused.title).toBe("AMS governor paused");
+    expect(paused.body).toContain("governor resume");
+    const outcome = buildNotificationContent(
+      event({ eventType: "ams_pr_outcome", dedupKey: "ams_pr_outcome:merged:owner/repo#7:t" }),
+    );
+    expect(outcome.title).toContain("AMS recorded merge: owner/repo#7");
+    for (const content of [started, failed, paused, outcome]) {
+      expect(JSON.stringify(content)).not.toMatch(/reward|payout|trust score|wallet|hotkey|\$/i);
+    }
+  });
+
+  it("keeps attempt copy pointed at the attempt log for both lifecycle kinds", () => {
+    expect(buildAmsAttemptStartedNotification(event({ eventType: "ams_attempt_started" })).body).toContain("attempt log");
+    expect(buildAmsAttemptFailedNotification(event({ eventType: "ams_attempt_failed" })).body).toContain("attempt log");
+  });
+
+  it("ignores the synthetic governor scope in the pause copy", () => {
+    const content = buildAmsGovernorPausedNotification(event({ eventType: "ams_governor_paused", repoFullName: "ams/governor" }));
+    expect(content.title).toBe("AMS governor paused");
+    expect(JSON.stringify(content)).not.toContain("ams/governor");
+  });
+
+  it("reads the decision back out of the pr-outcome dedupKey for merged vs closed copy", () => {
+    const merged = buildAmsPrOutcomeNotification(
+      event({ eventType: "ams_pr_outcome", dedupKey: "ams_pr_outcome:merged:owner/repo#7:t" }),
+    );
+    expect(merged.title).toContain("AMS recorded merge");
+    expect(merged.body).toContain("merged");
+    const closed = buildAmsPrOutcomeNotification(
+      event({ eventType: "ams_pr_outcome", dedupKey: "ams_pr_outcome:closed:owner/repo#7:t" }),
+    );
+    expect(closed.title).toContain("AMS recorded close");
+    expect(closed.body).toContain("without merging");
+  });
+
+  it("evaluateAndEnqueueNotificationDeliveries creates deliveries and enqueues one notify-deliver per pending row", async () => {
+    const sent: Array<Record<string, unknown>> = [];
+    const env = createTestEnv({
+      JOBS: { send: async (message: Record<string, unknown>) => void sent.push(message) } as unknown as Queue,
+    });
+    const pending = await evaluateAndEnqueueNotificationDeliveries(env, [
+      event({ eventType: "ams_attempt_started", dedupKey: "ams_attempt_started:owner/repo#41:a1", pullNumber: 41 }),
+      event({ eventType: "ams_pr_outcome", dedupKey: "ams_pr_outcome:merged:owner/repo#7:t" }),
+    ]);
+    expect(pending).toHaveLength(2);
+    expect(sent).toHaveLength(2);
+    for (const [index, message] of sent.entries()) {
+      expect(message).toEqual({ type: "notify-deliver", requestedBy: "notify-evaluate", deliveryId: pending[index]!.id });
+    }
+  });
+
+  it("evaluateAndEnqueueNotificationDeliveries enqueues nothing when every event dedupes to an existing row", async () => {
+    const sent: unknown[] = [];
+    const env = createTestEnv({
+      JOBS: { send: async (message: unknown) => void sent.push(message) } as unknown as Queue,
+    });
+    const first = await evaluateAndEnqueueNotificationDeliveries(env, [
+      event({ eventType: "ams_attempt_started", dedupKey: "ams_attempt_started:owner/repo#41:a1", pullNumber: 41 }),
+    ]);
+    expect(first).toHaveLength(1);
+    const second = await evaluateAndEnqueueNotificationDeliveries(env, [
+      event({ eventType: "ams_attempt_started", dedupKey: "ams_attempt_started:owner/repo#41:a1", pullNumber: 41 }),
+    ]);
+    expect(second).toHaveLength(0);
+    expect(sent).toHaveLength(1);
   });
 });

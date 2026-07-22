@@ -105,6 +105,9 @@ function readyPipelineOptions(overrides: Record<string, unknown> = {}) {
     // Never touches the real (filesystem-backed) default governor-state store (#5655 follow-up) -- a test
     // that cares whether recordOwnSubmission was actually called overrides this explicitly.
     recordOwnSubmission: vi.fn(),
+    // Never lets the real fire-and-forget AMS badge notify (#7657) read process.env for a session -- a test
+    // that cares about the notify payloads overrides this explicitly.
+    scheduleAmsNotifications: vi.fn(),
     ...overrides,
   };
 }
@@ -2116,6 +2119,132 @@ describe("runAttempt: hosted soft-claim submission (#7168)", () => {
       ...readyPipelineOptions({
         runMinerAttempt: async () => ({ outcome: "abandon", loopResult: fakeLoopResult() }),
       }),
+    });
+
+    expect(exitCode).toBe(7);
+  });
+});
+
+describe("AMS badge notifications from the attempt lifecycle (#7657)", () => {
+  it("schedules exactly one attempt-started notification (and no failure) on a submitted outcome", async () => {
+    const { allocator, claimLedger, eventLedger, attemptLog, governorLedger } = tempLedgers();
+    const scheduleAmsNotificationsSpy = vi.fn();
+    const worktreeResult = fakeWorktreeResult();
+
+    const exitCode = await runAttempt(["acme/widgets", "7", "--miner-login", "Alice", "--json"], {
+      env: { MINER_CODING_AGENT_PROVIDER: "noop" },
+      attemptId: "fixed-attempt-id",
+      openWorktreeAllocator: () => allocator,
+      openClaimLedger: () => claimLedger,
+      initEventLedger: () => eventLedger,
+      initAttemptLog: () => attemptLog,
+      initGovernorLedger: () => governorLedger,
+      ...readyPipelineOptions({
+        scheduleAmsNotifications: scheduleAmsNotificationsSpy,
+        runMinerAttempt: async () => ({
+          outcome: "submitted",
+          spec: { command: "gh pr create", cwd: worktreeResult.worktreePath, timeoutMs: 1000 },
+          execResult: { code: 0 },
+          loopResult: fakeLoopResult(),
+        }),
+      }),
+    });
+
+    expect(exitCode).toBe(0);
+    expect(scheduleAmsNotificationsSpy).toHaveBeenCalledTimes(1);
+    const [events, options] = scheduleAmsNotificationsSpy.mock.calls[0]!;
+    expect(events).toEqual([
+      expect.objectContaining({
+        eventType: "ams_attempt_started",
+        recipientLogin: "alice",
+        repoFullName: "acme/widgets",
+        pullNumber: 7,
+        dedupKey: "ams_attempt_started:acme/widgets#7:fixed-attempt-id",
+      }),
+    ]);
+    expect(options).toEqual({ env: { MINER_CODING_AGENT_PROVIDER: "noop" } });
+  });
+
+  it("schedules an attempt-failed notification carrying the non-submitted outcome as its reason", async () => {
+    const { allocator, claimLedger, eventLedger, attemptLog, governorLedger } = tempLedgers();
+    const scheduleAmsNotificationsSpy = vi.fn();
+
+    const exitCode = await runAttempt(["acme/widgets", "7", "--miner-login", "alice", "--json"], {
+      env: { MINER_CODING_AGENT_PROVIDER: "noop" },
+      attemptId: "fixed-attempt-id",
+      openWorktreeAllocator: () => allocator,
+      openClaimLedger: () => claimLedger,
+      initEventLedger: () => eventLedger,
+      initAttemptLog: () => attemptLog,
+      initGovernorLedger: () => governorLedger,
+      ...readyPipelineOptions({
+        scheduleAmsNotifications: scheduleAmsNotificationsSpy,
+        runMinerAttempt: async () => ({ outcome: "abandon", loopResult: fakeLoopResult() }),
+      }),
+    });
+
+    expect(exitCode).toBe(7);
+    expect(scheduleAmsNotificationsSpy).toHaveBeenCalledTimes(2);
+    const [failedEvents] = scheduleAmsNotificationsSpy.mock.calls[1]!;
+    expect(failedEvents).toEqual([
+      expect.objectContaining({
+        eventType: "ams_attempt_failed",
+        recipientLogin: "alice",
+        pullNumber: 7,
+        dedupKey: "ams_attempt_failed:acme/widgets#7:fixed-attempt-id:abandon",
+      }),
+    ]);
+  });
+
+  it("schedules an attempt_crashed failure notification when runMinerAttempt throws", async () => {
+    const { allocator, claimLedger, eventLedger, attemptLog, governorLedger } = tempLedgers();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const scheduleAmsNotificationsSpy = vi.fn();
+
+    const exitCode = await runAttempt(["acme/widgets", "7", "--miner-login", "alice"], {
+      env: { MINER_CODING_AGENT_PROVIDER: "noop" },
+      attemptId: "fixed-attempt-id",
+      openWorktreeAllocator: () => allocator,
+      openClaimLedger: () => claimLedger,
+      initEventLedger: () => eventLedger,
+      initAttemptLog: () => attemptLog,
+      initGovernorLedger: () => governorLedger,
+      ...readyPipelineOptions({
+        cleanupAttemptWorktree: vi.fn().mockResolvedValue({ ok: true, removed: false }),
+        scheduleAmsNotifications: scheduleAmsNotificationsSpy,
+        runMinerAttempt: async () => {
+          throw new Error("boom");
+        },
+      }),
+    });
+
+    expect(exitCode).toBe(2);
+    expect(scheduleAmsNotificationsSpy).toHaveBeenCalledTimes(2);
+    const [failedEvents] = scheduleAmsNotificationsSpy.mock.calls[1]!;
+    expect(failedEvents).toEqual([
+      expect.objectContaining({
+        eventType: "ams_attempt_failed",
+        dedupKey: "ams_attempt_failed:acme/widgets#7:fixed-attempt-id:attempt_crashed",
+      }),
+    ]);
+  });
+
+  it("falls back to the real fire-and-forget scheduler (a session-less no-op here) when none is injected", async () => {
+    const { allocator, claimLedger, eventLedger, attemptLog, governorLedger } = tempLedgers();
+    // Mirrors the recordOwnSubmission omission pattern above: drop the injected mock so the `??` default
+    // branch runs. The env carries no loopover session, so the real scheduler resolves no_session silently.
+    const { scheduleAmsNotifications: _omitted, ...optionsWithoutScheduler } = readyPipelineOptions({
+      runMinerAttempt: async () => ({ outcome: "abandon", loopResult: fakeLoopResult() }),
+    });
+
+    const exitCode = await runAttempt(["acme/widgets", "7", "--miner-login", "alice", "--json"], {
+      env: { MINER_CODING_AGENT_PROVIDER: "noop" },
+      openWorktreeAllocator: () => allocator,
+      openClaimLedger: () => claimLedger,
+      initEventLedger: () => eventLedger,
+      initAttemptLog: () => attemptLog,
+      initGovernorLedger: () => governorLedger,
+      ...optionsWithoutScheduler,
     });
 
     expect(exitCode).toBe(7);

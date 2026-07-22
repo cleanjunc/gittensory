@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   MINER_PR_OUTCOME_DECISIONS,
   MINER_PR_OUTCOME_EVENT,
@@ -115,5 +115,78 @@ describe("readPrOutcomes (#4274)", () => {
       { type: MINER_PR_OUTCOME_EVENT, repoFullName: "acme/widgets", payload: { prNumber: 8, decision: "merged" } },
     );
     expect([...readPrOutcomes(ledger).keys()]).toEqual(["acme/widgets:8"]);
+  });
+});
+
+describe("AMS badge notify from recordPrOutcomeSnapshot (#7657)", () => {
+  it("schedules one pr-outcome notification after a successful ledger write when a recipient is known", () => {
+    const ledger = mockLedger();
+    const scheduleSpy = vi.fn();
+    const entry = recordPrOutcomeSnapshot(
+      { repoFullName: "acme/widgets", prNumber: 9, decision: "merged", closedAt: "2026-07-22T08:00:00Z" },
+      { eventLedger: ledger, recipientLogin: " Miner1 ", env: { SOME_ENV: "x" }, scheduleAmsNotifications: scheduleSpy },
+    );
+    expect(entry).not.toBeNull();
+    expect(scheduleSpy).toHaveBeenCalledTimes(1);
+    const [events, options] = scheduleSpy.mock.calls[0]!;
+    expect(events).toEqual([
+      expect.objectContaining({
+        eventType: "ams_pr_outcome",
+        recipientLogin: "miner1",
+        repoFullName: "acme/widgets",
+        pullNumber: 9,
+        dedupKey: "ams_pr_outcome:merged:acme/widgets#9:2026-07-22T08:00:00Z",
+      }),
+    ]);
+    expect(options).toEqual({ env: { SOME_ENV: "x" } });
+  });
+
+  it("skips the notification when no recipient (or a whitespace one) is given — the ledger write still happens", () => {
+    const ledger = mockLedger();
+    const scheduleSpy = vi.fn();
+    recordPrOutcomeSnapshot(
+      { repoFullName: "acme/widgets", prNumber: 9, decision: "closed", closedAt: "2026-07-22T08:00:00Z" },
+      { eventLedger: ledger, scheduleAmsNotifications: scheduleSpy },
+    );
+    recordPrOutcomeSnapshot(
+      { repoFullName: "acme/widgets", prNumber: 10, decision: "closed", closedAt: "2026-07-22T08:00:00Z" },
+      { eventLedger: ledger, recipientLogin: "   ", scheduleAmsNotifications: scheduleSpy },
+    );
+    expect(ledger._events).toHaveLength(2);
+    expect(scheduleSpy).not.toHaveBeenCalled();
+  });
+
+  it("never notifies for a snapshot the normalizer rejected (nothing was recorded)", () => {
+    const ledger = mockLedger();
+    const scheduleSpy = vi.fn();
+    const entry = recordPrOutcomeSnapshot(
+      { repoFullName: "acme/widgets", prNumber: 0, decision: "merged" },
+      { eventLedger: ledger, recipientLogin: "miner1", scheduleAmsNotifications: scheduleSpy },
+    );
+    expect(entry).toBeNull();
+    expect(scheduleSpy).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the real fire-and-forget scheduler (a session-less no-op here) when none is injected", () => {
+    const ledger = mockLedger();
+    // No scheduleAmsNotifications injected → the real scheduleAmsNotificationEvents runs. The env points at
+    // an empty config dir, so the underlying publish resolves no_session and never touches the network.
+    const entry = recordPrOutcomeSnapshot(
+      { repoFullName: "acme/widgets", prNumber: 9, decision: "merged", closedAt: "2026-07-22T08:00:00Z" },
+      { eventLedger: ledger, recipientLogin: "miner1", env: { LOOPOVER_CONFIG_DIR: "/nonexistent-loopover-config" } },
+    );
+    expect(entry).not.toBeNull();
+    expect(ledger._events).toHaveLength(1);
+  });
+
+  it("defaults env to process.env in the scheduled options when none is injected", () => {
+    const ledger = mockLedger();
+    const scheduleSpy = vi.fn();
+    recordPrOutcomeSnapshot(
+      { repoFullName: "acme/widgets", prNumber: 9, decision: "merged", closedAt: "2026-07-22T08:00:00Z" },
+      { eventLedger: ledger, recipientLogin: "miner1", scheduleAmsNotifications: scheduleSpy },
+    );
+    expect(scheduleSpy).toHaveBeenCalledTimes(1);
+    expect(scheduleSpy.mock.calls[0]![1]).toEqual({ env: process.env });
   });
 });

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -377,5 +377,185 @@ describe("governor pause/resume/status --json error contract (#5914)", () => {
     expect(await runGovernorPause([], { openGovernorState: () => governorState })).toBe(0);
     expect(String(log.mock.calls.at(-1)?.[0])).toMatch(/PAUSED since /);
     expect(String(log.mock.calls.at(-1)?.[0])).not.toContain("(");
+  });
+});
+
+describe("AMS badge notify on governor pause (#7657)", () => {
+  it("publishes a governor-paused notification stamped with the persisted pause state", async () => {
+    const state = tempGovernorState();
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const publishSpy = vi.fn().mockResolvedValue({ sent: 1 });
+
+    const exitCode = await runGovernorPause(["--reason", "investigating", "--json"], {
+      openGovernorState: () => state,
+      env: { SOME_ENV: "x" },
+      fetchSessionLogin: async () => "Miner1",
+      publishAmsNotifications: publishSpy,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(publishSpy).toHaveBeenCalledTimes(1);
+    const [events, options] = publishSpy.mock.calls[0]!;
+    const persisted = state.loadPauseState();
+    expect(events).toEqual([
+      expect.objectContaining({
+        eventType: "ams_governor_paused",
+        recipientLogin: "miner1",
+        repoFullName: "ams/governor",
+        pullNumber: 0,
+        dedupKey: `ams_governor_paused:miner1:${persisted.pausedAt}:investigating`,
+      }),
+    ]);
+    expect(options).toEqual({ env: { SOME_ENV: "x" } });
+    // The pause itself still printed its normal JSON result.
+    expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toMatchObject({ paused: true, reason: "investigating" });
+  });
+
+  it("skips the notification when no session login resolves, without failing the pause", async () => {
+    const state = tempGovernorState();
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const publishSpy = vi.fn();
+
+    const exitCode = await runGovernorPause([], {
+      openGovernorState: () => state,
+      fetchSessionLogin: async () => null,
+      publishAmsNotifications: publishSpy,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(publishSpy).not.toHaveBeenCalled();
+    expect(state.loadPauseState().paused).toBe(true);
+  });
+
+  it("swallows a thrown notify (rejecting fetchSessionLogin) — the persisted pause still succeeds", async () => {
+    const state = tempGovernorState();
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    const exitCode = await runGovernorPause([], {
+      openGovernorState: () => state,
+      fetchSessionLogin: async () => {
+        throw new Error("session backend down");
+      },
+    });
+
+    expect(exitCode).toBe(0);
+    expect(state.loadPauseState().paused).toBe(true);
+  });
+
+  it("does not notify on --dry-run (nothing was persisted)", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const publishSpy = vi.fn();
+    const fetchSessionLoginSpy = vi.fn();
+
+    const exitCode = await runGovernorPause(["--dry-run"], {
+      fetchSessionLogin: fetchSessionLoginSpy,
+      publishAmsNotifications: publishSpy,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(fetchSessionLoginSpy).not.toHaveBeenCalled();
+    expect(publishSpy).not.toHaveBeenCalled();
+  });
+
+  it("resolves the login from the on-disk session by default — no session dir means skip, publish untouched", async () => {
+    const state = tempGovernorState();
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const publishSpy = vi.fn();
+    const dir = mkdtempSync(join(tmpdir(), "loopover-miner-governor-pause-nosession-"));
+    roots.push(dir);
+
+    const exitCode = await runGovernorPause([], {
+      openGovernorState: () => state,
+      env: { LOOPOVER_CONFIG_DIR: dir },
+      publishAmsNotifications: publishSpy,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(publishSpy).not.toHaveBeenCalled();
+  });
+
+  it("publishes through the real client on the default path (session GET + ingest POST both stubbed)", async () => {
+    const state = tempGovernorState();
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const dir = mkdtempSync(join(tmpdir(), "loopover-miner-governor-pause-realpublish-"));
+    roots.push(dir);
+    writeFileSync(join(dir, "config.json"), JSON.stringify({ profiles: { default: { session: { token: "session-token-1" } } } }), { mode: 0o600 });
+    const fetchCalls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      fetchCalls.push(url);
+      if (url.endsWith("/v1/auth/session")) return Response.json({ status: "authenticated", login: "miner1" });
+      return Response.json({ login: "miner1", accepted: 1, enqueued: 1 });
+    });
+
+    const exitCode = await runGovernorPause(["--reason", "maintenance"], {
+      openGovernorState: () => state,
+      env: { LOOPOVER_CONFIG_DIR: dir, LOOPOVER_API_URL: "https://api.example.test" },
+    });
+
+    expect(exitCode).toBe(0);
+    expect(fetchCalls).toEqual([
+      "https://api.example.test/v1/auth/session",
+      "https://api.example.test/v1/contributors/miner1/ams-notifications",
+    ]);
+    vi.unstubAllGlobals();
+  });
+
+  it("fetches the session login from GET /v1/auth/session on the default path", async () => {
+    const state = tempGovernorState();
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const publishSpy = vi.fn().mockResolvedValue({ sent: 1 });
+    const dir = mkdtempSync(join(tmpdir(), "loopover-miner-governor-pause-session-"));
+    roots.push(dir);
+    writeFileSync(join(dir, "config.json"), JSON.stringify({ profiles: { default: { session: { token: "session-token-1" } } } }), { mode: 0o600 });
+    const fetchCalls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string, init?: { headers?: Record<string, string> }) => {
+      fetchCalls.push(url);
+      expect(init?.headers?.authorization).toBe("Bearer session-token-1");
+      return Response.json({ status: "authenticated", login: "Miner1" });
+    });
+
+    const exitCode = await runGovernorPause([], {
+      openGovernorState: () => state,
+      env: { LOOPOVER_CONFIG_DIR: dir, LOOPOVER_API_URL: "https://api.example.test" },
+      publishAmsNotifications: publishSpy,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(fetchCalls).toEqual(["https://api.example.test/v1/auth/session"]);
+    expect(publishSpy).toHaveBeenCalledTimes(1);
+    expect(publishSpy.mock.calls[0]![0]).toEqual([expect.objectContaining({ recipientLogin: "miner1" })]);
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ["a non-OK session response", async () => new Response("nope", { status: 401 })],
+    ["a non-JSON session body", async () => new Response("not json", { status: 200 })],
+    ["a blank login", async () => Response.json({ login: "  " })],
+    ["a non-string login", async () => Response.json({ login: 42 })],
+    [
+      "a thrown fetch",
+      async () => {
+        throw new Error("network down");
+      },
+    ],
+  ])("skips the notification on %s from the default session lookup", async (_label, fetchImpl) => {
+    const state = tempGovernorState();
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const publishSpy = vi.fn();
+    const dir = mkdtempSync(join(tmpdir(), "loopover-miner-governor-pause-badsession-"));
+    roots.push(dir);
+    writeFileSync(join(dir, "config.json"), JSON.stringify({ profiles: { default: { session: { token: "session-token-1" } } } }), { mode: 0o600 });
+    vi.stubGlobal("fetch", fetchImpl);
+
+    const exitCode = await runGovernorPause([], {
+      openGovernorState: () => state,
+      env: { LOOPOVER_CONFIG_DIR: dir },
+      publishAmsNotifications: publishSpy,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(publishSpy).not.toHaveBeenCalled();
+    expect(state.loadPauseState().paused).toBe(true);
+    vi.unstubAllGlobals();
   });
 });

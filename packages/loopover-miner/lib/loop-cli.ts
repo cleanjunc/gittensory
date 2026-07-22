@@ -567,7 +567,8 @@ export async function runLoop(args: string[], options: RunLoopOptions = {}): Pro
                 decision: prDisposition.merged ? "merged" : "closed",
                 closedAt: prDisposition.closedAt,
               },
-              { eventLedger },
+              // recipientLogin routes the recorded outcome into an AMS badge notification too (#7657).
+              { eventLedger, recipientLogin: parsed.minerLogin, env },
             );
             // Real per-repo reputation history (#5675): a resolved terminal outcome updates the decided/unfavorable
             // counts the Governor's self-reputation throttle reads on this repo's next attempt. `decided` always;

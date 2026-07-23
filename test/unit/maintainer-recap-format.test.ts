@@ -27,14 +27,18 @@ function emptyReport(): RecapReport {
 describe("formatMaintainerRecap (#2240)", () => {
   it("renders the header and every titled section, with fallback lines and an n/a rate for an empty window", () => {
     const body = formatMaintainerRecap(emptyReport());
-    // Header + all three titled section headers render.
+    // Header + all titled section headers render.
     expect(body).toContain("# Maintainer recap");
     expect(body).toContain("## Summary");
     expect(body).toContain("## Totals");
     expect(body).toContain("## Per-repo");
+    expect(body).toContain("## Config drift");
     // Empty sections show a single fallback line instead of dangling under the header.
     expect(body).toContain("_No summary lines for this window._");
     expect(body).toContain("_No repositories in this window._");
+    // #8214: a report built with NO drift source renders the explicit disabled line — absence of data must
+    // stay distinguishable from absence of drift.
+    expect(body).toContain("_drift sentinel disabled — no config-drift source supplied to this recap._");
     // Null rate ⇒ the "n/a" arm.
     expect(body).toContain("- Gate false positives: 0/0 (n/a)");
     expect(body).toContain("- Repos: 0");
@@ -89,6 +93,31 @@ describe("formatMaintainerRecap (#2240)", () => {
     // Arm 2: an economic term blanks the whole line.
     expect(body).toContain("- <redacted>");
     expect(body).not.toContain("payout");
+  });
+
+  it("renders the config-drift section's own lines as bullets when the report carries one (#8214)", () => {
+    const report: RecapReport = {
+      ...emptyReport(),
+      configDrift: {
+        title: "Config drift",
+        sentinelEnabled: true,
+        driftingKnobs: 1,
+        cleanKnobs: 1,
+        note: "config drift: 1 of 2 live knob(s) have a dominating alternative on the trailing corpus.",
+        lines: [
+          "close_confidence — stale-config warning — a tighter setting dominates live: live 0.9 vs dominating 0.95 (240 visible / 60 held-out case(s)); standing 3 day(s)",
+          "1 knob(s) clean — no alternative dominates the live value.",
+          "config drift: 1 of 2 live knob(s) have a dominating alternative on the trailing corpus.",
+        ],
+      },
+    };
+    const body = formatMaintainerRecap(report);
+    expect(body).toContain("## Config drift");
+    // Populated arm: the section's lines render as bullets and the disabled fallback does NOT appear.
+    expect(body).toContain("- close_confidence — stale-config warning");
+    expect(body).toContain("- 1 knob(s) clean — no alternative dominates the live value.");
+    expect(body).not.toContain("_drift sentinel disabled");
+    expect(body).not.toMatch(/\n{3,}/);
   });
 
   it("omits cohort diagnostics from the public recap even when totals.cohorts is present", () => {

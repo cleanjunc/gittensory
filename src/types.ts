@@ -2838,6 +2838,22 @@ export type MaintainerRecapRepo = {
   cohorts?: { miner: MaintainerRecapCohortCounts; human: MaintainerRecapCohortCounts } | undefined;
 };
 
+/** The recap's config-drift section (#8214, epic #8211 track A): each live knob's current sentinel drift
+ *  verdict as aggregate numbers + knob ids only — never corpus content. Built by
+ *  buildConfigDriftRecapSection (services/maintainer-recap-config-drift.ts); present on a RecapReport only
+ *  when the caller supplied a drift source. Absent means the sentinel was not consulted for this recap —
+ *  the formatter renders the explicit disabled line for that case, so absence of DATA stays distinguishable
+ *  from absence of DRIFT. */
+export type ConfigDriftRecapSection = {
+  title: string;
+  sentinelEnabled: boolean;
+  driftingKnobs: number;
+  cleanKnobs: number;
+  /** Plain-English status line (disabled / no-knobs / drift-present / all-clean). */
+  note: string;
+  lines: string[];
+};
+
 /** A serializable maintainer recap: a window of loopover's OWN review-outcome data folded across repos.
  *  Foundation for the #1963 recap digest — the pure data-shaping seam only (no delivery, no scheduling).
  *  Distinct from {@link ReviewRecap} (single-repo, sourced from gate merge-precision predictions); this is
@@ -2862,5 +2878,8 @@ export type RecapReport = {
      *  contribute to these sums, so a partial-adoption window still degrades gracefully. */
     cohorts?: { miner: MaintainerRecapCohortCounts; human: MaintainerRecapCohortCounts } | undefined;
   };
+  /** #8214: the config-drift sentinel section — present only when the recap's caller supplied a drift
+   *  source (the sentinel's plumbing, #8213). Absent ⇒ the formatter renders the explicit disabled line. */
+  configDrift?: ConfigDriftRecapSection | undefined;
   summary: string[];
 };

@@ -12,6 +12,7 @@
 // calibration ledgers (blocked-then-merged false positives, maintainer overrides, recommendation reversals).
 import { PUBLIC_LOCAL_PATH_SCRUB_PATTERN, PUBLIC_UNSAFE_PATTERN } from "../signals/redaction";
 import { deliverRecapToDiscord, deliverRecapToSlack } from "./notify-discord";
+import { buildConfigDriftRecapSection, type ConfigDriftRecapSource } from "./maintainer-recap-config-drift";
 import type { GatePrecisionReport } from "./gate-precision";
 import type { OutcomeCalibration } from "./outcome-calibration";
 import type { MaintainerRecapCohortCounts, MaintainerRecapRepo, RecapReport } from "../types";
@@ -43,6 +44,9 @@ export type MaintainerRecapInputs = {
   generatedAt: string;
   windowDays?: number | null | undefined;
   repos: MaintainerRecapRepoInput[];
+  /** #8214: optional config-drift source (the sentinel's per-knob drift reports, #8213). When present the
+   *  report carries a configDrift section; when omitted the formatter renders the explicit disabled line. */
+  configDrift?: ConfigDriftRecapSource | undefined;
 };
 
 /** #4521: convert one GatePrecisionCohortReport's `overall` bucket into the recap's own cohort-counts shape
@@ -138,7 +142,15 @@ export function buildMaintainerRecap(args: MaintainerRecapInputs): RecapReport {
     rateLine,
     `${totals.gateOverrides} maintainer override(s), ${totals.reversals} recommendation reversal(s).`,
   ].map(sanitizeRecapText);
-  return { generatedAt: args.generatedAt, windowDays, repos, totals: { ...totals, ...(cohorts ? { cohorts } : {}) }, summary };
+  return {
+    generatedAt: args.generatedAt,
+    windowDays,
+    repos,
+    totals: { ...totals, ...(cohorts ? { cohorts } : {}) },
+    // #8214: the drift section exists only when a source was supplied — mirroring the cohorts convention.
+    ...(args.configDrift ? { configDrift: buildConfigDriftRecapSection(args.configDrift) } : {}),
+    summary,
+  };
 }
 
 /** Redact one free-text line bound for the public digest body. Two arms mirroring weekly-value-report.ts's
@@ -188,6 +200,11 @@ export function formatMaintainerRecap(report: RecapReport): string {
     "",
     "## Per-repo",
     ...recapSectionLines(perRepoLines, "_No repositories in this window._"),
+    "",
+    "## Config drift",
+    // #8214: a report built without a drift source still renders the section, with the explicit disabled
+    // line — absence of data must stay distinguishable from absence of drift.
+    ...recapSectionLines(report.configDrift?.lines ?? [], "_drift sentinel disabled — no config-drift source supplied to this recap._"),
   ];
   return `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd()}\n`;
 }
@@ -217,6 +234,8 @@ export async function runMaintainerRecap(
     windowDays?: number;
     generatedAt?: string;
     repos?: MaintainerRecapRepoInput[];
+    /** #8214: config-drift source threaded to {@link buildMaintainerRecap} (ignored when `report` is set). */
+    configDrift?: ConfigDriftRecapSource;
     /** Pre-built report for test injection; skips {@link buildMaintainerRecap} when set. */
     report?: RecapReport;
     /** When explicitly false, short-circuits before build/format/delivery. Default: run. */
@@ -231,6 +250,7 @@ export async function runMaintainerRecap(
       generatedAt: options.generatedAt ?? nowIso(),
       windowDays: options.windowDays,
       repos: options.repos ?? [],
+      configDrift: options.configDrift,
     });
   const formatted = formatMaintainerRecap(report);
   const [discord, slack] = await Promise.all([

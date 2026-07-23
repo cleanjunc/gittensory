@@ -64,6 +64,31 @@ describe("buildMaintainerRecap (#2239)", () => {
     // blocked === 0 ⇒ rate is null ⇒ the "not enough blocked PRs" summary arm.
     expect(report.summary[1]).toContain("not enough blocked PRs");
     expect(report.summary[0]).toContain("0 repo(s)");
+    // #8214: no drift source supplied ⇒ the report carries NO configDrift section (the omitted arm).
+    expect(report.configDrift).toBeUndefined();
+  });
+
+  it("attaches the config-drift section when a drift source is supplied (#8214 present arm)", () => {
+    const report = buildMaintainerRecap({
+      generatedAt: GEN,
+      repos: [],
+      configDrift: {
+        sentinelEnabled: true,
+        generatedAt: GEN,
+        knobs: [
+          {
+            knobId: "close_confidence",
+            report: { direction: "tighter", liveValue: 0.9, dominatingValue: 0.95, visibleCases: 240, heldOutCases: 60 },
+            episodeStartedAt: "2026-07-05T00:00:00.000Z",
+          },
+          { knobId: "quiet_knob", report: null },
+        ],
+      },
+    });
+    expect(report.configDrift).toBeDefined();
+    expect(report.configDrift?.driftingKnobs).toBe(1);
+    expect(report.configDrift?.cleanKnobs).toBe(1);
+    expect(report.configDrift?.lines[0]).toContain("close_confidence");
   });
 
   it("folds a single repo's counts and computes the gate false-positive rate", () => {
@@ -231,6 +256,21 @@ describe("runMaintainerRecap (#2252 end-to-end orchestration)", () => {
     expect(result.report.repos).toEqual([]);
     expect(result.formatted).toContain("_No repositories in this window._");
     expect(result.formatted).toContain("(n/a)");
+    // #8214: no drift source threaded ⇒ the formatted body renders the explicit disabled fallback.
+    expect(result.formatted).toContain("_drift sentinel disabled — no config-drift source supplied to this recap._");
+  });
+
+  it("threads a config-drift source through to the built report and formatted body (#8214)", async () => {
+    stubRecapChannelFetch();
+    const result = await runMaintainerRecap(envWithBothWebhooks(), {
+      configDrift: { sentinelEnabled: false, generatedAt: GEN, knobs: [] },
+    });
+    expect(result.skipped).toBe(false);
+    if (result.skipped) return;
+    expect(result.report.configDrift?.sentinelEnabled).toBe(false);
+    // The builder's disabled arm renders, NOT the formatter's no-source fallback.
+    expect(result.formatted).toContain("- drift sentinel disabled — no drift data was collected for this window.");
+    expect(result.formatted).not.toContain("_drift sentinel disabled");
   });
 
   it("short-circuits when enabled is false — no build/format/fetch (flag-OFF arm)", async () => {

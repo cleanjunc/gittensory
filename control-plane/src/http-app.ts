@@ -34,8 +34,15 @@ import {
   provisionTenant,
   type ProvisioningPagerDutyOptions,
 } from "./provisioning.js";
-import type { Product, TenantProvisioningDriver } from "./tenant-provisioning-driver.js";
+import type { Product, TenantLifecycleState, TenantProvisioningDriver } from "./tenant-provisioning-driver.js";
 import type { AmsCycleSchedule, TenantRegistry, TenantRegistryRecord } from "./tenant-registry.js";
+
+/** States that do NOT block re-creating a tenant of the same name+product (or re-claiming its installation
+ *  ID): `"torn down"` (the pre-existing rule — a terminated tenant may be recreated fresh) and, since #7677
+ *  persists failures, `"failed"` — "Setup failed" must invite a retry, never permanently squat on the name. */
+function isRecreatableState(state: TenantLifecycleState): boolean {
+  return state === "torn down" || state === "failed";
+}
 
 export type TenantHttpAppDeps = {
   driver: TenantProvisioningDriver;
@@ -165,16 +172,18 @@ export function createTenantHttpApp(deps: TenantHttpAppDeps): Hono {
     // Not idempotent by design (tenant-client.ts's own doc comment: "a create is not idempotent, so it must
     // not be silently re-sent") -- a currently-active tenant of the same name *and product* is a real conflict,
     // not a no-op (#8024: ORB "acme" must not block AMS "acme"). A previously torn-down tenant may be recreated
-    // (its createdAt is NOT preserved -- this is a fresh provision, not a resurrection of the old one).
+    // (its createdAt is NOT preserved -- this is a fresh provision, not a resurrection of the old one), and so
+    // may a "failed" one (#7677): persisting the failed state must not turn "Setup failed" into a permanent
+    // block on retrying the setup -- before #7677 a failed provision left NO record, so a retry always worked.
     const existing = await deps.registry.get(name, product);
-    if (existing && existing.state !== "torn down") return c.json({ error: "tenant_already_exists" }, 409);
+    if (existing && !isRecreatableState(existing.state)) return c.json({ error: "tenant_already_exists" }, 409);
 
     // A GitHub installation ID must resolve to exactly one hosted container (#7181's routing depends on this
     // being unambiguous) -- reject before ever provisioning anything, same posture as the name+product conflict
     // check just above.
     if (orbInstallationId !== undefined) {
       const conflicting = await deps.registry.getByOrbInstallationId(orbInstallationId);
-      if (conflicting && conflicting.state !== "torn down") {
+      if (conflicting && !isRecreatableState(conflicting.state)) {
         return c.json(
           { error: "installation_already_claimed", message: `installation ${orbInstallationId} is already claimed by tenant "${conflicting.tenant.name}"` },
           409,
@@ -182,16 +191,29 @@ export function createTenantHttpApp(deps: TenantHttpAppDeps): Hono {
       }
     }
 
-    const result = await provisionTenant({ name }, product, deps.driver, deps.pagerDuty ?? {});
-    const now = new Date().toISOString();
-    const record: TenantRegistryRecord = {
-      tenant: result.tenant,
-      product: result.product,
-      state: result.state,
-      createdAt: now,
-      updatedAt: now,
+    // #7677 (ratified 2026-07-21): persist the record in its transitional "provisioning" state BEFORE the
+    // (slow) container/DB/secret standup starts, so the customer-facing dashboard's poll of the existing
+    // GET /v1/tenants read path can actually observe "Setting up your instance" while it happens -- and hand
+    // provisionTenant the seam that flips this same record to a terminal "failed" before a step failure
+    // rethrows, so that poll ends at "Setup failed" instead of spinning on "provisioning" forever.
+    const startedAt = new Date().toISOString();
+    const pending: TenantRegistryRecord = {
+      tenant: { name },
+      product,
+      state: "provisioning",
+      createdAt: startedAt,
+      updatedAt: startedAt,
       ...(schedule ? { amsSchedule: schedule } : {}),
       ...(orbInstallationId !== undefined ? { orbInstallationId } : {}),
+    };
+    await deps.registry.upsert(pending);
+    const result = await provisionTenant({ name }, product, deps.driver, deps.pagerDuty ?? {}, async () => {
+      await deps.registry.upsert({ ...pending, state: "failed", updatedAt: new Date().toISOString() });
+    });
+    const record: TenantRegistryRecord = {
+      ...pending,
+      state: result.state,
+      updatedAt: new Date().toISOString(),
       ...(result.secretRef !== undefined ? { secretRef: result.secretRef } : {}),
     };
     await deps.registry.upsert(record);

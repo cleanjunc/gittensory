@@ -85,12 +85,15 @@ function pageAndRethrow(
  *  `product` is forwarded to every step, never branched on, so ORB and AMS share one call shape. `injectSecrets`
  *  is called with `database` already attached to the request (#8066) -- a real secret driver needs the
  *  connection details to actually store, not just the tenant identity every other step operates on. A step
- *  failure pages (#7667) and always rethrows — provisioning never fails silently. */
+ *  failure pages (#7667) and always rethrows — provisioning never fails silently. `onFailure` (#7677,
+ *  optional) runs first in that failure path — the caller's seam for persisting the `"failed"` lifecycle
+ *  state — and is best-effort: its own rejection is swallowed so it can never mask the step error. */
 export async function provisionTenant(
   tenant: Tenant,
   product: Product,
   driver: TenantProvisioningDriver,
   pagerDuty: ProvisioningPagerDutyOptions = {},
+  onFailure?: () => Promise<void>,
 ): Promise<TenantProvisioningResult> {
   const request: TenantProvisioningRequest = { tenant, product };
   let database: DatabaseConnectionDetails;
@@ -100,6 +103,11 @@ export async function provisionTenant(
     database = await driver.provisionDatabase(request);
     ({ secretRef } = await driver.injectSecrets({ ...request, database }));
   } catch (error) {
+    // #7677 (ratified 2026-07-21): give the caller its chance to transition the tenant's registry record to
+    // "failed" BEFORE the rethrow, so a customer polling the read path sees a terminal "Setup failed" instead
+    // of a record stuck at "provisioning" forever. Best-effort by design: a failure writing the failed state
+    // must never mask the provisioning error itself, which still pages and rethrows exactly as before.
+    if (onFailure) await onFailure().catch(() => undefined);
     pageAndRethrow(tenant, product, "provision", error, pagerDuty);
   }
   return { tenant, product, state: "active", database, ...(secretRef !== undefined ? { secretRef } : {}) };

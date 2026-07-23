@@ -13,6 +13,7 @@ import {
   type RouterNamespaceLike,
   type RouterStubLike,
   type TenantHttpAppDeps,
+  type TenantRegistryRecord,
   type TenantProvisioningDriver,
 } from "../dist/index.js";
 
@@ -579,6 +580,135 @@ test("a driver failure surfaces as a logged 500 via onError, not an unhandled re
   assert.equal(errors.length, 1);
   assert.match(errors[0]!, /control_plane_http_error/);
   assert.match(errors[0]!, /cloudflare containers api unavailable/);
+});
+
+// #7677 (ratified 2026-07-21): the provisioning-status surface. The record is written as "provisioning"
+// BEFORE the standup starts and transitions to a terminal "failed" before a step failure rethrows — all
+// observable via the same GET /v1/tenants read path a customer's dashboard polls.
+
+function swallowConsoleError() {
+  const originalError = console.error;
+  console.error = () => {};
+  consoleErrorRestore = () => {
+    console.error = originalError;
+  };
+}
+
+function failingCreateDriver(): TenantProvisioningDriver {
+  return {
+    ...createFakeTenantProvisioningDriver(),
+    async createContainer() {
+      throw new Error("container standup failed");
+    },
+  };
+}
+
+test("a provision failure transitions the record to 'failed', observable via the dashboard's own read path (#7677 acceptance)", async () => {
+  swallowConsoleError();
+  const registry = createFakeTenantRegistry();
+  const app = createTenantHttpApp(baseDeps({ driver: failingCreateDriver(), registry }));
+
+  const res = await app.request(
+    "/v1/tenants",
+    authed({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "acme", product: "orb" }) }),
+  );
+
+  assert.equal(res.status, 500); // the failure itself still pages + rethrows exactly as before
+  assert.equal((await registry.get("acme", "orb"))?.state, "failed");
+  // The SAME read path a customer's dashboard polls (GET /v1/tenants) shows the terminal failed state —
+  // not a record stuck at "provisioning" forever.
+  const list = await app.request("/v1/tenants", authed());
+  const { tenants } = (await list.json()) as { tenants: Array<{ tenant: { name: string }; state: string }> };
+  assert.deepEqual(
+    tenants.map((t) => ({ name: t.tenant.name, state: t.state })),
+    [{ name: "acme", state: "failed" }],
+  );
+});
+
+test("the record is observable as 'provisioning' while the standup is still in flight (#7677 polling premise)", async () => {
+  const registry = createFakeTenantRegistry();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const slowDriver: TenantProvisioningDriver = {
+    ...createFakeTenantProvisioningDriver(),
+    async createContainer() {
+      await gate;
+    },
+  };
+  const app = createTenantHttpApp(baseDeps({ driver: slowDriver, registry }));
+
+  const pending = app.request(
+    "/v1/tenants",
+    authed({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "acme", product: "orb" }) }),
+  );
+  // Let the route reach the awaited (gated) driver step, then poll mid-standup like the dashboard would.
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal((await registry.get("acme", "orb"))?.state, "provisioning");
+  release();
+  const res = await pending;
+  assert.equal(res.status, 201);
+  assert.equal((await registry.get("acme", "orb"))?.state, "active");
+});
+
+test("a 'failed' tenant may be re-created — 'Setup failed' invites a retry, it never squats on the name (#7677)", async () => {
+  swallowConsoleError();
+  const registry = createFakeTenantRegistry();
+  const failOnce = failingCreateDriver();
+  const app = createTenantHttpApp(baseDeps({ driver: failOnce, registry }));
+  const body = { method: "POST" as const, headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "acme", product: "orb", orbInstallationId: 77 }) };
+
+  assert.equal((await app.request("/v1/tenants", authed(body))).status, 500);
+  assert.equal((await registry.get("acme", "orb"))?.state, "failed");
+
+  // Retry with a healthy driver: neither the name+product conflict check nor the installation-ID claim check
+  // treats the failed record as a blocker (before #7677 a failure left NO record, so a retry always worked).
+  const healthy = createTenantHttpApp(baseDeps({ driver: createFakeTenantProvisioningDriver(), registry }));
+  const retry = await healthy.request("/v1/tenants", authed(body));
+  assert.equal(retry.status, 201);
+  assert.equal((await registry.get("acme", "orb"))?.state, "active");
+});
+
+test("an ACTIVE tenant still 409s a re-create — #7677 loosens only the failed/torn-down states", async () => {
+  const registry = createFakeTenantRegistry();
+  await registry.upsert({ tenant: { name: "acme" }, product: "orb", state: "active", createdAt: "t0", updatedAt: "t0", orbInstallationId: 77 });
+  const app = createTenantHttpApp(baseDeps({ registry }));
+
+  const sameName = await app.request(
+    "/v1/tenants",
+    authed({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "acme", product: "orb" }) }),
+  );
+  assert.equal(sameName.status, 409);
+  const sameInstallation = await app.request(
+    "/v1/tenants",
+    authed({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "other", product: "orb", orbInstallationId: 77 }) }),
+  );
+  assert.equal(sameInstallation.status, 409);
+});
+
+test("a rejection writing the 'failed' state never masks the provisioning error itself (#7677 best-effort seam)", async () => {
+  swallowConsoleError();
+  const registry = createFakeTenantRegistry();
+  const fragileRegistry = {
+    ...registry,
+    async upsert(record: TenantRegistryRecord) {
+      if (record.state === "failed") throw new Error("kv write outage");
+      await registry.upsert(record);
+    },
+  };
+  const app = createTenantHttpApp(baseDeps({ driver: failingCreateDriver(), registry: fragileRegistry }));
+
+  const res = await app.request(
+    "/v1/tenants",
+    authed({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "acme", product: "orb" }) }),
+  );
+
+  // Still the ORIGINAL provisioning failure surfacing through onError — the failed-state write outage is
+  // swallowed, and the record is simply left at its pre-written "provisioning" state.
+  assert.equal(res.status, 500);
+  assert.deepEqual(await res.json(), { error: "internal_error" });
+  assert.equal((await registry.get("acme", "orb"))?.state, "provisioning");
 });
 
 // #4898: POST /v1/tenants/rollout — pin/unpin an explicit list of tenants' pinnedVersion, all-or-nothing.

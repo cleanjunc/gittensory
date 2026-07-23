@@ -29,9 +29,12 @@ export type Tenant = {
 
 /** The full tenant lifecycle vocabulary the #7180 provisioning API reports, passed through verbatim by
  *  tenant-client.ts. provisionTenant/deprovisionTenant only ever produce the terminal `"active"` / `"torn down"`
- *  states; `"provisioning"` (transitional) and `"suspended"` (an operator action) round out the documented set. */
+ *  states; `"provisioning"` (transitional — written by the create route before orchestration starts, so a
+ *  polling customer can watch the standup, #7677) and `"failed"` (#7677: a provision-step failure, persisted
+ *  before the rethrow so that same polling customer sees a terminal "Setup failed" instead of a record stuck
+ *  at "provisioning" forever) and `"suspended"` (an operator action) round out the documented set. */
 export type TenantLifecycleState =
-  "provisioning" | "active" | "suspended" | "torn down";
+  "provisioning" | "active" | "suspended" | "failed" | "torn down";
 
 /** Everything one provision/deprovision step needs. A single request type flows through every driver method so a
  *  real and a fake driver see identical inputs, and so ORB and AMS calls are shaped identically. */

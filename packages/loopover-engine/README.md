@@ -36,8 +36,9 @@ flags, so it works on the whole declared `engines` range.
 Codecov (`codecov/patch`) only reads the root vitest suite, so modules that need a Codecov-visible mirror also
 have a root test under `test/unit/` (e.g. `test/unit/reviewer-consensus-calibration.test.ts` for
 `src/reviewer-consensus-calibration.ts` — #8349, or `test/unit/signal-tracking.test.ts` for
-`src/calibration/signal-tracking.ts` — #8343). The package-local `node:test` suite remains the package's own
-gate; the root mirror is what makes the same scenarios gradeable by Codecov.
+`src/calibration/signal-tracking.ts` — #8343, or `test/unit/harness-submission-trigger.test.ts` for
+`src/miner/harness-submission-trigger.ts` — #8346). The package-local `node:test` suite remains the package's
+own gate; the root mirror is what makes the same scenarios gradeable by Codecov.
 
 ## `opportunity-ranker`
 

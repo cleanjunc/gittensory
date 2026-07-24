@@ -567,6 +567,11 @@ dashboard progress summaries:
 `computeOpportunityFreshness` and `computeOpportunityCompetition` mirror the hosted reward-risk helpers with pure,
 injected-clock semantics for local miners.
 
+`computeLaneFit` (in `goal-model.ts`, composed here through `computeMetadataLaneFit`) has a Codecov-visible root
+mirror at `test/unit/goal-model.test.ts` (#8344) — `codecov/patch` only reads the root vitest suite (see
+[Test](#test)), so its lane-fit precedence and glob-matcher branches are gradeable there as well as by the
+package's own `node:test` suite.
+
 ## AI Policy Map
 
 `scanAiPolicyText` and `resolveAiPolicyVerdict` provide the deterministic policy gate used by miner discovery.
